@@ -55,6 +55,8 @@ updateBtn.addEventListener("click", async function () {
             mode: "readwrite",
         });
         await saveExtensionFiles(dirHandle);
+        const event = new CustomEvent("reloadExtension");
+        document.dispatchEvent(event);
     }
     catch (error) {
         console.error(error);
