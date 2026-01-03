@@ -6,7 +6,7 @@
   "scripts": {
     "build": "rm -r dist ; tsc && npm run cp && zip -r dist/doc/extension.zip dist/extension",
     "watch": "tsc --watch",
-    "cp": "cp doc/index.html dist/doc/; cp -r extension/images dist/extension; cp extension/popup.html dist/extension/popup.html",
+    "cp": "cp doc/index.html dist/doc/; cp doc/*.png dist/doc/; cp -r extension/images dist/extension; cp extension/popup.html dist/extension/popup.html",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
