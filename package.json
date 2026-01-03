@@ -1,0 +1,23 @@
+{
+  "name": "marking",
+  "version": "1.0.0",
+  "description": "",
+  "main": "background.js",
+  "scripts": {
+    "build": "rm -r dist ; tsc && npm run cp && zip -r dist/doc/extension.zip dist/extension",
+    "watch": "tsc --watch",
+    "cp": "cp doc/index.html dist/doc/; cp -r extension/images dist/extension; cp extension/popup.html dist/extension/popup.html",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/chrome": "^0.1.32",
+    "@types/wicg-file-system-access": "^2023.10.7",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@types/uzip": "^0.20201231.2"
+  }
+}

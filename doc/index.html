@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Marking自动评分使用说明</title>
+  </head>
+  <body>
+    <h1>Marking自动评分使用说明</h1>
+    <p>
+      Marking是一个基于Chrome扩展的自动评分工具，用于快速评估学生的代码质量。
+    </p>
+    <h2>安装Chrome</h2>
+
+    如果您没有安装Chrome浏览器，请先<a
+      href="https://www.google.cn/intl/zh-CN/chrome/"
+      target="_blank"
+      >下载</a
+    >并安装Chrome浏览器。
+
+    <h2>安装Marking</h2>
+    <h3>下载</h3>
+    <p>点击下载按钮，选择<em>一个文件夹</em>保存Marking扩展。</p>
+    <p>
+      <button id="download_btn">下载</button>
+    </p>
+    <h3>安装</h3>
+    <ol>
+      <li>打开Chrome浏览器</li>
+      <li>
+        在地址栏中输入
+        <code>chrome://extensions/</code>，然后按Enter键。
+      </li>
+      <li>启用“开发者模式”</li>
+      <li>点击“加载已解压的扩展程序”</li>
+      <li>选择您下载的Marking扩展文件夹</li>
+      <li>点击“添加”按钮</li>
+    </ol>
+    <h3 id="update">更新</h3>
+    <p>点击更新按钮，选择下载时保存Marking的<strong>那个文件夹</strong></p>
+    <p><button id="update_btn">更新</button></p>
+
+    <script src="./main.js" type="module"></script>
+  </body>
+</html>

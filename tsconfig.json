@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "outDir": "./dist",
+    "rootDir": "./",
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "types": ["chrome", "wicg-file-system-access"],
+    "verbatimModuleSyntax": true,
+  },
+  "include": [
+    "**/*.ts", "extension/*.json"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}
