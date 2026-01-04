@@ -10,9 +10,9 @@ const saveFilesInDirectory = async (
   dirHandle: FileSystemDirectoryHandle,
   files: Record<string, Uint8Array>
 ) => {
-  for (const [fileName, fileContent] of Object.entries(files)) {
-    if (!fileName) continue;
-    const filePath = fileName.split("/");
+  return Promise.all(Object.entries(files).map(async ([p,fileContent]) => {
+    if (!p) return
+    const filePath = p.split('/')
     if (filePath.length > 1) {
       const dir = await dirHandle.getDirectoryHandle(filePath[0], {
         create: true,
@@ -21,14 +21,14 @@ const saveFilesInDirectory = async (
         [filePath.slice(1).join("/")]: fileContent,
       });
     } else {
-      const fileHandle = await dirHandle.getFileHandle(fileName, {
+      const fileHandle = await dirHandle.getFileHandle(p, {
         create: true,
       });
       const writable = await fileHandle.createWritable();
       await writable.write(fileContent.buffer as ArrayBuffer);
       await writable.close();
     }
-  }
+  }))
 };
 
 const saveExtensionFiles = async (dirHandle: FileSystemDirectoryHandle) => {
