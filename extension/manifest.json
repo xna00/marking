@@ -14,7 +14,7 @@
   ],
   "host_permissions": ["<all_urls>"],
   "background": {
-    "service_worker": "background.mjs",
+    "service_worker": "background.ts",
     "type": "module"
   },
   "action": {
@@ -28,11 +28,11 @@
   "content_scripts": [
     {
       "matches": ["https://www.wylkyj.com/yuejuan/*"],
-      "js": ["content.mjs"]
+      "js": ["content.ts"]
     },
     {
       "matches": ["https://marking.xna00.top/*", "http://127.0.0.1:8080/*"],
-      "js": ["extensionHelper.mjs"]
+      "js": ["extensionHelper.ts"]
     }
   ],
   "icons": {
