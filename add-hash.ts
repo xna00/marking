@@ -202,8 +202,8 @@ function main() {
       console.log(`  ${oldName} -> ${newName}`);
     });
     
-    // 更新HTML文件中的JavaScript引用
-    updateAllReferences(jsFiles, '.html');
+    // 更新HTML文件和JavaScript文件中的引用
+    updateAllReferences(jsFiles);
   }
   
   // 清理所有旧文件
