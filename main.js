@@ -4,10 +4,10 @@ const updateBtn = document.getElementById("update_btn");
 console.log(UZIP);
 const directoryId = "directoryId";
 const saveFilesInDirectory = async (dirHandle, files) => {
-    for (const [fileName, fileContent] of Object.entries(files)) {
-        if (!fileName)
-            continue;
-        const filePath = fileName.split("/");
+    return Promise.all(Object.entries(files).map(async ([p, fileContent]) => {
+        if (!p)
+            return;
+        const filePath = p.split('/');
         if (filePath.length > 1) {
             const dir = await dirHandle.getDirectoryHandle(filePath[0], {
                 create: true,
@@ -17,14 +17,14 @@ const saveFilesInDirectory = async (dirHandle, files) => {
             });
         }
         else {
-            const fileHandle = await dirHandle.getFileHandle(fileName, {
+            const fileHandle = await dirHandle.getFileHandle(p, {
                 create: true,
             });
             const writable = await fileHandle.createWritable();
             await writable.write(fileContent.buffer);
             await writable.close();
         }
-    }
+    }));
 };
 const saveExtensionFiles = async (dirHandle) => {
     const buf = await (await fetch("./extension.zip")).arrayBuffer();
