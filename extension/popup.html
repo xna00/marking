@@ -64,37 +64,17 @@
   </style>
 </head>
 <body>
-  <h3>Marking Extension</h3>
-  <button id="fetchBtn">Fetch</button>
-  <button id="reloadBtn">Reload</button>
-  <button id="refreshBtn">Refresh Image</button>
-  <button id="selectFileBtn">Select File</button>
-  <div>
-    <h4>Captured Image:</h4>
-    <img id="capturedImage" alt="No image captured yet" />
-    <p id="statusText">Waiting for image...</p>
-  </div>
-  
-  <!-- API Key Settings Section -->
   <div class="settings-section">
-    <h4>API Key Settings</h4>
-    <label for="doubaoKeyInput">Doubao API Key:</label>
     <input type="password" id="doubaoKeyInput" placeholder="Enter your Doubao API Key" style="width: 100%; margin-bottom: 10px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
-    <button id="saveApiKeyBtn">Save Doubao API Key</button>
-    <p style="font-size: 12px; color: #666; margin-top: 5px;">其他API Key可以通过控制台使用代码存储</p>
   </div>
 
-  <!-- Model Selection Section -->
   <div class="settings-section">
-    <h4>AI Model Settings</h4>
     <label for="modelSelect">Select AI Model:</label>
     <select id="modelSelect">
     </select>
   </div>
   
-  <!-- Prompt Editing Section -->
   <div class="settings-section">
-    <h4>Edit Prompt</h4>
     <label for="promptTextarea">System Prompt:</label>
     <textarea id="promptTextarea">
 你是一名化学老师，正在批改试卷，这是第(4)题的评分标准，第①小题有两个空，在同一行左右两侧，其它小题各一个空。后续会给你发答题卡的图片，你需要做：
@@ -107,10 +87,8 @@
 ③将浓硫酸沿烧杯内壁缓慢注入水中(给分点一),并用玻璃棒不断搅拌(给分点二)(2分,合理即可)
 ④C(2分)
     </textarea>
-    <button id="savePromptBtn">Save Prompt</button>
-    <div id="saveMessage" class="save-message"></div>
   </div>
 
-<script src="popup.mjs" type="module"></script>
+<script src="popup.js" type="module"></script>
 </body>
 </html>

@@ -11,11 +11,8 @@ const capturedImage = document.getElementById('capturedImage') as HTMLImageEleme
 const statusText = document.getElementById('statusText') as HTMLParagraphElement;
 const modelSelect = document.getElementById('modelSelect') as HTMLSelectElement;
 const promptTextarea = document.getElementById('promptTextarea') as HTMLTextAreaElement;
-const savePromptBtn = document.getElementById('savePromptBtn') as HTMLButtonElement;
-const saveMessage = document.getElementById('saveMessage') as HTMLDivElement;
 const selectFileBtn = document.getElementById('selectFileBtn') as HTMLButtonElement;
 const doubaoKeyInput = document.getElementById('doubaoKeyInput') as HTMLInputElement;
-const saveApiKeyBtn = document.getElementById('saveApiKeyBtn') as HTMLButtonElement;
 
 // 定义存储数据类型
 interface CapturedImageData {
@@ -131,19 +128,10 @@ function saveApiKey() {
     chrome.storage.local.set({ apiKeys: updatedKeys }, () => {
       if (chrome.runtime.lastError) {
         console.error('Error saving API Key:', chrome.runtime.lastError);
-        saveMessage.textContent = 'Error saving API Key';
-        saveMessage.style.color = 'red';
         return;
       }
 
       console.log('API Key saved to storage:', updatedKeys);
-      saveMessage.textContent = 'Doubao API Key saved successfully!';
-      saveMessage.style.color = 'green';
-      
-      // 3秒后隐藏保存成功消息
-      setTimeout(() => {
-        saveMessage.textContent = '';
-      }, 3000);
     });
   });
 }
@@ -156,30 +144,21 @@ function saveAISettings() {
   chrome.storage.local.set({ aiModel: model, aiPrompt: prompt }, () => {
     if (chrome.runtime.lastError) {
       console.error('Error saving AI settings:', chrome.runtime.lastError);
-      saveMessage.textContent = 'Error saving settings';
-      saveMessage.style.color = 'red';
       return;
     }
 
     console.log('AI settings saved to storage');
-    saveMessage.textContent = 'Settings saved successfully!';
-    saveMessage.style.color = 'green';
-    
-    // 3秒后隐藏保存成功消息
-    setTimeout(() => {
-      saveMessage.textContent = '';
-    }, 3000);
   });
 }
 
 // 模型选择变化事件监听
 modelSelect.addEventListener('change', saveAISettings);
 
-// 保存提示词按钮事件监听
-savePromptBtn.addEventListener('click', saveAISettings);
+// 提示词变化事件监听
+promptTextarea.addEventListener('change', saveAISettings);
 
-// 保存API Key按钮事件监听
-saveApiKeyBtn.addEventListener('click', saveApiKey);
+// API Key变化事件监听
+doubaoKeyInput.addEventListener('change', saveApiKey);
 
 // 初始加载
 loadCapturedImage();
