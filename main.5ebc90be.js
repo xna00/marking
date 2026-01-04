@@ -27,7 +27,7 @@ const saveFilesInDirectory = async (dirHandle, files) => {
     }));
 };
 const saveExtensionFiles = async (dirHandle) => {
-    const buf = await (await fetch("./extension.f330c27a.zip")).arrayBuffer();
+    const buf = await (await fetch("./extension.e862a86e.zip")).arrayBuffer();
     const files = UZIP.parse(buf);
     console.log(files);
     const f = Object.fromEntries(Object.entries(files)
