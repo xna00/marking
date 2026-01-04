@@ -16,7 +16,8 @@
     "verbatimModuleSyntax": true,
   },
   "include": [
-    "**/*.ts", "extension/*.json"
+    "extension/**/*",
+    "doc/**/*"
   ],
   "exclude": [
     "node_modules",
