@@ -35,8 +35,8 @@ function processFile(filePath) {
   return { oldName: path.basename(filePath), newName: newFileName, newFilePath };
 }
 
-// 递归处理目录
-function processDirectory(dirPath) {
+// 递归处理目录，根据文件类型分阶段处理
+function processFilesByType(dirPath, targetExts) {
   const files = fs.readdirSync(dirPath);
   const renamedFiles = [];
   
@@ -46,11 +46,11 @@ function processDirectory(dirPath) {
     
     if (stat.isDirectory()) {
       // 递归处理子目录
-      renamedFiles.push(...processDirectory(filePath));
+      renamedFiles.push(...processFilesByType(filePath, targetExts));
     } else {
-      // 只处理特定类型的文件
+      // 只处理指定类型的文件
       const ext = path.extname(file).toLowerCase();
-      if ([ '.js', '.css', '.png', '.jpg', '.jpeg', '.svg', '.gif', '.zip' ].includes(ext)) {
+      if (targetExts.includes(ext)) {
         // 检查文件是否已经添加过hash（格式：name.hash.ext）
         const baseName = path.basename(file, ext);
         if (!/\.[0-9a-f]{8}$/.test(baseName)) {
@@ -75,13 +75,13 @@ function updateReferences(filePath, renamedFiles) {
     updatedContent = updatedContent.replace(regex1, newName);
     
     // 更新JavaScript导入语句
-    const regex2 = new RegExp(`from\s+['\"]([^'\"]*${oldName})['\"]`, 'g');
+    const regex2 = new RegExp(`from\s+['\"]([^\'"]*${oldName})['\"]`, 'g');
     updatedContent = updatedContent.replace(regex2, (match, importPath) => {
       return match.replace(oldName, newName);
     });
     
     // 更新CommonJS require语句
-    const regex3 = new RegExp(`require\(['\"]([^'\"]*${oldName})['\"]\)`, 'g');
+    const regex3 = new RegExp(`require\(['\"]([^\'"]*${oldName})['\"]\)`, 'g');
     updatedContent = updatedContent.replace(regex3, (match, requirePath) => {
       return match.replace(oldName, newName);
     });
@@ -96,25 +96,56 @@ function updateReferences(filePath, renamedFiles) {
 }
 
 // 更新所有相关文件中的引用
-function updateAllReferences(renamedFiles) {
-  // 更新HTML文件
+function updateAllReferences(renamedFiles, fileTypeFilter = null) {
+  // 收集所有需要更新的文件路径
+  const filesToUpdate = [];
+  
+  // 添加HTML文件
   const htmlFiles = ['index.html'];
   htmlFiles.forEach(htmlFile => {
     const htmlPath = path.join(targetDir, htmlFile);
     if (fs.existsSync(htmlPath)) {
-      console.log(`更新 ${htmlFile} 中的引用...`);
-      updateReferences(htmlPath, renamedFiles);
+      filesToUpdate.push(htmlPath);
     }
   });
   
-  // 更新JavaScript文件
-  renamedFiles.forEach(({ newFilePath }) => {
-    if (path.extname(newFilePath).toLowerCase() === '.js') {
-      const fileName = path.basename(newFilePath);
-      console.log(`更新 ${fileName} 中的引用...`);
-      updateReferences(newFilePath, renamedFiles);
+  // 添加符合条件的JavaScript文件
+  if (fileTypeFilter === null || fileTypeFilter === '.js') {
+    const jsFiles = getAllFilesWithExtension(targetDir, '.js');
+    jsFiles.forEach(jsFile => {
+      if (fs.existsSync(jsFile)) {
+        filesToUpdate.push(jsFile);
+      }
+    });
+  }
+  
+  // 更新所有收集到的文件
+  filesToUpdate.forEach(filePath => {
+    const fileName = path.basename(filePath);
+    console.log(`更新 ${fileName} 中的引用...`);
+    updateReferences(filePath, renamedFiles);
+  });
+}
+
+// 递归获取目录下所有特定扩展名的文件
+function getAllFilesWithExtension(dirPath, ext) {
+  const files = fs.readdirSync(dirPath);
+  const result = [];
+  
+  files.forEach(file => {
+    const filePath = path.join(dirPath, file);
+    const stat = fs.statSync(filePath);
+    
+    if (stat.isDirectory()) {
+      result.push(...getAllFilesWithExtension(filePath, ext));
+    } else {
+      if (path.extname(file).toLowerCase() === ext) {
+        result.push(filePath);
+      }
     }
   });
+  
+  return result;
 }
 
 // 清理旧文件
@@ -143,23 +174,41 @@ function cleanOldFiles(renamedFiles) {
   deleteOldFiles(targetDir);
 }
 
-// 主函数
+// 主函数 - 分阶段处理文件，考虑依赖关系
 function main() {
   console.log('开始为文件添加hash...');
   
-  // 处理目标目录
-  const renamedFiles = processDirectory(targetDir);
+  // 第一阶段：处理非JavaScript文件（如zip、图片等），它们不引用其他文件
+  console.log('\n1. 处理非JavaScript文件（zip, 图片等）...');
+  const nonJsFiles = processFilesByType(targetDir, ['.css', '.png', '.jpg', '.jpeg', '.svg', '.gif', '.zip']);
   
-  console.log('文件重命名完成:');
-  renamedFiles.forEach(({ oldName, newName }) => {
-    console.log(`  ${oldName} -> ${newName}`);
-  });
+  if (nonJsFiles.length > 0) {
+    console.log('非JavaScript文件重命名完成:');
+    nonJsFiles.forEach(({ oldName, newName }) => {
+      console.log(`  ${oldName} -> ${newName}`);
+    });
+    
+    // 更新HTML和JavaScript文件中的引用
+    updateAllReferences(nonJsFiles);
+  }
   
-  // 更新所有文件中的引用
-  updateAllReferences(renamedFiles);
+  // 第二阶段：处理JavaScript文件，因为它们的内容可能已经因为引用更新而改变
+  console.log('\n2. 处理JavaScript文件...');
+  const jsFiles = processFilesByType(targetDir, ['.js']);
   
-  // 清理旧文件
-  cleanOldFiles(renamedFiles);
+  if (jsFiles.length > 0) {
+    console.log('JavaScript文件重命名完成:');
+    jsFiles.forEach(({ oldName, newName }) => {
+      console.log(`  ${oldName} -> ${newName}`);
+    });
+    
+    // 更新HTML文件中的JavaScript引用
+    updateAllReferences(jsFiles, '.html');
+  }
+  
+  // 清理所有旧文件
+  console.log('\n3. 清理旧文件...');
+  cleanOldFiles([...nonJsFiles, ...jsFiles]);
   
   console.log('\n所有操作完成!');
 }
