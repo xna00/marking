@@ -41,7 +41,7 @@ const saveFilesInDirectory = async (
 const saveExtensionFiles = async (dirHandle: FileSystemDirectoryHandle) => {
   const buf = await (await fetch("./extension.zip")).arrayBuffer();
 
-  const files = {};
+  const files: Record<string, Uint8Array> = {};
   console.log(files);
   const f = Object.fromEntries(
     Object.entries(files)
