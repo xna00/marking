@@ -1,4 +1,4 @@
-import { UZIP } from "./UZIP.js";
+import { UZIP } from "./UZIP.b1758aef.js";
 const downloadBtn = document.getElementById("download_btn");
 const updateBtn = document.getElementById("update_btn");
 console.log(UZIP);
@@ -27,7 +27,7 @@ const saveFilesInDirectory = async (dirHandle, files) => {
     }));
 };
 const saveExtensionFiles = async (dirHandle) => {
-    const buf = await (await fetch("./extension.0d3cf8a5.zip")).arrayBuffer();
+    const buf = await (await fetch("./extension.e7713bbd.zip")).arrayBuffer();
     const files = UZIP.parse(buf);
     console.log(files);
     const f = Object.fromEntries(Object.entries(files)
