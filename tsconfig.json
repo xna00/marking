@@ -13,10 +13,11 @@
     "declarationMap": false,
     "sourceMap": false,
     "types": ["chrome", "wicg-file-system-access"],
-    "verbatimModuleSyntax": true,
+    "verbatimModuleSyntax": true
   },
   "include": [
     "extension/**/*",
+    "extension/*.json",
     "doc/**/*"
   ],
   "exclude": [
