@@ -32,7 +32,7 @@
     },
     {
       "matches": ["https://marking.xna00.top/*", "http://127.0.0.1:8080/*"],
-      "js": ["updater.js"]
+      "js": ["extensionHelper.js"]
     }
   ],
   "icons": {
