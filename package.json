@@ -5,11 +5,18 @@
   "main": "background.js",
   "scripts": {
     "build": "rm -r dist/doc; tsc && npm run cp && zip -r dist/doc/extension.zip dist/extension && npm run add-hash",
-    "watch": "tsc --watch",
+    "watch": "npm-watch",
     "cp": "cp doc/index.html dist/doc/; cp doc/*.png dist/doc/; cp -r extension/images dist/extension; cp extension/popup.html dist/extension/popup.html",
     "add-hash": "node add-hash.ts",
     "rename-to-mjs": "node rename-js-to-mjs.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "watch": {
+    "build": {
+      "patterns": ["extension", "doc"],
+      "extensions": "js,ts,html,png",
+      "quiet": false
+    }
   },
   "keywords": [],
   "author": "",
@@ -17,6 +24,7 @@
   "devDependencies": {
     "@types/chrome": "^0.1.32",
     "@types/wicg-file-system-access": "^2023.10.7",
+    "npm-watch": "^0.13.0",
     "typescript": "^5.9.3"
   },
   "dependencies": {

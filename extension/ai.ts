@@ -41,57 +41,60 @@ export async function markByAI(
   aiSettings: AISettings,
   apiKeys: APIKeys
 ) {
-  try {
-    // 从存储中获取AI设置
-    const modelName = aiSettings.model;
-    const prompt = aiSettings.prompt;
+  // 从存储中获取AI设置
+  const modelName = aiSettings.model;
+  const prompt = aiSettings.prompt;
 
-    const selectedModel = getModelInfo(modelName, apiKeys);
+  const selectedModel = getModelInfo(modelName, apiKeys);
 
-    console.log(selectedModel);
-    const response = await fetch(selectedModel.url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${selectedModel.key}`,
-      },
-      body: JSON.stringify({
-        model: selectedModel.model.split("#")[1],
-        thinking: { type: "disabled" },
-        messages: [
-          {
-            role: "system",
-            content: [
-              {
-                type: "text",
-                text: prompt,
+  console.log(selectedModel);
+  const response = await fetch(selectedModel.url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${selectedModel.key}`,
+    },
+    body: JSON.stringify({
+      model: selectedModel.model.split("#")[1],
+      thinking: { type: "disabled" },
+      messages: [
+        {
+          role: "system",
+          content: [
+            {
+              type: "text",
+              text: prompt,
+            },
+          ],
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "image_url",
+              image_url: {
+                url: dataUrl,
               },
-            ],
-          },
-          {
-            role: "user",
-            content: [
-              {
-                type: "image_url",
-                image_url: {
-                  url: dataUrl,
-                },
-              },
-            ],
-          },
-        ],
-      }),
-    });
-
-    const data = await response.json();
-    console.log("AI识别结果:", JSON.stringify(data, null, 2));
-    return data;
-  } catch (error) {
-    console.error("AI识别错误:", error);
-    throw error;
+            },
+          ],
+        },
+      ],
+    }),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("AI识别错误:", errorText);
+    throw new Error(`AI识别错误: ${errorText}`);
   }
+  const data = await response.json();
+  console.log("AI识别结果:", JSON.stringify(data, null, 2));
+  return data;
 }
-export async function recognizeImage(dataUrl: string) {
+
+export function parseAIResult(aiResult: any): string {
+  return aiResult.choices[0].message.content;
+}
+export async function recognizeImage(imageUrl: string) {
   const settings = await getCurrentSettings();
   // 获取API Keys
   const apiKeys = await new Promise<APIKeys>((resolve) => {
@@ -99,5 +102,5 @@ export async function recognizeImage(dataUrl: string) {
       resolve((result.apiKeys as APIKeys) || {});
     });
   });
-  return markByAI(dataUrl, settings, apiKeys);
+  return markByAI(imageUrl, settings, apiKeys);
 }
