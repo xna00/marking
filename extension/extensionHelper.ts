@@ -65,4 +65,3 @@ updateBtn?.addEventListener("click", async function () {
     console.error(error);
   }
 });
-

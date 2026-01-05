@@ -1,4 +1,4 @@
-const blobToDataUrl = (blob: Blob): Promise<string> => {
+export const blobToDataUrl = (blob: Blob): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);
@@ -7,17 +7,16 @@ const blobToDataUrl = (blob: Blob): Promise<string> => {
   });
 };
 
-export const scaleImage = async (dataUrl: string): Promise<string> => {
+export const scaleImage = async (dataUrl: string, width = 700): Promise<string> => {
   try {
     const response = await fetch(dataUrl);
     const blob = await response.blob();
     const imageBitmap = await createImageBitmap(blob);
 
+    const canvasWidth = width;
+    const canvasHeight = (canvasWidth / imageBitmap.width) * imageBitmap.height;
     // 创建新的Canvas用于缩放（缩小一半，保持比例）
-    const scaleCanvas = new OffscreenCanvas(
-      imageBitmap.width / 2,
-      imageBitmap.height / 2
-    );
+    const scaleCanvas = new OffscreenCanvas(canvasWidth, canvasHeight);
     const scaleCtx = scaleCanvas.getContext("2d");
 
     if (!scaleCtx) {
@@ -35,8 +34,8 @@ export const scaleImage = async (dataUrl: string): Promise<string> => {
       imageBitmap.height, // 源图像区域
       0,
       0,
-      imageBitmap.width / 2,
-      imageBitmap.height / 2 // 目标Canvas区域（缩小一半）
+      canvasWidth,
+      canvasHeight
     );
 
     // 转换为data URL
