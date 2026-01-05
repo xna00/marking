@@ -179,6 +179,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // 表示异步响应
   } else if (message.action === 'reloadExtension') {
     chrome.runtime.reload();
+  } else if (message.action === 'hello') {
+    sendResponse(`Hello ${sender.url}, I'm background script`)
   }
 });
 
