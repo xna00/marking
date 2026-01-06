@@ -79,6 +79,7 @@ export async function markByAI(
           ],
         },
       ],
+      // response_format 会占用token，所以这里不使用
     }),
   });
   if (!response.ok) {
