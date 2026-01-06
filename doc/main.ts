@@ -10,29 +10,37 @@ const saveFilesInDirectory = async (
   dirHandle: FileSystemDirectoryHandle,
   files: Record<string, Uint8Array>
 ) => {
-  return Promise.all(Object.entries(files).map(async ([p,fileContent]) => {
-    if (!p) return
-    const filePath = p.split('/')
-    if (filePath.length > 1) {
-      const dir = await dirHandle.getDirectoryHandle(filePath[0], {
-        create: true,
-      });
-      await saveFilesInDirectory(dir, {
-        [filePath.slice(1).join("/")]: fileContent,
-      });
-    } else {
-      const fileHandle = await dirHandle.getFileHandle(p, {
-        create: true,
-      });
-      const writable = await fileHandle.createWritable();
-      await writable.write(fileContent.buffer as ArrayBuffer);
-      await writable.close();
-    }
-  }))
+  return Promise.all(
+    Object.entries(files).map(async ([p, fileContent]) => {
+      if (!p) return;
+      const filePath = p.split("/");
+      if (filePath.length > 1) {
+        const dir = await dirHandle.getDirectoryHandle(filePath[0], {
+          create: true,
+        });
+        await saveFilesInDirectory(dir, {
+          [filePath.slice(1).join("/")]: fileContent,
+        });
+      } else {
+        const fileHandle = await dirHandle.getFileHandle(p, {
+          create: true,
+        });
+        const writable = await fileHandle.createWritable();
+        await writable.write(fileContent.buffer as ArrayBuffer);
+        await writable.close();
+      }
+    })
+  );
 };
 
 const saveExtensionFiles = async (dirHandle: FileSystemDirectoryHandle) => {
-  const buf = await (await fetch("./extension.zip")).arrayBuffer();
+  const buf = await (
+    await fetch("./extension.zip", {
+      headers: {
+        "Cache-Control": "no-cache",
+      },
+    })
+  ).arrayBuffer();
 
   const files = UZIP.parse(buf);
   console.log(files);
