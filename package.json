@@ -14,7 +14,7 @@
   "watch": {
     "build": {
       "patterns": ["extension", "doc"],
-      "extensions": "js,ts,html,png",
+      "extensions": "js,ts,html,png,json",
       "quiet": false
     }
   },
