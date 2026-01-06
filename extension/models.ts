@@ -13,8 +13,8 @@ const hunyuanUrl = "https://api.hunyuan.cloud.tencent.com/v1/chat/completions";
 const qwenUrl = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
 
 const doubaoModels = [
-  "doubao#doubao-seed-1-6-flash-250828",
   "doubao#doubao-seed-1-6-lite-251015",
+  "doubao#doubao-seed-1-6-flash-250828",
 ] as const;
 const glmModels = ["glm#glm-4.6v-flash"] as const;
 const hunyuanModels = ["hunyuan#hunyuan-lite"] as const;
