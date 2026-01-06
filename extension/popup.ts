@@ -25,6 +25,7 @@ const doubaoKeyInput = document.getElementById(
 const cardImage = document.getElementById("cardImage") as HTMLImageElement;
 const result = document.getElementById("result") as HTMLDivElement;
 const markButton = document.getElementById("markButton") as HTMLButtonElement;
+const imageInfo = document.getElementById("imageInfo") as HTMLSpanElement;
 
 interface AISettings {
   aiModel?: string;
@@ -187,6 +188,11 @@ markButton.addEventListener("click", mark);
 
 // 添加键盘快捷键监听，使用Ctrl+V粘贴图片
 document.addEventListener("paste", pasteImageFromClipboard);
+cardImage.addEventListener("load", () => {
+  imageInfo.innerText = `图片尺寸: ${cardImage.naturalWidth}x${cardImage.naturalHeight}`;
+});
+
+// 创建显示图片尺寸的函数
 
 // 初始加载
 loadAISettings();
