@@ -12,25 +12,31 @@ export interface APIKeys {
   qwenKey?: string;
 }
 
+export const defaultAISettings: AISettings = {
+  model: "doubao#doubao-seed-1-6-lite-251015",
+  prompt: `
+你是一名化学老师，正在批改试卷，你要批改的是第(4)题,一共5个空。这是评分标准：
+序号|位置|分值|评分标准
+-|-|-|-
+1|第一行左边|1|500mL容量瓶(不写“500mL”不得分，把“容量瓶”写成“溶量瓶”不得分)
+2|第一行右边|2|13.6
+3|第二行|1|25
+4|第三行|2|将浓硫酸沿烧杯内壁缓慢注入水中(给分点一),并用玻璃棒不断搅拌(给分点二)（合理即可）
+5|第四行|2|C
+
+给你发答题卡的图片，你需要做：
+1.识别出图片中每个空的内容
+2.根据评分标准，判断每个空的得分
+3.以[["1中识别出的内容","得分","原因(只写关键词)"],...]格式返回结果
+`.trim(),
+};
+
 const getCurrentSettings = (): Promise<AISettings> => {
   return new Promise((resolve) => {
     chrome.storage.local.get(["aiModel", "aiPrompt"], (result) => {
       resolve({
-        model:
-          (result.aiModel as ModelName) || "doubao#doubao-seed-1-6-lite-251015",
-        prompt:
-          (result.aiPrompt as string) ||
-          `
-你是一名化学老师，正在批改试卷，这是第(4)题的评分标准，第①小题有两个空，在同一行左右两侧，其它小题各一个空。后续会给你发答题卡的图片，你需要做：
-1.识别出图片中第(4)题每个空的内容
-2.根据评分标准，判断每个空的得分
-3.以{"1.1":{"anwser":"步骤1识别出的该空的内容","socre":1,"reason":""},"2":{...},...}格式返回结果，其中1.1表示第①小题的第一空，以此类推。reason写得精简
-
-评分标准：(4)①500mL容量瓶(1分,不写"500mL"不得分) 13.6(2分)
-②25(1分)
-③将浓硫酸沿烧杯内壁缓慢注入水中(给分点一),并用玻璃棒不断搅拌(给分点二)(2分,合理即可)
-④C(2分)
-`.trim(),
+        model: (result.aiModel as ModelName) || defaultAISettings.model,
+        prompt: (result.aiPrompt as string) || defaultAISettings.prompt,
       });
     });
   });

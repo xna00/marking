@@ -1,6 +1,6 @@
 // popup.ts
 
-import { recognizeImage, parseAIResult } from "./ai.js";
+import { recognizeImage, parseAIResult, defaultAISettings } from "./ai.js";
 import { blobToDataUrl, scaleImage } from "./image.js";
 import { modelNames } from "./models.js";
 
@@ -62,14 +62,10 @@ function loadAISettings() {
       const settings = result as AISettings;
       const apiKeys = result.apiKeys as APIKeys;
       console.log(settings);
-      if (settings.aiModel) {
-        modelSelect.value = settings.aiModel;
-      }
-      if (settings.aiPrompt) {
-        promptTextarea.value = settings.aiPrompt;
-        console.log(promptTextarea.value);
-      }
-      if (apiKeys && apiKeys.doubaoKey) {
+      modelSelect.value = settings.aiModel || defaultAISettings.model;
+      promptTextarea.value = settings.aiPrompt || defaultAISettings.prompt;
+      console.log(promptTextarea.value);
+      if (apiKeys?.doubaoKey) {
         doubaoKeyInput.value = apiKeys.doubaoKey;
       }
 
@@ -171,10 +167,6 @@ const pasteImageFromClipboard = async (event?: ClipboardEvent) => {
         }
       }
     }
-
-    console.error("No image found in clipboard");
-  } else {
-    console.error("Clipboard API not supported");
   }
 };
 
