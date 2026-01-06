@@ -135,38 +135,43 @@ function mark() {
   );
 }
 // 从剪贴板粘贴图片
-const pasteImageFromClipboard = async (event?: ClipboardEvent) => {
+const pasteImageFromClipboard = async () => {
   // 优先使用事件中的clipboardData
-  if (event?.clipboardData) {
-    const items = event.clipboardData.items;
+  // 从剪贴板API直接读取图片（按钮点击调用时）
+  try {
+    const clipboardItems = await navigator.clipboard.read();
+    for (const item of clipboardItems) {
+      for (const type of item.types) {
+        if (type.startsWith("image/")) {
+          const blob = await item.getType(type);
+          if (blob) {
+            const _dataUrl = await blobToDataUrl(blob);
+            const dataUrl = await scaleImage(_dataUrl, 600);
+            // 保存图片dataUrl到storage
+            chrome.storage.local.set({ cardImageDataUrl: dataUrl }, () => {
+              if (chrome.runtime.lastError) {
+                console.error(
+                  "Error saving image data URL:",
+                  chrome.runtime.lastError
+                );
+                return;
+              }
+              console.log("Image data URL saved to storage");
+            });
+            // 显示图片
+            cardImage.src = dataUrl;
 
-    // 遍历剪贴板项
-    for (const item of items) {
-      // 检查是否是图片类型
-      if (item.type.startsWith("image/")) {
-        // 获取图片blob
-        const blob = item.getAsFile();
-        if (blob) {
-          const _dataUrl = await blobToDataUrl(blob);
-          const dataUrl = await scaleImage(_dataUrl);
-          // 保存图片dataUrl到storage
-          chrome.storage.local.set({ cardImageDataUrl: dataUrl }, () => {
-            if (chrome.runtime.lastError) {
-              console.error(
-                "Error saving image data URL:",
-                chrome.runtime.lastError
-              );
-              return;
-            }
-            console.log("Image data URL saved to storage");
-          });
-          // 显示图片
-          cardImage.src = dataUrl;
-
-          return;
+            return;
+          }
         }
       }
     }
+  } catch (error) {
+    console.error("Error reading from clipboard:", error);
+    alert(
+      "读取剪贴板失败：" +
+        (error instanceof Error ? error.message : String(error))
+    );
   }
 };
 
@@ -183,6 +188,10 @@ document.addEventListener("paste", pasteImageFromClipboard);
 cardImage.addEventListener("load", () => {
   imageInfo.innerText = `图片尺寸: ${cardImage.naturalWidth}x${cardImage.naturalHeight}`;
 });
+
+// 为粘贴按钮添加点击事件监听
+const pasteButton = document.getElementById("pasteButton") as HTMLButtonElement;
+pasteButton.addEventListener("click", pasteImageFromClipboard);
 
 // 创建显示图片尺寸的函数
 

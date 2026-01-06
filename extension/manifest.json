@@ -10,7 +10,9 @@
     "tabs",
     "webRequest",
     "debugger",
-    "management"
+    "management",
+    "clipboardWrite",
+    "clipboardRead"
   ],
   "host_permissions": ["<all_urls>"],
   "background": {
