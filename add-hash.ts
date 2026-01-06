@@ -51,6 +51,11 @@ function processFilesByType(dirPath, targetExts) {
       // 只处理指定类型的文件
       const ext = path.extname(file).toLowerCase();
       if (targetExts.includes(ext)) {
+        // 跳过extension.zip文件
+        if (file.toLowerCase() === 'extension.zip') {
+          console.log(`跳过文件: ${file}`);
+          return;
+        }
         // 检查文件是否已经添加过hash（格式：name.hash.ext）
         const baseName = path.basename(file, ext);
         if (!/\.[0-9a-f]{8}$/.test(baseName)) {
