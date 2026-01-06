@@ -1,24 +1,13 @@
-// popup.ts
-
 import { recognizeImage, parseAIResult, defaultAISettings } from "./ai.js";
 import { blobToDataUrl, scaleImage } from "./image.js";
 import { modelNames } from "./models.js";
 
-// 添加showOpenFilePicker的类型定义
-
 console.log("Marking extension popup loaded");
 
-// 获取DOM元素
-const statusText = document.getElementById(
-  "statusText"
-) as HTMLParagraphElement;
 const modelSelect = document.getElementById("modelSelect") as HTMLSelectElement;
 const promptTextarea = document.getElementById(
   "promptTextarea"
 ) as HTMLTextAreaElement;
-const selectFileBtn = document.getElementById(
-  "selectFileBtn"
-) as HTMLButtonElement;
 const doubaoKeyInput = document.getElementById(
   "doubaoKeyInput"
 ) as HTMLInputElement;
@@ -134,10 +123,7 @@ function mark() {
     }
   );
 }
-// 从剪贴板粘贴图片
 const pasteImageFromClipboard = async () => {
-  // 优先使用事件中的clipboardData
-  // 从剪贴板API直接读取图片（按钮点击调用时）
   try {
     const clipboardItems = await navigator.clipboard.read();
     for (const item of clipboardItems) {
@@ -192,8 +178,6 @@ cardImage.addEventListener("load", () => {
 // 为粘贴按钮添加点击事件监听
 const pasteButton = document.getElementById("pasteButton") as HTMLButtonElement;
 pasteButton.addEventListener("click", pasteImageFromClipboard);
-
-// 创建显示图片尺寸的函数
 
 // 初始加载
 loadAISettings();
