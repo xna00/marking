@@ -87,14 +87,58 @@
     <label for="promptTextarea">系统提示词</label>
     <textarea id="promptTextarea"></textarea>
     <div>
-      <label for="img"
-        >答题卡图片<span
+      <label for="img" style="display: block">
+        答题卡图片<span
           id="imageInfo"
           style="font-size: 0.8em; color: gray"
         ></span>
-        <button id="pasteButton" style="width: auto; padding: 2px 8px; font-size: 0.8em; margin-left: 10px;">粘贴</button>
+        <button
+          id="pasteButton"
+          style="
+            width: auto;
+            padding: 2px 8px;
+            font-size: 0.8em;
+            margin-left: 10px;
+          "
+        >
+          粘贴
+        </button>
+        <!-- 前后切换按钮放在label里 -->
+        <button
+          id="prevImage"
+          style="
+            width: auto;
+            padding: 2px 8px;
+            font-size: 0.8em;
+            margin-left: 5px;
+          "
+        >
+          ←
+        </button>
+        <span
+          id="imageHistoryInfo"
+          style="
+            text-align: center;
+            font-size: 0.8em;
+            color: gray;
+            margin-top: 5px;
+          "
+        ></span>
+        <button
+          id="nextImage"
+          style="
+            width: auto;
+            padding: 2px 8px;
+            font-size: 0.8em;
+            margin-left: 5px;
+          "
+        >
+          →
+        </button>
       </label>
-      <img id="cardImage" width="100%" />
+      <div style="width: 100%; margin-top: 10px">
+        <img id="cardImage" width="100%" />
+      </div>
     </div>
     <div id="result" style="min-height: 100px; overflow: auto"></div>
     <button id="markButton">评分</button>
