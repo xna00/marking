@@ -7,7 +7,7 @@ function changeImage() {
     imageIndex = (imageIndex + 1) % imageSrc.length;
     cardImage.src = imageSrc[imageIndex];
 }
-changeImage();
+cardImage.src = imageSrc[imageIndex];
 submitBtn.addEventListener("click", () => {
     changeImage();
 });
