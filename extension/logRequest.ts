@@ -127,6 +127,7 @@ chrome.debugger.onEvent.addListener(async (source, method, rawParams) => {
           requestId: responseParams.requestId,
         }
       );
+      console.log("Response body:", response);
 
       if (!response) {
         console.log("Response is undefined");

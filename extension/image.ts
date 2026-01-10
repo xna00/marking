@@ -7,7 +7,10 @@ export const blobToDataUrl = (blob: Blob): Promise<string> => {
   });
 };
 
-export const scaleImage = async (dataUrl: string, width = 700): Promise<string> => {
+export const scaleImage = async (
+  dataUrl: string,
+  width = 700
+): Promise<string> => {
   try {
     const response = await fetch(dataUrl);
     const blob = await response.blob();
@@ -50,7 +53,7 @@ export const scaleImage = async (dataUrl: string, width = 700): Promise<string> 
     // 将Blob转换为data URL
     return blobToDataUrl(scaledDataBlob);
   } catch (error) {
-    console.error("Crop failed:", error);
+    console.error("Crop failed:", error, dataUrl);
     throw error;
   }
 };
