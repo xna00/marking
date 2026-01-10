@@ -106,7 +106,7 @@ function updateAllReferences(renamedFiles, fileTypeFilter = null) {
   const filesToUpdate = [];
   
   // 添加HTML文件
-  const htmlFiles = ['index.html'];
+  const htmlFiles = ['index.html', 'test/index.html'];
   htmlFiles.forEach(htmlFile => {
     const htmlPath = path.join(targetDir, htmlFile);
     if (fs.existsSync(htmlPath)) {

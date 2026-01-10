@@ -1,329 +1,266 @@
-// content.ts
-console.log('Image monitoring extension content script loaded');
+function parseAIResult2(aiResult: any): string {
+  return aiResult.choices[0].message.content;
+}
+console.log("content.ts loaded");
 
-// 显示所有AI结果框
-const showAllAIBoxes = () => {
-    const existingBoxes = document.querySelectorAll('.ai-result-box');
-    existingBoxes.forEach(box => {
-        (box as HTMLElement).style.display = 'block';
-    });
+const testPageHandlers = {
+  submit: () => {
+    document.dispatchEvent(new CustomEvent("customSubmit"));
+  },
+  getImageSrc: () => {
+    const cardImage = document.getElementById("cardImage") as HTMLImageElement;
+    return cardImage.src;
+  },
 };
 
-// 使用浏览器原生截图API截图并裁剪目标元素
-const captureImageAsDataURL = (imgElement: HTMLImageElement): Promise<string> => {
-    return new Promise((resolve) => {
-        // 在截图前隐藏所有AI结果框
-        hideAllAIBoxes();
+const overlay = document.createElement("div");
+overlay.style.position = "fixed";
+overlay.style.top = "0";
+overlay.style.left = "0";
+overlay.style.width = "100%";
+overlay.style.height = "100%";
+overlay.style.zIndex = "9999";
 
-        // 获取目标元素的坐标和尺寸，考虑页面滚动和设备像素比
-        const rect = imgElement.getBoundingClientRect();
+const { submit, getImageSrc } = testPageHandlers;
 
-        // 获取页面滚动位置
-        const scrollX = window.scrollX;
-        const scrollY = window.scrollY;
+let previousSrc = "";
 
-        // 获取设备像素比
-        const devicePixelRatio = window.devicePixelRatio || 1;
+// 拖动功能相关变量
+let isDragging = false;
+let currentElement: HTMLElement | null = null;
+let startX = 0;
+let startY = 0;
+let initialX = 0;
+let initialY = 0;
 
-        // 计算准确的裁剪坐标和尺寸
-        const cropInfo = {
-            x: (rect.left + scrollX) * devicePixelRatio,
-            y: (rect.top + scrollY) * devicePixelRatio,
-            width: rect.width * devicePixelRatio,
-            height: rect.height * devicePixelRatio
-        };
+// 存储div位置的键名
+const POSITION_STORAGE_KEY = "div_positions";
+// 总分存储键名
+const TOTAL_SCORE_KEY = "total_score";
 
-        console.log('Element coordinates (adjusted):', cropInfo);
-        console.log('Scroll position:', { scrollX, scrollY });
-        console.log('Device pixel ratio:', devicePixelRatio);
-
-        chrome.runtime.sendMessage
-        // 发送消息到后台脚本请求截图和裁剪，包含图片src
-        chrome.runtime.sendMessage({ action: 'captureTab', cropInfo: cropInfo, imgSrc: imgElement.src }, (response) => {
-            // 截图完成后重新显示所有AI结果框
-            showAllAIBoxes();
-
-            if (response && response.success) {
-                console.log('Browser API screenshot and crop successful');
-                resolve(response.dataUrl);
-            } else {
-                console.error('Browser API screenshot failed:', response?.error || 'Unknown error');
-                resolve(''); // 失败时返回空字符串
-            }
-        });
-    });
+// 获取存储的位置数据
+const getStoredPositions = (): Record<
+  string,
+  { left: number; top: number }
+> => {
+  try {
+    const data = localStorage.getItem(POSITION_STORAGE_KEY);
+    return data ? JSON.parse(data) : {};
+  } catch (e) {
+    console.error("Error loading stored positions:", e);
+    return {};
+  }
 };
 
-// 每秒查询目标元素的src变化
-const observeImageChanges = (): void => {
-    const targetSelector = '#app > div > div.imageEdit > div.imageBox > div:nth-child(1) > div > img';
-    let previousSrc = '';
-
-    // 定时查询函数
-    const checkImageSrc = () => {
-        // 查找目标图片元素
-        const imgElement = document.querySelector<HTMLImageElement>(targetSelector);
-
-        if (imgElement) {
-            const currentSrc = imgElement.src;
-
-            // 检查src是否变化
-                if (currentSrc !== previousSrc) {
-                    console.log('Image URL changed:', currentSrc);
-                    previousSrc = currentSrc;
-                    
-                    // Remove all AI boxes when image changes
-                    removeAllAIBoxes();
-
-                    // 等待图片加载完成后截图
-                    const captureAfterDelay = () => {
-                    // 延迟500ms后截图
-                    setTimeout(() => {
-                        captureImageAsDataURL(imgElement).then((dataURL) => {
-                            console.log('Image captured as data URL:', dataURL);
-                            // Service Worker已自动保存图片到storage
-                        });
-                    }, 500);
-                };
-
-                if (imgElement.complete) {
-                    captureAfterDelay();
-                } else {
-                    imgElement.addEventListener('load', () => {
-                        captureAfterDelay();
-                    }, { once: true }); // 使用once选项确保监听器只执行一次
-                }
-            }
-        } else {
-            // 如果找不到元素，重置previousSrc
-            previousSrc = '';
-        }
-    };
-
-    // 每秒执行一次查询
-    setInterval(checkImageSrc, 1000);
-
+// 保存位置数据到localStorage
+const savePosition = (id: string, left: number, top: number): void => {
+  try {
+    const positions = getStoredPositions();
+    positions[id] = { left, top };
+    localStorage.setItem(POSITION_STORAGE_KEY, JSON.stringify(positions));
+  } catch (e) {
+    console.error("Error saving position:", e);
+  }
 };
 
-// 初始化
-const init = (): void => {
-    // 启动图片变化监听
-    observeImageChanges();
+// 总分相关变量
+let totalScore = 0;
+const totalScoreDiv = document.createElement("div");
+
+// 计算总分
+const calculateTotalScore = (res: [string, number, string][]): number => {
+  return res.reduce((sum, [, score]) => sum + score, 0);
 };
 
-// 解析AI识别结果
-const parseAIResult = (content: string): Record<string, string> | null => {
-    try {
-        const parsed = JSON.parse(content);
-        // 确保解析结果是预期的格式：{key: [content, score]}
-        const isValidFormat = typeof parsed === 'object' && parsed !== null &&
-            Object.values(parsed).every(item => typeof item === 'string');
-        return isValidFormat ? parsed as Record<string, string> : null;
-    } catch (error) {
-        console.error('Failed to parse AI result:', error);
-        return null;
+// 更新总分显示
+const updateTotalScoreDisplay = (score: number): void => {
+  totalScoreDiv.innerText = `总分: ${score}`;
+};
+
+// 保存总分到localStorage
+const saveTotalScore = (score: number): void => {
+  try {
+    localStorage.setItem(TOTAL_SCORE_KEY, score.toString());
+  } catch (e) {
+    console.error("Error saving total score:", e);
+  }
+};
+
+// 初始化总分div
+const initializeTotalScoreDiv = (): void => {
+  totalScoreDiv.style.position = "absolute";
+  totalScoreDiv.style.left = "50%";
+  totalScoreDiv.style.top = "20px";
+  totalScoreDiv.style.transform = "translateX(-50%)";
+  totalScoreDiv.style.padding = "10px 20px";
+  totalScoreDiv.style.background = "rgba(0, 0, 255, 0.8)";
+  totalScoreDiv.style.color = "white";
+  totalScoreDiv.style.borderRadius = "8px";
+  totalScoreDiv.style.fontSize = "20px";
+  totalScoreDiv.style.fontWeight = "bold";
+  totalScoreDiv.style.zIndex = "10000";
+  totalScoreDiv.style.cursor = "move";
+  totalScoreDiv.style.userSelect = "none";
+
+  // 添加唯一id
+  totalScoreDiv.id = "total-score-div";
+
+  // 从localStorage加载位置
+  const positions = getStoredPositions();
+  if (positions["total-score-div"]) {
+    totalScoreDiv.style.left = `${positions["total-score-div"].left}px`;
+    totalScoreDiv.style.top = `${positions["total-score-div"].top}px`;
+    totalScoreDiv.style.transform = "none";
+  }
+
+  // 添加拖动功能
+  makeDraggable(totalScoreDiv, "total-score-div");
+
+  overlay.appendChild(totalScoreDiv);
+};
+
+// 键盘事件监听
+const setupKeyboardListeners = (): void => {
+  document.addEventListener("keydown", (e) => {
+    switch (e.key) {
+      case "ArrowUp":
+        e.preventDefault();
+        totalScore++;
+        updateTotalScoreDisplay(totalScore);
+        saveTotalScore(totalScore);
+        break;
+      case "ArrowDown":
+        e.preventDefault();
+        totalScore = Math.max(0, totalScore - 1);
+        updateTotalScoreDisplay(totalScore);
+        saveTotalScore(totalScore);
+        break;
+      case " ":
+        e.preventDefault();
+        totalScore = 0;
+        updateTotalScoreDisplay(totalScore);
+        saveTotalScore(totalScore);
+        break;
+      case "Enter":
+        e.preventDefault();
+        submit();
+        break;
     }
+  });
 };
 
-// 创建可拖动的信息框
-const createDraggableBox = (key: string, value: [string, number], initialPosition: { x: number, y: number }) => {
-    const box = document.createElement('div');
-    box.className = 'ai-result-box';
-    box.id = `ai-box-${key}`; // 添加唯一标识符
-    box.style.position = 'absolute';
-    box.style.left = `${initialPosition.x}px`;
-    box.style.top = `${initialPosition.y}px`;
-    box.style.width = '200px';
-    box.style.backgroundColor = 'rgba(255, 255, 255, 0.95)';
-    box.style.border = '1px solid #ccc';
-    box.style.borderRadius = '5px';
-    box.style.padding = '10px';
-    box.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.1)';
-    box.style.cursor = 'move';
-    box.style.zIndex = '10000';
-    box.style.userSelect = 'none';
-    box.style.fontFamily = 'Arial, sans-serif';
-    box.style.fontSize = '14px';
+// 初始化键盘事件监听
+setupKeyboardListeners();
 
-    // 添加标题
-    const title = document.createElement('div');
-    title.textContent = key;
-    title.style.fontWeight = 'bold';
-    title.style.marginBottom = '5px';
-    title.style.color = '#333';
-    box.appendChild(title);
+// 拖动功能实现函数
+const makeDraggable = (element: HTMLElement, id: string) => {
+  element.style.cursor = "move";
+  element.style.userSelect = "none";
 
-    // 添加内容和分数
-    const content = document.createElement('div');
-    const [contentText, score] = value;
-    content.textContent = `${contentText || '无内容'} (${score}分)`;
-    content.style.color = '#666';
-    content.style.wordBreak = 'break-word';
-    box.appendChild(content);
+  // 从localStorage加载位置
+  const positions = getStoredPositions();
+  if (positions[id]) {
+    element.style.left = `${positions[id].left}px`;
+    element.style.top = `${positions[id].top}px`;
+  }
 
-    // 实现拖动功能
-    let isDragging = false;
-    let offsetX = 0;
-    let offsetY = 0;
+  element.addEventListener("mousedown", (e) => {
+    isDragging = true;
+    currentElement = element;
+    startX = e.clientX;
+    startY = e.clientY;
+    initialX = parseInt(element.style.left || "0", 10);
+    initialY = parseInt(element.style.top || "0", 10);
 
-    box.addEventListener('mousedown', (e) => {
-        isDragging = true;
-        offsetX = e.clientX - box.getBoundingClientRect().left;
-        offsetY = e.clientY - box.getBoundingClientRect().top;
-        box.style.zIndex = '10001'; // 拖动时置于顶层
-    });
+    // 防止文本选择
+    e.preventDefault();
+  });
 
-    document.addEventListener('mousemove', (e) => {
-        if (!isDragging) return;
-
-        const newX = e.clientX - offsetX + window.scrollX;
-        const newY = e.clientY - offsetY + window.scrollY;
-
-        box.style.left = `${newX}px`;
-        box.style.top = `${newY}px`;
-    });
-
-    document.addEventListener('mouseup', () => {
-        if (isDragging) {
-            isDragging = false;
-            box.style.zIndex = '10000';
-            // 保存位置
-            saveBoxPosition(key, {
-                x: parseInt(box.style.left),
-                y: parseInt(box.style.top)
-            });
-        }
-    });
-
-    return box;
+  // 添加唯一id标识
+  element.id = id;
 };
 
-// 保存信息框位置到storage
-const saveBoxPosition = (key: string, position: { x: number, y: number }) => {
-    chrome.storage.local.get('aiBoxPositions', (result) => {
-        // 使用类型断言确保类型安全
-        const positions = (result.aiBoxPositions || {}) as Record<string, { x: number, y: number }>;
-        positions[key] = position;
-        chrome.storage.local.set({ aiBoxPositions: positions }, () => {
-            if (chrome.runtime.lastError) {
-                console.error('Failed to save box position:', chrome.runtime.lastError);
-            }
-        });
-    });
-};
+// 全局事件监听器
+document.addEventListener("mousemove", (e) => {
+  if (!isDragging || !currentElement) return;
 
-// 加载保存的信息框位置
-const loadBoxPositions = (): Promise<Record<string, { x: number, y: number }>> => {
-    return new Promise((resolve) => {
-        chrome.storage.local.get('aiBoxPositions', (result) => {
-            // 使用类型断言确保类型安全
-            resolve((result.aiBoxPositions || {}) as Record<string, { x: number, y: number }>);
-        });
-    });
-};
+  const dx = e.clientX - startX;
+  const dy = e.clientY - startY;
 
-// 移除所有现有的AI结果框
-const removeAllAIBoxes = () => {
-    const existingBoxes = document.querySelectorAll('.ai-result-box');
-    existingBoxes.forEach(box => box.remove());
-};
-
-// 隐藏所有AI结果框
-const hideAllAIBoxes = () => {
-    const existingBoxes = document.querySelectorAll('.ai-result-box');
-    existingBoxes.forEach(box => {
-        (box as HTMLElement).style.display = 'none';
-    });
-};
-
-// 更新或创建信息框
-const updateOrCreateBox = (key: string, value: [string, number], initialPosition: { x: number, y: number }) => {
-    // 查找是否已存在该key对应的信息框
-    const existingBox = document.getElementById(`ai-box-${key}`);
-    
-    if (existingBox) {
-        // 更新现有框的内容
-        const contentElement = existingBox.querySelector('div:nth-child(2)');
-        if (contentElement) {
-            const [contentText, score] = value;
-            contentElement.textContent = `${contentText || '无内容'} (${score}分)`;
-        }
-    } else {
-        // 创建新框
-        const box = createDraggableBox(key, value, initialPosition);
-        document.body.appendChild(box);
-    }
-};
-
-// 显示AI识别结果
-const displayAIResults = (aiContent: string, imgSrc: string) => {
-    // 查找当前图片元素
-    const targetSelector = '#app > div > div.imageEdit > div.imageBox > div:nth-child(1) > div > img';
-    const currentImg = document.querySelector<HTMLImageElement>(targetSelector);
-
-    // 检查当前图片src是否与返回的src一致
-    if (!currentImg || currentImg.src !== imgSrc) {
-        console.log('Image src mismatch, ignoring AI result');
-        return;
-    }
-
-    // 解析AI结果
-    const aiData = parseAIResult(aiContent);
-    if (!aiData) {
-        console.error('Invalid AI result format');
-        return;
-    }
-
-    const _aiData: Record<string, [string, number]> = {
-        "1.1": [aiData["1.1"], ['500mL容量瓶', '500ml容量瓶', '500毫升容量瓶']?.includes(aiData["1.1"]) ? 1 : 0],
-        "1.2": [aiData["1.2"], aiData["1.2"] === '13.6' ? 2 : 0],
-        "2": [aiData["2"], aiData["2"] === '25' ? 1 : 0],
-        "3": [aiData["3"], 0 + (
-            aiData["3"]?.includes('杯壁') ? 1 : 0) +
-            (aiData["3"]?.includes('玻璃棒搅拌')
-                || aiData["3"]?.includes('玻璃棒不断搅拌') ||
-                aiData["3"]?.includes('玻璃棒不断地搅拌') ?
-                1 : 0)],
-        "4": [aiData["4"], aiData["4"].toUpperCase() === 'C' ? 2 : 0],
-    }
-    // 计算总分
-    const totalScore =
-
-        Object.values(_aiData).reduce((sum, [_, score]) => sum + score, 0);
-
-    // 加载保存的位置
-    loadBoxPositions().then(positions => {
-        // 更新或创建信息框
-        Object.entries(_aiData).forEach(([key, value], index) => {
-            // 如果没有保存的位置，使用默认位置
-            const initialPosition = positions[key] || {
-                x: 100 + (index * 220),
-                y: 100
-            };
-
-            updateOrCreateBox(key, value, initialPosition);
-        });
-
-        // 向#inputOne发送总分事件
-        const inputOne = document.getElementById('inputOne') as HTMLInputElement;
-        if (inputOne) {
-            inputOne.value = totalScore.toString();
-            inputOne.dispatchEvent(new Event('input', { bubbles: true }));
-        }
-    });
-};
-
-// 监听AI识别结果
-chrome.runtime.onMessage.addListener((message) => {
-    if (message.action === 'aiRecognitionResult') {
-        console.log('Received AI recognition result:', message);
-        displayAIResults(message.aiContent, message.imgSrc);
-    }
+  currentElement.style.left = `${initialX + dx}px`;
+  currentElement.style.top = `${initialY + dy}px`;
 });
 
-// 页面加载完成后初始化
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-} else {
-    init();
-}
+document.addEventListener("mouseup", () => {
+  if (isDragging && currentElement && currentElement.id) {
+    // 保存位置到localStorage
+    const left = parseInt(currentElement.style.left || "0", 10);
+    const top = parseInt(currentElement.style.top || "0", 10);
+    savePosition(currentElement.id, left, top);
+  }
+
+  isDragging = false;
+  currentElement = null;
+});
+
+const showAiResult = (result: string) => {
+  try {
+    const res = JSON.parse(result) as [string, number, string][];
+    console.log(res);
+    document.body.appendChild(overlay);
+
+    // 清空之前的结果（但保留总分div）
+    overlay.innerHTML = "";
+
+    // 初始化总分div
+    initializeTotalScoreDiv();
+
+    // 计算并显示总分
+    totalScore = calculateTotalScore(res);
+    updateTotalScoreDisplay(totalScore);
+    saveTotalScore(totalScore);
+
+    res.forEach(([text, score, reason], index) => {
+      const div = document.createElement("div");
+      div.style.position = "absolute";
+      div.style.left = `${10 + index * 20}px`; // 设置初始位置，避免堆叠
+      div.style.top = `${10 + index * 40}px`;
+      div.innerText = `${text}(${score}分,${reason})`;
+      div.style.padding = "5px 10px"; // 添加内边距
+      div.style.border = "1px solid #ccc"; // 添加边框
+      div.style.borderRadius = "4px"; // 添加圆角
+      div.style.fontSize = "14px";
+      div.style.color = score === 0 ? "red" : "green";
+
+      overlay.appendChild(div);
+
+      // 创建唯一id，包含文本和索引以确保唯一性
+      const uniqueId = `result-div-${index}`;
+
+      // 添加拖动功能和本地存储
+      makeDraggable(div, uniqueId);
+    });
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+const h = async () => {
+  const currentSrc = getImageSrc();
+  if (currentSrc !== previousSrc) {
+    console.log("Image src changed:", currentSrc);
+    previousSrc = currentSrc;
+    const res = await chrome.runtime.sendMessage({
+      action: "getAIResult",
+      url: currentSrc,
+    });
+    console.log(res);
+    const result = res?.result;
+    if (!result) return;
+    const aiResult = parseAIResult2(result);
+    showAiResult(aiResult);
+  }
+  setTimeout(h, 1000);
+};
+
+h();

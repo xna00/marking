@@ -1,3 +1,4 @@
+import { scaleImage } from "./image.js";
 import { getModelInfo, type ModelName } from "./models.js";
 
 export type AISettings = {
@@ -27,7 +28,7 @@ export const defaultAISettings: AISettings = {
 给你发答题卡的图片，你需要做：
 1.识别出图片中每个空的内容
 2.根据评分标准，判断每个空的得分
-3.以[["1中识别出的内容","得分","原因(只写关键词)"],...]格式返回结果
+3.以[["1中识别出的内容",0(得分),"原因(只写关键词)"],...]格式返回结果
 `.trim(),
 };
 
@@ -111,3 +112,28 @@ export async function recognizeImage(imageUrl: string) {
   });
   return markByAI(imageUrl, settings, apiKeys);
 }
+
+const urlResultMap = new Map<string, Promise<any>>();
+
+export async function aiHook(url: string, dataUrl: string) {
+  if (urlResultMap.has(url)) {
+    return;
+  }
+  const result = recognizeImage(await scaleImage(dataUrl));
+  urlResultMap.set(url, result);
+}
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "getAIResult") {
+    const pendingResult = urlResultMap.get(request.url);
+    console.log("getAIResult", request.url, pendingResult);
+    if (pendingResult) {
+      pendingResult.then((result) => {
+        sendResponse({ result });
+      });
+    } else {
+      sendResponse({ error: "No result found" });
+    }
+  }
+  return true;
+});
