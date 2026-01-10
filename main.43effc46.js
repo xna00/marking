@@ -3,12 +3,12 @@ fetch("./extension.zip", { cache: "no-cache" });
 const downloadBtn = document.getElementById("download_btn");
 const updateBtn = document.getElementById("update_btn");
 const toast = document.getElementById("toast");
-const showToast = (msg) => {
+const showToast = (msg, duration = 2000) => {
     toast.innerHTML = msg;
     toast.style.display = "block";
     setTimeout(() => {
         toast.style.display = "none";
-    }, 2000);
+    }, duration);
 };
 console.log(UZIP);
 const directoryId = "directoryId";
@@ -46,7 +46,7 @@ const saveExtensionFiles = async (dirHandle) => {
         .filter(([k, v]) => !k.endsWith("/"))
         .map(([k, v]) => [k.replace("dist/extension/", ""), v]));
     await saveFilesInDirectory(dirHandle, f);
-    showToast("更新完成，等待页面刷新...");
+    showToast("更新完成，等待页面刷新...", 60000);
 };
 downloadBtn.addEventListener("click", async function () {
     try {
