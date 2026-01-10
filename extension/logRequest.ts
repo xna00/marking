@@ -41,8 +41,14 @@ const attachedTabs = new Map<number, boolean>();
 
 export const responseMap = new Map<string, string>();
 
-const debuggerEnabledUrls = ["http://127.0.0.1:8080/dist/doc/test/"];
-const logUrls = ["http://127.0.0.1:8080/dist/doc/test/images/"];
+const debuggerEnabledUrls = [
+  "http://127.0.0.1:8080/dist/doc/test/",
+  "https://marking.xna00.top/test/",
+];
+const logUrls = [
+  "http://127.0.0.1:8080/dist/doc/test/images/",
+  "https://marking.xna00.top/test/images/",
+];
 
 const attachAndEnableNetwork = async (tabId: number, tab: chrome.tabs.Tab) => {
   // 检查是否已经附加了调试器
