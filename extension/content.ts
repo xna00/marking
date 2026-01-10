@@ -256,9 +256,12 @@ const h = async () => {
     });
     console.log(res);
     const result = res?.result;
-    if (!result) return;
-    const aiResult = parseAIResult2(result);
-    showAiResult(aiResult);
+    if (result) {
+      const aiResult = parseAIResult2(result);
+      showAiResult(aiResult);
+    } else {
+      console.error("No result from AI");
+    }
   }
   setTimeout(h, 1000);
 };

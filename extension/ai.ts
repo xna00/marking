@@ -137,7 +137,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           sendResponse({ result });
         },
         (error) => {
-          sendResponse({ error });
+          console.error("Error fetching AI result:", error);
+          sendResponse({ error: String(error) });
         }
       );
     } else {
