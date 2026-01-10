@@ -1,6 +1,17 @@
 import { UZIP } from "./UZIP.js";
+
+fetch("./extension.zip", { cache: "no-cache" });
 const downloadBtn = document.getElementById("download_btn")!;
 const updateBtn = document.getElementById("update_btn")!;
+const toast = document.getElementById("toast")!;
+
+const showToast = (msg: string) => {
+  toast.innerHTML = msg;
+  toast.style.display = "block";
+  setTimeout(() => {
+    toast.style.display = "none";
+  }, 2000);
+};
 
 console.log(UZIP);
 
@@ -36,11 +47,10 @@ const saveFilesInDirectory = async (
 const saveExtensionFiles = async (dirHandle: FileSystemDirectoryHandle) => {
   const buf = await (
     await fetch("./extension.zip", {
-      headers: {
-        "Cache-Control": "no-cache",
-      },
+      cache: "no-cache",
     })
   ).arrayBuffer();
+  showToast("下载完成，正在保存文件...");
 
   const files = UZIP.parse(buf);
   console.log(files);
@@ -50,6 +60,7 @@ const saveExtensionFiles = async (dirHandle: FileSystemDirectoryHandle) => {
       .map(([k, v]) => [k.replace("dist/extension/", ""), v])
   );
   await saveFilesInDirectory(dirHandle, f);
+  showToast("更新完成，等待页面刷新...");
 };
 
 downloadBtn.addEventListener("click", async function () {
