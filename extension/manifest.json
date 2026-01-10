@@ -29,7 +29,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://www.wylkyj.com/yuejuan/*", "http://127.0.0.1:8080/*/test/*"],
+      "matches": ["https://www.wylkyj.com/yuejuan/*", "http://127.0.0.1:8080/*/test/*", "https://marking.xna00.top/test/*"],
       "js": ["content.js"],
       "type": "module"
     },
