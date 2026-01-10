@@ -246,8 +246,10 @@ const showAiResult = (result: string) => {
 };
 
 const h = async () => {
+  let delay = 500;
   const currentSrc = getImageSrc();
   if (currentSrc !== previousSrc) {
+    delay = 1000;
     console.log("Image src changed:", currentSrc);
     previousSrc = currentSrc;
     const res = await chrome.runtime.sendMessage({
@@ -263,7 +265,7 @@ const h = async () => {
       console.error("No result from AI");
     }
   }
-  setTimeout(h, 1000);
+  setTimeout(h, delay);
 };
 
 h();

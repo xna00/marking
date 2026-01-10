@@ -129,21 +129,24 @@ export async function aiHook(url: string, dataUrl: string) {
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "getAIResult") {
-    const pendingResult = urlResultMap.get(request.url);
-    console.log("getAIResult", request.url, pendingResult);
-    if (pendingResult) {
-      pendingResult.then(
-        (result) => {
-          sendResponse({ result });
-        },
-        (error) => {
-          console.error("Error fetching AI result:", error);
-          sendResponse({ error: String(error) });
-        }
-      );
-    } else {
-      sendResponse({ error: "No result found" });
-    }
+    // check if need delay
+    setTimeout(() => {
+      const pendingResult = urlResultMap.get(request.url);
+      console.log("getAIResult", request.url, pendingResult);
+      if (pendingResult) {
+        pendingResult.then(
+          (result) => {
+            sendResponse({ result });
+          },
+          (error) => {
+            console.error("Error fetching AI result:", error);
+            sendResponse({ error: String(error) });
+          }
+        );
+      } else {
+        sendResponse({ error: "No result found" });
+      }
+    });
   }
   return true;
 });
