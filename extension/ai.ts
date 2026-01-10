@@ -95,6 +95,7 @@ export async function markByAI(
     throw new Error(`AI识别错误: ${errorText}`);
   }
   const data = await response.json();
+  JSON.parse(parseAIResult(data));
   console.log("AI识别结果:", JSON.stringify(data, null, 2));
   return data;
 }
@@ -121,6 +122,9 @@ export async function aiHook(url: string, dataUrl: string) {
   }
   const result = recognizeImage(await scaleImage(dataUrl));
   urlResultMap.set(url, result);
+  result.catch(() => {
+    urlResultMap.delete(url);
+  });
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -128,9 +132,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     const pendingResult = urlResultMap.get(request.url);
     console.log("getAIResult", request.url, pendingResult);
     if (pendingResult) {
-      pendingResult.then((result) => {
-        sendResponse({ result });
-      });
+      pendingResult.then(
+        (result) => {
+          sendResponse({ result });
+        },
+        (error) => {
+          sendResponse({ error });
+        }
+      );
     } else {
       sendResponse({ error: "No result found" });
     }
