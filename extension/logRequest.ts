@@ -1,24 +1,6 @@
 import { aiHook } from "./ai.js";
 
-// 定义chrome.debugger API事件参数的类型接口
-interface NetworkRequestWillBeSentParams {
-  requestId: string;
-  request: {
-    url: string;
-    method: string;
-    headers: Record<string, string>;
-    postData?: string;
-  };
-  timestamp: number;
-}
-
-interface NetworkRequestWillBeSentExtraInfoParams {
-  requestId: string;
-  requestHeaders: Record<string, string>;
-  body?: string;
-}
-
-interface NetworkResponseReceivedParams {
+type NetworkResponseReceivedParams = {
   requestId: string;
   response: {
     url: string;
@@ -28,12 +10,14 @@ interface NetworkResponseReceivedParams {
     mimeType: string;
   };
   timestamp: number;
-}
+};
 
-interface NetworkGetResponseBodyResponse {
+type NetworkGetResponseBodyResponse = {
   body: string;
   base64Encoded: boolean;
-}
+};
+
+const requestIdResponseMap = new Map<string, NetworkResponseReceivedParams>();
 
 const urlResponseMap = new Map<string, string>();
 // 用于存储调试器附加状态
@@ -44,10 +28,12 @@ export const responseMap = new Map<string, string>();
 const debuggerEnabledUrls = [
   "http://127.0.0.1:8080/dist/doc/test/",
   "https://marking.xna00.top/test/",
+  "https://www.wylkyj.com/yuejuan/",
 ];
 const logUrls = [
   "http://127.0.0.1:8080/dist/doc/test/images/",
   "https://marking.xna00.top/test/images/",
+  "https://data.wylkyj.com/PaperScan/",
 ];
 
 const attachAndEnableNetwork = async (tabId: number, tab: chrome.tabs.Tab) => {
@@ -118,8 +104,15 @@ chrome.debugger.onEvent.addListener(async (source, method, rawParams) => {
 
   if (method === "Network.responseReceived") {
     const responseParams = params as NetworkResponseReceivedParams;
-    console.log("Response received:", params);
+    // console.log("Response received:", params);
     if (logUrls.some((url) => responseParams.response.url.includes(url))) {
+      requestIdResponseMap.set(responseParams.requestId, responseParams);
+    }
+  } else if (method === "Network.loadingFinished") {
+    const requestId = params.requestId;
+    const responseParams = requestIdResponseMap.get(requestId);
+    requestIdResponseMap.delete(requestId);
+    if (responseParams) {
       const response = await chrome.debugger.sendCommand(
         { tabId },
         "Network.getResponseBody",
@@ -153,7 +146,9 @@ chrome.debugger.onEvent.addListener(async (source, method, rawParams) => {
       aiHook(responseParams.response.url, dataUrl);
       console.log("Response body:", {
         requestId: responseParams.requestId,
-        body: dataUrl.substring(0, 200) + (dataUrl.length > 200 ? "..." : ""),
+        base64Encoded: responseBody.base64Encoded,
+        body: responseBody.body,
+        dataUrl,
       });
     }
   }

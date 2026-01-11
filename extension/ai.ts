@@ -1,5 +1,6 @@
-import { scaleImage } from "./image.js";
+import { getImageBitmap, scaleImage } from "./image.js";
 import { getModelInfo, type ModelName } from "./models.js";
+import { printImageInConsole } from "./printImage.js";
 
 export type AISettings = {
   model: ModelName;
@@ -42,7 +43,19 @@ const getCurrentSettings = (): Promise<AISettings> => {
     });
   });
 };
-// 导出AI识别函数，接收图片的dataURL作为参数
+
+const tryManyTimes = async <T>(fn: () => Promise<T>, times = 3) => {
+  const errors = [];
+  for (let i = 0; i < times; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      errors.push(error);
+      console.error(`尝试第${i + 1}次失败:`, error);
+    }
+  }
+  throw new Error(`尝试${times}次后失败: ${errors.join(", ")}`);
+};
 export async function markByAI(
   dataUrl: string,
   aiSettings: AISettings,
@@ -55,47 +68,60 @@ export async function markByAI(
   const selectedModel = getModelInfo(modelName, apiKeys);
 
   console.log(selectedModel);
-  const response = await fetch(selectedModel.url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${selectedModel.key}`,
-    },
-    body: JSON.stringify({
-      model: selectedModel.model.split("#")[1],
-      thinking: { type: "disabled" },
-      messages: [
-        {
-          role: "system",
-          content: [
-            {
-              type: "text",
-              text: prompt,
-            },
-          ],
-        },
-        {
-          role: "user",
-          content: [
-            {
-              type: "image_url",
-              image_url: {
-                url: dataUrl,
+  const fn = async () => {
+    const response = await fetch(selectedModel.url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${selectedModel.key}`,
+      },
+      body: JSON.stringify({
+        model: selectedModel.model.split("#")[1],
+        thinking: { type: "disabled" },
+        messages: [
+          {
+            role: "system",
+            content: [
+              {
+                type: "text",
+                text: prompt,
               },
-            },
-          ],
+            ],
+          },
+          {
+            role: "user",
+            content: [
+              {
+                type: "image_url",
+                image_url: {
+                  url: dataUrl,
+                },
+              },
+            ],
+          },
+        ],
+        // response_format 会占用token，所以这里不使用
+        resonse_format: {
+          type: "json_object",
         },
-      ],
-      // response_format 会占用token，所以这里不使用
-    }),
-  });
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("AI识别错误:", errorText);
-    throw new Error(`AI识别错误: ${errorText}`);
-  }
-  const data = await response.json();
-  JSON.parse(parseAIResult(data));
+      }),
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("AI识别错误:", errorText);
+      throw new Error(`AI识别错误: ${errorText}`);
+    }
+    const data = await response.json();
+    try {
+      JSON.parse(parseAIResult(data));
+    } catch (error) {
+      console.log("Can not parse:");
+      console.log(parseAIResult(data));
+      throw error;
+    }
+    return data;
+  };
+  const data = await tryManyTimes(fn);
   console.log("AI识别结果:", JSON.stringify(data, null, 2));
   return data;
 }
@@ -120,11 +146,21 @@ export async function aiHook(url: string, dataUrl: string) {
   if (urlResultMap.has(url)) {
     return;
   }
-  const result = recognizeImage(await scaleImage(dataUrl));
+  const scaledDataUrl = await scaleImage(dataUrl);
+  const bitmap = await getImageBitmap(scaledDataUrl);
+  printImageInConsole(scaledDataUrl, bitmap.width, bitmap.height);
+  bitmap.close();
+  const result = recognizeImage(scaledDataUrl);
+
   urlResultMap.set(url, result);
-  result.catch(() => {
-    urlResultMap.delete(url);
-  });
+  result.then(
+    (res) => {
+      console.log(res);
+    },
+    () => {
+      urlResultMap.delete(url);
+    }
+  );
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -132,7 +168,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     // check if need delay
     setTimeout(() => {
       const pendingResult = urlResultMap.get(request.url);
-      console.log("getAIResult", request.url, pendingResult);
       if (pendingResult) {
         pendingResult.then(
           (result) => {

@@ -7,14 +7,19 @@ export const blobToDataUrl = (blob: Blob): Promise<string> => {
   });
 };
 
+export const getImageBitmap = async (url: string) => {
+  const response = await fetch(url);
+  const blob = await response.blob();
+  const imageBitmap = await createImageBitmap(blob);
+  return imageBitmap;
+};
+
 export const scaleImage = async (
   dataUrl: string,
   width = 700
 ): Promise<string> => {
   try {
-    const response = await fetch(dataUrl);
-    const blob = await response.blob();
-    const imageBitmap = await createImageBitmap(blob);
+    const imageBitmap = await getImageBitmap(dataUrl);
 
     const canvasWidth = width;
     const canvasHeight = (canvasWidth / imageBitmap.width) * imageBitmap.height;
@@ -53,7 +58,8 @@ export const scaleImage = async (
     // 将Blob转换为data URL
     return blobToDataUrl(scaledDataBlob);
   } catch (error) {
-    console.error("Crop failed:", error, dataUrl);
+    console.error("Crop failed:", error, );
+    console.error(dataUrl)
     throw error;
   }
 };

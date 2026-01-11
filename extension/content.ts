@@ -11,17 +11,38 @@ const testPageHandlers = {
     const cardImage = document.getElementById("cardImage") as HTMLImageElement;
     return cardImage.src;
   },
+  setTotalScore: (score: number) => {},
 };
 
 const overlay = document.createElement("div");
-overlay.style.position = "fixed";
 overlay.style.top = "0";
 overlay.style.left = "0";
-overlay.style.width = "100%";
-overlay.style.height = "100%";
 overlay.style.zIndex = "9999";
 
-const { submit, getImageSrc } = testPageHandlers;
+const wyPageHandlers = {
+  submit: () => {
+    overlay.remove();
+  },
+  getImageSrc: () => {
+    const targetElement = document.querySelector(
+      ".imgSection.clear>img"
+    ) as HTMLImageElement;
+    return targetElement?.src;
+  },
+  setTotalScore: (score: number) => {
+    const inputOne = document.getElementById("inputOne") as HTMLInputElement;
+    if (inputOne) {
+      inputOne.value = score.toString();
+      inputOne.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+  },
+};
+
+const { submit, getImageSrc, setTotalScore } = location.host.includes(
+  "www.wylkyj.com"
+)
+  ? wyPageHandlers
+  : testPageHandlers;
 
 let previousSrc = "";
 
@@ -69,13 +90,10 @@ const totalScoreDiv = document.createElement("div");
 
 // 计算总分
 const calculateTotalScore = (res: [string, number, string][]): number => {
-  return res.reduce((sum, [, score]) => sum + score, 0);
+  return res.reduce((sum, [, score]) => sum + Number(score), 0);
 };
 
 // 更新总分显示
-const updateTotalScoreDisplay = (score: number): void => {
-  totalScoreDiv.innerText = `总分: ${score}`;
-};
 
 // 保存总分到localStorage
 const saveTotalScore = (score: number): void => {
@@ -86,39 +104,6 @@ const saveTotalScore = (score: number): void => {
   }
 };
 
-// 初始化总分div
-const initializeTotalScoreDiv = (): void => {
-  totalScoreDiv.style.position = "absolute";
-  totalScoreDiv.style.left = "50%";
-  totalScoreDiv.style.top = "20px";
-  totalScoreDiv.style.transform = "translateX(-50%)";
-  totalScoreDiv.style.padding = "10px 20px";
-  totalScoreDiv.style.background = "rgba(0, 0, 255, 0.8)";
-  totalScoreDiv.style.color = "white";
-  totalScoreDiv.style.borderRadius = "8px";
-  totalScoreDiv.style.fontSize = "20px";
-  totalScoreDiv.style.fontWeight = "bold";
-  totalScoreDiv.style.zIndex = "10000";
-  totalScoreDiv.style.cursor = "move";
-  totalScoreDiv.style.userSelect = "none";
-
-  // 添加唯一id
-  totalScoreDiv.id = "total-score-div";
-
-  // 从localStorage加载位置
-  const positions = getStoredPositions();
-  if (positions["total-score-div"]) {
-    totalScoreDiv.style.left = `${positions["total-score-div"].left}px`;
-    totalScoreDiv.style.top = `${positions["total-score-div"].top}px`;
-    totalScoreDiv.style.transform = "none";
-  }
-
-  // 添加拖动功能
-  makeDraggable(totalScoreDiv, "total-score-div");
-
-  overlay.appendChild(totalScoreDiv);
-};
-
 // 键盘事件监听
 const setupKeyboardListeners = (): void => {
   document.addEventListener("keydown", (e) => {
@@ -126,19 +111,19 @@ const setupKeyboardListeners = (): void => {
       case "ArrowUp":
         e.preventDefault();
         totalScore++;
-        updateTotalScoreDisplay(totalScore);
+        setTotalScore(totalScore);
         saveTotalScore(totalScore);
         break;
       case "ArrowDown":
         e.preventDefault();
         totalScore = Math.max(0, totalScore - 1);
-        updateTotalScoreDisplay(totalScore);
+        setTotalScore(totalScore);
         saveTotalScore(totalScore);
         break;
       case " ":
         e.preventDefault();
         totalScore = 0;
-        updateTotalScoreDisplay(totalScore);
+        setTotalScore(totalScore);
         saveTotalScore(totalScore);
         break;
       case "Enter":
@@ -213,12 +198,10 @@ const showAiResult = (result: string) => {
     overlay.innerHTML = "";
 
     // 初始化总分div
-    initializeTotalScoreDiv();
 
     // 计算并显示总分
     totalScore = calculateTotalScore(res);
-    updateTotalScoreDisplay(totalScore);
-    saveTotalScore(totalScore);
+    setTotalScore(totalScore);
 
     res.forEach(([text, score, reason], index) => {
       const div = document.createElement("div");
@@ -245,10 +228,12 @@ const showAiResult = (result: string) => {
   }
 };
 
+let showedResult = false;
 const h = async () => {
   let delay = 500;
   const currentSrc = getImageSrc();
-  if (currentSrc !== previousSrc) {
+  if (currentSrc && (currentSrc !== previousSrc || !showedResult)) {
+    showedResult = false;
     delay = 1000;
     console.log("Image src changed:", currentSrc);
     previousSrc = currentSrc;
@@ -259,6 +244,7 @@ const h = async () => {
     console.log(res);
     const result = res?.result;
     if (result) {
+      showedResult = true;
       const aiResult = parseAIResult2(result);
       showAiResult(aiResult);
     } else {
