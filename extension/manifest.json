@@ -20,7 +20,6 @@
     "type": "module"
   },
   "action": {
-    "default_popup": "popup.html",
     "default_icon": {
       "16": "images/icon.png",
       "48": "images/icon.png",

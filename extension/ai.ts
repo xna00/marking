@@ -113,6 +113,7 @@ export async function markByAI(
     }
     const data = await response.json();
     try {
+      // TODO: use jsonrepair or dirty-json to repair the broken json
       JSON.parse(parseAIResult(data));
     } catch (error) {
       console.log("Can not parse:");
