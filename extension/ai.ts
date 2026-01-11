@@ -1,4 +1,5 @@
 import { getImageBitmap, scaleImage } from "./image.js";
+import { repairJson } from "./lib.js";
 import { getModelInfo, type ModelName } from "./models.js";
 import { printImageInConsole } from "./printImage.js";
 
@@ -114,7 +115,7 @@ export async function markByAI(
     const data = await response.json();
     try {
       // TODO: use jsonrepair or dirty-json to repair the broken json
-      JSON.parse(parseAIResult(data));
+      JSON.parse(repairJson(parseAIResult(data)));
     } catch (error) {
       console.log("Can not parse:");
       console.log(parseAIResult(data));

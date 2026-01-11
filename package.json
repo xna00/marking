@@ -4,16 +4,20 @@
   "description": "",
   "main": "background.js",
   "scripts": {
-    "build": "rm -r dist/doc; tsc && npm run cp && zip -r dist/doc/extension.zip dist/extension && npm run add-hash",
+    "build": "rm -r dist/doc; tsc && npm run build-lib && npm run cp && zip -r dist/doc/extension.zip dist/extension && npm run add-hash",
     "watch": "npm-watch",
     "cp": "cp doc/index.html dist/doc/; cp doc/test/index.html dist/doc/test/; cp -r doc/test/images dist/doc/test/; cp doc/*.png dist/doc/; cp -r extension/images dist/extension; cp extension/popup.html dist/extension/popup.html",
     "add-hash": "node add-hash.ts",
     "rename-to-mjs": "node rename-js-to-mjs.ts",
+    "build-lib": "npx esbuild extension/lib.ts --bundle --format=esm --outfile=dist/extension/lib.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "watch": {
     "build": {
-      "patterns": ["extension", "doc"],
+      "patterns": [
+        "extension",
+        "doc"
+      ],
       "extensions": "js,ts,html,png,json",
       "quiet": false
     }
@@ -24,6 +28,9 @@
   "devDependencies": {
     "@types/chrome": "^0.1.32",
     "@types/wicg-file-system-access": "^2023.10.7",
+    "dirty-json": "^0.9.2",
+    "esbuild": "^0.27.2",
+    "jsonrepair": "^3.13.1",
     "npm-watch": "^0.13.0",
     "typescript": "^5.9.3"
   },
