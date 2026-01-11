@@ -17,12 +17,6 @@ const result = document.getElementById("result") as HTMLDivElement;
 const markButton = document.getElementById("markButton") as HTMLButtonElement;
 const imageInfo = document.getElementById("imageInfo") as HTMLSpanElement;
 
-// interface AISettings {
-//   aiModel?: string;
-//   aiPrompt?: string;
-//   imageSrc?: string[];
-// }
-
 interface APIKeys {
   doubaoKey?: string;
   glmKey?: string;
@@ -191,6 +185,45 @@ const imageHistoryInfo = document.getElementById(
   "imageHistoryInfo"
 ) as HTMLSpanElement;
 const pasteButton = document.getElementById("pasteButton") as HTMLButtonElement;
+const syncButton = document.getElementById("syncButton") as HTMLButtonElement;
+syncButton.addEventListener("click", async () => {
+  const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (tabs[0]) {
+    const res = await chrome.tabs.sendMessage(tabs[0].id!, {
+      action: "syncCurrentImage",
+    });
+    if (res?.dataUrl) {
+      const _dataUrl = res.dataUrl;
+      const dataUrl = await scaleImage(_dataUrl, 600);
+      console.log(dataUrl, imageSrc);
+      imageSrc = [dataUrl, ...imageSrc.filter((s) => s !== dataUrl)].slice(
+        0,
+        20
+      );
+      currentImageIndex = 0;
+      // 显示图片
+      cardImage.src = getImageSrc();
+      updateImages();
+      // 保存图片dataUrl到storage
+      chrome.storage.local.set({ imageSrc }, () => {
+        if (chrome.runtime.lastError) {
+          console.error(
+            "Error saving image data URL:",
+            chrome.runtime.lastError
+          );
+          return;
+        }
+      });
+    }
+  }
+  // chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+  //   if (tabs[0]) {
+  //     chrome.tabs.sendMessage(tabs[0].id!, {
+  //       action: "syncCurrentImage",
+  //     });
+  //   }
+  // });
+});
 
 const updateHistoryDisplay = () => {
   imageHistoryInfo.innerText = `${currentImageIndex + 1}/${imageSrc.length}`;

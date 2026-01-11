@@ -255,3 +255,26 @@ const h = async () => {
 };
 
 h();
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "syncCurrentImage") {
+    const currentSrc = getImageSrc();
+    chrome.runtime
+      .sendMessage({
+        action: "getResponse",
+        url: currentSrc,
+      })
+      .then((res) => {
+        if (res?.dataUrl) {
+          sendResponse({
+            dataUrl: res.dataUrl,
+          });
+        } else {
+          sendResponse({
+            dataUrl: "",
+          });
+        }
+      });
+  }
+  return true;
+});
