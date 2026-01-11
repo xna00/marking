@@ -34,15 +34,28 @@ export const defaultAISettings: AISettings = {
 `.trim(),
 };
 
-const getCurrentSettings = (): Promise<AISettings> => {
-  return new Promise((resolve) => {
-    chrome.storage.local.get(["aiModel", "aiPrompt"], (result) => {
-      resolve({
-        model: (result.aiModel as ModelName) || defaultAISettings.model,
-        prompt: (result.aiPrompt as string) || defaultAISettings.prompt,
-      });
-    });
-  });
+const getCurrentSettings = async (): Promise<AISettings> => {
+  const result = await chrome.storage.local.get([
+    "aiModel",
+    "aiPrompt",
+    "criteria",
+    "criteriaHeader",
+  ]);
+  const model = (result.aiModel as ModelName) || defaultAISettings.model;
+  const prompt = (result.aiPrompt as string) || defaultAISettings.prompt;
+  const criteria = result.criteria as string[][];
+  const criteriaHeader = result.criteriaHeader as string[];
+  const mdTable = `
+${["序号", ...criteriaHeader].join("|")}
+-|${criteriaHeader.map(() => "-").join("|")}
+${criteria.map((row, index) => `${index + 1}|${row.join("|")}`).join("\n")}
+`.trim();
+  const ret = {
+    model,
+    prompt: prompt.replace("{{评分标准}}", mdTable),
+  };
+  console.log(ret);
+  return ret;
 };
 
 const tryManyTimes = async <T>(fn: () => Promise<T>, times = 3) => {
