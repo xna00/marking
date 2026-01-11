@@ -67,7 +67,7 @@ export async function markByAI(
 
   const selectedModel = getModelInfo(modelName, apiKeys);
 
-  console.log(selectedModel);
+  // console.log(selectedModel);
   const fn = async () => {
     const response = await fetch(selectedModel.url, {
       method: "POST",
@@ -122,7 +122,7 @@ export async function markByAI(
     return data;
   };
   const data = await tryManyTimes(fn);
-  console.log("AI识别结果:", JSON.stringify(data, null, 2));
+  console.log("AI识别结果:", data);
   return data;
 }
 
@@ -153,14 +153,9 @@ export async function aiHook(url: string, dataUrl: string) {
   const result = recognizeImage(scaledDataUrl);
 
   urlResultMap.set(url, result);
-  result.then(
-    (res) => {
-      console.log(res);
-    },
-    () => {
-      urlResultMap.delete(url);
-    }
-  );
+  result.catch(() => {
+    urlResultMap.delete(url);
+  });
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -168,7 +163,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     // check if need delay
     setTimeout(() => {
       const pendingResult = urlResultMap.get(request.url);
+      console.log("getAIResult", request.url, pendingResult);
       if (pendingResult) {
+        console.log("getAIResult found");
         pendingResult.then(
           (result) => {
             sendResponse({ result });
@@ -179,6 +176,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           }
         );
       } else {
+        console.log("getAIResult not found");
         sendResponse({ error: "No result found" });
       }
     });
