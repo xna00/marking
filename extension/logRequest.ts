@@ -19,11 +19,9 @@ type NetworkGetResponseBodyResponse = {
 
 const requestIdResponseMap = new Map<string, NetworkResponseReceivedParams>();
 
-const urlResponseMap = new Map<string, string>();
+let urlResponseMap = new Map<string, string>();
 // 用于存储调试器附加状态
 const attachedTabs = new Map<number, boolean>();
-
-export const responseMap = new Map<string, string>();
 
 const debuggerEnabledUrls = [
   "http://127.0.0.1:8080/dist/doc/test/",
@@ -143,6 +141,7 @@ chrome.debugger.onEvent.addListener(async (source, method, rawParams) => {
           encodeURIComponent(responseBody.body);
       }
       urlResponseMap.set(responseParams.response.url, dataUrl);
+      urlResponseMap = new Map([...urlResponseMap.entries()].slice(-20));
       aiHook(responseParams.response.url, dataUrl);
       console.log("Response body:", {
         requestId: responseParams.requestId,
@@ -158,3 +157,10 @@ chrome.debugger.onEvent.addListener(async (source, method, rawParams) => {
 chrome.tabs.onRemoved.addListener((tabId) => {
   detachDebugger(tabId);
 });
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "getResponse") {
+    const dataUrl = urlResponseMap.get(request.url);
+    sendResponse({ dataUrl });
+  } 
+})

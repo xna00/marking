@@ -155,7 +155,7 @@ export async function recognizeImage(imageUrl: string) {
   return markByAI(imageUrl, settings, apiKeys);
 }
 
-const urlResultMap = new Map<string, Promise<any>>();
+let urlResultMap = new Map<string, Promise<any>>();
 
 export async function aiHook(url: string, dataUrl: string) {
   if (urlResultMap.has(url)) {
@@ -168,6 +168,7 @@ export async function aiHook(url: string, dataUrl: string) {
   const result = recognizeImage(scaledDataUrl);
 
   urlResultMap.set(url, result);
+  urlResultMap = new Map([...urlResultMap.entries()].slice(-20));
   result.catch(() => {
     urlResultMap.delete(url);
   });
