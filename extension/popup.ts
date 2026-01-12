@@ -16,6 +16,12 @@ const cardImage = document.getElementById("cardImage") as HTMLImageElement;
 const result = document.getElementById("result") as HTMLDivElement;
 const markButton = document.getElementById("markButton") as HTMLButtonElement;
 const imageInfo = document.getElementById("imageInfo") as HTMLSpanElement;
+const resetPrompt = document.getElementById("resetPrompt") as HTMLButtonElement;
+
+resetPrompt.addEventListener("click", () => {
+  promptTextarea.value = defaultAISettings.prompt;
+  saveAISettings();
+});
 
 interface APIKeys {
   doubaoKey?: string;

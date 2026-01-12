@@ -101,7 +101,12 @@
     <label for="modelSelect">选择模型</label>
     <select id="modelSelect"></select>
 
-    <label for="promptTextarea">系统提示词</label>
+    <label for="promptTextarea"
+      >系统提示词
+      <button popovertarget="previewPopover" style="width: auto">预览</button>
+      <div popover="auto" id="previewPopover"></div>
+      <button style="width: auto" id="resetPrompt">重置</button>
+    </label>
     <textarea id="promptTextarea"></textarea>
     <label>评分标准</label>
     <table id="criteriaTable">

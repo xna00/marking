@@ -8,10 +8,27 @@ const tableBody = document.getElementById(
   "tableBody"
 ) as HTMLTableSectionElement;
 
+const previewPopover = document.getElementById(
+  "previewPopover"
+) as HTMLDivElement;
+const promptTextarea = document.getElementById(
+  "promptTextarea"
+) as HTMLTextAreaElement;
+
 console.log(criteriaTable);
 
 let criteriaHeader = ["位置", "分值", "评分标准"];
 let criteria = [["", 1, ""]];
+
+previewPopover.addEventListener("toggle", () => {
+  const mdTable = `
+${["序号", ...criteriaHeader].join("|")}
+-|${criteriaHeader.map(() => "-").join("|")}
+${criteria.map((row, index) => `${index + 1}|${row.join("|")}`).join("\n")}
+`.trim();
+  const realPrompt = promptTextarea.value.replace("{{评分标准}}", mdTable);
+  previewPopover.innerText = realPrompt;
+});
 
 const saveCriteriaData = () => {
   chrome.storage.local.set({ criteria });
