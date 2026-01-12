@@ -1,4 +1,4 @@
-import { aiHook } from "./ai.js";
+import { aiHook } from "./aiHook.js";
 
 type NetworkResponseReceivedParams = {
   requestId: string;
