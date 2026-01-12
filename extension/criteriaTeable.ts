@@ -20,6 +20,63 @@ console.log(criteriaTable);
 let criteriaHeader = ["位置", "分值", "评分标准"];
 let criteria = [["", 1, ""]];
 
+let colsWidth: Record<string, string | undefined> = {
+    0: "60px",
+    1: "60px",
+    2: "60px",
+    3: "auto",
+  },
+  rowsHeight: Record<string, string | undefined> = {
+    "0": "40px",
+  };
+
+const debounce = (func: Function, delay: number = 200) => {
+  let timer: number;
+  return function (this: any, ...args: any[]) {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      func.apply(this, args);
+    }, delay);
+  };
+};
+
+const resizeObserverCallback = (entries: ResizeObserverEntry[]) => {
+  console.log(entries);
+  entries.forEach((entry) => {
+    const col = entry.target.getAttribute("data-col");
+    const row = entry.target.getAttribute("data-row");
+
+    if (col !== null) {
+      if (col === criteriaHeader.length.toString()) {
+        colsWidth[col] = "auto";
+      } else {
+        colsWidth[col] = entry.borderBoxSize[0].inlineSize + "px";
+      }
+    }
+    if (row !== null) {
+      rowsHeight[row] = entry.borderBoxSize[0].blockSize + "px";
+    }
+    chrome.storage.local.set({ colsWidth });
+    chrome.storage.local.set({ rowsHeight });
+    (
+      [
+        ...document.querySelectorAll("#criteriaTable th,td"),
+      ] as HTMLTableCellElement[]
+    ).forEach((th) => {
+      const col = th.getAttribute("data-col");
+      const row = th.getAttribute("data-row");
+      if (col !== null) {
+        th.style.width = colsWidth[col] ?? "auto";
+      }
+      if (row !== null) {
+        th.style.height = rowsHeight[row] ?? "auto";
+      }
+    });
+  });
+};
+
+const resizeObserver = new ResizeObserver(debounce(resizeObserverCallback));
+
 previewPopover.addEventListener("toggle", () => {
   const mdTable = `
 ${["序号", ...criteriaHeader].join("|")}
@@ -36,18 +93,35 @@ const saveCriteriaData = () => {
 };
 
 const loadCriteriaData = async () => {
-  const result = await chrome.storage.local.get(["criteria", "criteriaHeader"]);
+  const result = await chrome.storage.local.get([
+    "criteria",
+    "criteriaHeader",
+    "colsWidth",
+    "rowsHeight",
+  ]);
   if (result.criteria && result.criteriaHeader) {
     criteria = result.criteria as string[][];
     criteriaHeader = result.criteriaHeader as string[];
+  }
+  if (result.colsWidth) {
+    colsWidth = result.colsWidth as Record<string, string | undefined>;
+  }
+  if (result.rowsHeight) {
+    rowsHeight = result.rowsHeight as Record<string, string | undefined>;
   }
   renderCriteriaTable();
 };
 
 const renderCriteriaTable = () => {
+  resizeObserver.disconnect();
   tableHeadRow.innerHTML = "";
   tableBody.innerHTML = "";
   const th = document.createElement("th");
+  th.setAttribute("data-col", "0");
+  th.setAttribute("data-row", "0");
+  th.style.width = colsWidth["0"] ?? "auto";
+  th.style.height = rowsHeight["0"] ?? "auto";
+  resizeObserver.observe(th);
   th.innerText = "序号";
   const btn2 = document.createElement("button");
   btn2.classList.add("small-btn");
@@ -60,8 +134,13 @@ const renderCriteriaTable = () => {
   th.appendChild(btn2);
 
   tableHeadRow.appendChild(th);
-  criteriaHeader.forEach((header) => {
+  criteriaHeader.forEach((header, i) => {
     const th = document.createElement("th");
+    th.setAttribute("data-col", (i + 1).toString());
+    th.setAttribute("data-row", "0");
+    th.style.width = colsWidth[(i + 1).toString()] ?? "auto";
+    th.style.height = rowsHeight["0"] ?? "auto";
+    resizeObserver.observe(th);
     th.innerText = header;
     tableHeadRow.appendChild(th);
   });
@@ -69,6 +148,11 @@ const renderCriteriaTable = () => {
     const rowtr = document.createElement("tr");
     tableBody.appendChild(rowtr);
     const td = document.createElement("td");
+    td.setAttribute("data-col", "0");
+    td.setAttribute("data-row", (i + 1).toString());
+    td.style.width = colsWidth["0"] ?? "auto";
+    td.style.height = rowsHeight[(i + 1).toString()] ?? "60px";
+    resizeObserver.observe(td);
     td.innerText = (i + 1).toString();
     const btn1 = document.createElement("button");
     btn1.classList.add("small-btn");
@@ -92,8 +176,28 @@ const renderCriteriaTable = () => {
 
     row.forEach((cell, j) => {
       const td = document.createElement("td");
+      td.style.position = "relative";
+      // td.setAttribute("data-col", (j + 1).toString());
+      // td.setAttribute("data-row", (i + 1).toString());
+      // td.style.width = colsWidth[(j + 1).toString()] ?? "auto";
+      // td.style.height = rowsHeight[(i + 1).toString()] ?? "60px";
+      // td.contentEditable = "plaintext-only";
+      // td.innerText = cell.toString();
+
+      // td.addEventListener("input", () => {
+      //   criteria[i][j] = td.innerText;
+      //   saveCriteriaData();
+      // });
+      const div = document.createElement("div");
+      div.style.position = "absolute";
+      div.style.top = "4px";
+      div.style.left = "0";
+      div.style.bottom = "4px";
+      div.style.right = "0";
+
+      div.classList.add("criteria-cell");
+      td.appendChild(div);
       const input = document.createElement("textarea");
-      input.rows = 1;
       input.value = cell.toString();
       input.onchange = (e) => {
         const value = (e.target as HTMLInputElement).value;
@@ -101,7 +205,7 @@ const renderCriteriaTable = () => {
         console.log(criteria);
         saveCriteriaData();
       };
-      td.appendChild(input);
+      div.appendChild(input);
       rowtr.appendChild(td);
     });
   });

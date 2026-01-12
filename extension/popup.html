@@ -4,6 +4,13 @@
     <meta charset="UTF-8" />
     <title>Marking Extension</title>
     <style>
+      *,
+      *::before,
+      *::after {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
       body {
         min-width: 400px;
         padding: 10px;
@@ -68,9 +75,13 @@
       td {
         border: 1px solid black;
       }
+      td {
+        overflow: auto;
+      }
       table {
         border-collapse: collapse;
         width: 100%;
+        table-layout: fixed;
       }
       .small-btn {
         font-size: 12px;
@@ -79,6 +90,29 @@
         height: 16px;
         margin: 0;
         display: block;
+      }
+      th {
+        overflow: auto;
+      }
+      th:not(:last-child) {
+        resize: horizontal;
+      }
+      th:first-child {
+        resize: both;
+      }
+      td:first-child {
+        resize: vertical;
+        overflow: auto;
+      }
+      td textarea {
+        width: 100%;
+        height: 100%;
+        resize: none;
+        box-sizing: border-box;
+        margin: 0;
+      }
+      .criteria-cell {
+        /* height: 100%; */
       }
     </style>
   </head>
