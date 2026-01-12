@@ -121,6 +121,7 @@ export async function markByAI(
     try {
       // TODO: use jsonrepair or dirty-json to repair the broken json
       JSON.parse(repairJson(parseAIResult(data)));
+      data.choices[0].message.content = repairJson(parseAIResult(data));
     } catch (error) {
       console.log("Can not parse:");
       console.log(parseAIResult(data));
