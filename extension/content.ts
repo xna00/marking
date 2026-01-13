@@ -206,8 +206,8 @@ const showAiResult = (result: string) => {
     res.forEach(([text, score, reason], index) => {
       const div = document.createElement("div");
       div.style.position = "absolute";
-      div.style.left = `${10 + index * 20}px`; // 设置初始位置，避免堆叠
-      div.style.top = `${10 + index * 40}px`;
+      div.style.left = `${50 + index * 20}px`; // 设置初始位置，避免堆叠
+      div.style.top = `${150 + index * 40}px`;
       div.innerText = `${text}(${score}分,${reason})`;
       div.style.padding = "5px 10px"; // 添加内边距
       div.style.border = "1px solid #ccc"; // 添加边框
