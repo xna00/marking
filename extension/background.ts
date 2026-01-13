@@ -29,6 +29,9 @@ chrome.action.onClicked.addListener(() => {
         await chrome.action.openPopup();
         await chrome.action.setPopup({ popup: "" });
       } catch {}
+      finally {
+        await chrome.action.setPopup({ popup: "" });
+      }
     } else if (clickCount === 2) {
       const extensionUrl = chrome.runtime.getURL("popup.html");
       chrome.tabs.create({ url: extensionUrl });
