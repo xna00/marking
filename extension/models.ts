@@ -32,9 +32,9 @@ const qwenModels = [
 
 export const modelNames = [
   ...doubaoModels,
-  ...glmModels,
-  ...hunyuanModels,
-  ...qwenModels,
+  // ...glmModels,
+  // ...hunyuanModels,
+  // ...qwenModels,
 ] as const;
 
 export type ModelName = (typeof modelNames)[number];
