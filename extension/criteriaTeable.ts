@@ -18,7 +18,13 @@ const promptTextarea = document.getElementById(
 console.log(criteriaTable);
 
 let criteriaHeader = ["位置", "分值", "评分标准"];
-let criteria = [["", 1, ""]];
+let criteria = [
+  ["第一行左", 1, "500mL容量瓶(不写“500mL”0分，“容量瓶”写成“溶量瓶”0分)"],
+  ["第一行右", 2, "13.6"],
+  ["第二行", 1, "25"],
+  ["第三行", 2, "将浓硫酸沿烧杯内壁缓慢注入水中(给分点一),并用玻璃棒不断搅拌(给分点二)"],
+  ["第四行", 2, "C"],
+];
 
 let colsWidth: Record<string, string | undefined> = {
     0: "60px",
@@ -110,6 +116,7 @@ const loadCriteriaData = async () => {
     rowsHeight = result.rowsHeight as Record<string, string | undefined>;
   }
   renderCriteriaTable();
+  saveCriteriaData();
 };
 
 const renderCriteriaTable = () => {
