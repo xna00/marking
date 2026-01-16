@@ -28,7 +28,7 @@ let criteria = [
 
 let colsWidth: Record<string, string | undefined> = {
     0: "60px",
-    1: "60px",
+    1: "100px",
     2: "60px",
     3: "auto",
   },
