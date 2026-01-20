@@ -137,7 +137,7 @@ const pasteImageFromClipboard = async () => {
           const blob = await item.getType(type);
           if (blob) {
             const _dataUrl = await blobToDataUrl(blob);
-            const dataUrl = await scaleImage(_dataUrl, 600);
+            const dataUrl = await scaleImage(_dataUrl, 700);
             console.log(dataUrl, imageSrc);
             imageSrc = [
               dataUrl,
@@ -200,7 +200,7 @@ syncButton.addEventListener("click", async () => {
     });
     if (res?.dataUrl) {
       const _dataUrl = res.dataUrl;
-      const dataUrl = await scaleImage(_dataUrl, 600);
+      const dataUrl = await scaleImage(_dataUrl, 700);
       console.log(dataUrl, imageSrc);
       imageSrc = [dataUrl, ...imageSrc.filter((s) => s !== dataUrl)].slice(
         0,
