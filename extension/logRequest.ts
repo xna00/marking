@@ -32,6 +32,7 @@ const logUrls = [
   "http://127.0.0.1:8080/dist/doc/test/images/",
   "https://marking.xna00.top/test/images/",
   "https://data.wylkyj.com/PaperScan/",
+  "https://data.wylkyj.com/AnswerSheet/",
 ];
 
 const attachAndEnableNetwork = async (tabId: number, tab: chrome.tabs.Tab) => {
