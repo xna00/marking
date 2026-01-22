@@ -188,7 +188,7 @@ var UZIP = {};
       off += 24;
       var sz = parseInt(B.readASCII(data, off, 12), 8);
       off += 12;
-      var tm = parseInt(B.readASCII(data, off, 12), 8);
+      parseInt(B.readASCII(data, off, 12), 8);
       off += 12;
       off += 8 + 1 + 100;
       off += 6 + 2 + 32 + 32 + 8 + 8 + 155 + 12;
@@ -211,7 +211,7 @@ var UZIP = {};
     o += 4;
     var cnu = rUs(data, o);
     o += 2;
-    var cnt = rUs(data, o);
+    rUs(data, o);
     o += 2;
     var csize = rUi(data, o);
     o += 4;
@@ -219,13 +219,13 @@ var UZIP = {};
     o += 4;
     o = coffs;
     for (var i = 0; i < cnu; i++) {
-      var sign = rUi(data, o);
+      rUi(data, o);
       o += 4;
       o += 4;
       o += 4;
-      var time = _readTime(data, o);
+      _readTime(data, o);
       o += 4;
-      var crc32 = rUi(data, o);
+      rUi(data, o);
       o += 4;
       var csize = rUi(data, o);
       o += 4;
@@ -283,17 +283,17 @@ var UZIP = {};
   }
   function _readLocal(data, o, out, csize, usize, onlyNames) {
     var rUs = B.readUshort, rUi = B.readUint;
-    var sign = rUi(data, o);
+    rUi(data, o);
     o += 4;
-    var ver = rUs(data, o);
+    rUs(data, o);
     o += 2;
     var gpflg = rUs(data, o);
     o += 2;
     var cmpr = rUs(data, o);
     o += 2;
-    var time = _readTime(data, o);
+    _readTime(data, o);
     o += 4;
-    var crc32 = rUi(data, o);
+    rUi(data, o);
     o += 4;
     o += 8;
     var nlen = rUs(data, o);
@@ -319,7 +319,7 @@ var UZIP = {};
       inflateRaw(file, buf);
       out[name] = buf;
     } else if (cmpr == 14 && window["LZMA"]) {
-      var vsn = rUs(file, 0);
+      rUs(file, 0);
       var siz = rUs(file, 2);
       if (siz != 5) throw "unknown LZMA header";
       var prp = file[4];
@@ -328,32 +328,12 @@ var UZIP = {};
       prp = ~~(prp / 9);
       var lp = prp % 5;
       var pb = ~~(prp / 5);
-      var time = Date.now();
       var buf = out[name] = new Uint8Array(usize);
       var dec = new window["LZMA"]["Decoder"]();
       dec["setProperties"]({ dsz: dictSize, lc, lp, pb });
       dec["decodeBody"](new Uint8Array(data.buffer, o + 9), buf, usize);
     } else throw "unknown compression method: " + cmpr;
   }
-  function UStream(buf) {
-    this.buf = buf;
-    this.off = 0;
-  }
-  UStream.prototype["readByte"] = function() {
-    return this.buf[this.off++];
-  };
-  UStream.prototype["writeByte"] = function(b) {
-    this.buf[this.off++] = b;
-  };
-  UStream.prototype["writeBytes"] = function(a, s) {
-    a = new Uint8Array(
-      a.buffer,
-      a.byteOffset,
-      Math.min(a.length, this.buf.length - this.off)
-    );
-    this.buf.set(a, this.off);
-    this.off += a.length;
-  };
   function inflateRaw(file, buf) {
     return UZIP["F"]["inflate"](file, buf);
   }
@@ -381,7 +361,7 @@ var UZIP = {};
         buf
       );
     }
-    var CM = CMF & 15, CINFO = CMF >>> 4;
+    var CM = CMF & 15;
     return inflateRaw(
       new Uint8Array(file.buffer, file.byteOffset + 2, file.length - 6),
       buf
@@ -733,9 +713,6 @@ var UZIP = {};
   function _get17(dt, pos) {
     return (dt[pos >>> 3] | dt[(pos >>> 3) + 1] << 8 | dt[(pos >>> 3) + 2] << 16) >>> (pos & 7);
   }
-  function _get25(dt, pos) {
-    return (dt[pos >>> 3] | dt[(pos >>> 3) + 1] << 8 | dt[(pos >>> 3) + 2] << 16 | dt[(pos >>> 3) + 3] << 24) >>> (pos & 7);
-  }
   (function() {
     var len = 1 << 15;
     for (var i = 0; i < len; i++) {
@@ -814,7 +791,6 @@ var UZIP = {};
       nc = _hash(data, 0);
       strt[nc] = 0;
     }
-    var nmch = 0, nmci = 0;
     for (i = 0; i < dlen; i++) {
       c = nc;
       if (i + 1 < dlen - 2) {
@@ -953,7 +929,6 @@ var UZIP = {};
     _putsF(out, pos, BFINAL);
     _putsF(out, pos + 1, BTYPE);
     pos += 3;
-    var opos = pos;
     if (BTYPE == 0) {
       while ((pos & 7) != 0) pos++;
       pos = _copyExact(data, o0, l0, out, pos);
@@ -1025,17 +1000,6 @@ var UZIP = {};
     while (numh > 4 && U.itree[(U.ordr[numh - 1] << 1) + 1] == 0) numh--;
     return [ML, MD, MH, numl, numd, numh, lset, dset];
   }
-  function getSecond(a) {
-    var b = [];
-    for (var i = 0; i < a.length; i += 2) b.push(a[i + 1]);
-    return b;
-  }
-  function nonZero(a) {
-    var b = "";
-    for (var i = 0; i < a.length; i += 2)
-      if (a[i + 1] != 0) b += (i >> 1) + ",";
-    return b;
-  }
   function contSize(tree, hst) {
     var s = 0;
     for (var i = 0; i < hst.length; i++) s += hst[i] * tree[(i << 1) + 1];
@@ -1047,7 +1011,7 @@ var UZIP = {};
       pos = _writeLit(l, tree, out, pos);
       var rsl = l == 16 ? 2 : l == 17 ? 3 : 7;
       if (l > 15) {
-        _putsE(out, pos, rst, rsl);
+        _putsE(out, pos, rst);
         pos += rsl;
       }
     }
@@ -1195,7 +1159,6 @@ var UZIP = {};
         HDIST = _bitsE(data, pos + 5, 5) + 1;
         HCLEN = _bitsE(data, pos + 10, 4) + 4;
         pos += 14;
-        var ppos = pos;
         for (var i = 0; i < 38; i += 2) {
           U.itree[i] = 0;
           U.itree[i + 1] = 0;
@@ -1317,6 +1280,77 @@ var UZIP = {};
   }
   UZIP["F"] = { inflate, deflateRaw };
 })();
-export {
-  UZIP
+fetch("./extension.zip", { cache: "no-cache" });
+const downloadBtn = document.getElementById("download_btn");
+const updateBtn = document.getElementById("update_btn");
+const toast = document.getElementById("toast");
+const showToast = (msg, duration = 2e3) => {
+  toast.innerHTML = msg;
+  toast.style.display = "block";
+  setTimeout(() => {
+    toast.style.display = "none";
+  }, duration);
 };
+console.log(UZIP);
+const directoryId = "directoryId";
+const saveFilesInDirectory = async (dirHandle, files) => {
+  return Promise.all(
+    Object.entries(files).map(async ([p, fileContent]) => {
+      if (!p) return;
+      const filePath = p.split("/");
+      if (filePath.length > 1) {
+        const dir = await dirHandle.getDirectoryHandle(filePath[0], {
+          create: true
+        });
+        await saveFilesInDirectory(dir, {
+          [filePath.slice(1).join("/")]: fileContent
+        });
+      } else {
+        const fileHandle = await dirHandle.getFileHandle(p, {
+          create: true
+        });
+        const writable = await fileHandle.createWritable();
+        await writable.write(fileContent.buffer);
+        await writable.close();
+      }
+    })
+  );
+};
+const saveExtensionFiles = async (dirHandle) => {
+  const buf = await (await fetch("./extension.zip", {
+    cache: "no-cache"
+  })).arrayBuffer();
+  showToast("下载完成，正在保存文件...");
+  const files = UZIP.parse(buf);
+  console.log(files);
+  const f = Object.fromEntries(
+    Object.entries(files).filter(([k, v]) => !k.endsWith("/")).map(([k, v]) => [k.replace("dist/extension/", ""), v])
+  );
+  await saveFilesInDirectory(dirHandle, f);
+  showToast("更新完成，等待页面刷新...", 6e4);
+};
+downloadBtn.addEventListener("click", async function() {
+  try {
+    const dirHandle = await window.showDirectoryPicker({
+      id: directoryId,
+      mode: "readwrite"
+    });
+    console.log(dirHandle);
+    await saveExtensionFiles(dirHandle);
+  } catch (error) {
+    console.error(error);
+  }
+});
+updateBtn.addEventListener("click", async function() {
+  try {
+    const dirHandle = await window.showDirectoryPicker({
+      id: directoryId,
+      mode: "readwrite"
+    });
+    await saveExtensionFiles(dirHandle);
+    const event = new CustomEvent("reloadExtension");
+    document.dispatchEvent(event);
+  } catch (error) {
+    console.error(error);
+  }
+});
