@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // @ts-nocheck
-const fs = require("fs");
-const path = require("path");
-const crypto = require("crypto");
+import fs from "fs";
+import path from "path";
+import crypto from "crypto";
 
 // 要处理的目录
 const targetDir = "dist/doc";

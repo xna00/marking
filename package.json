@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "main": "background.js",
+  "type": "module",
   "scripts": {
     "build": "rm -r dist/doc; tsc && npm run build-lib && npm run cp && zip -r dist/doc/extension.zip dist/extension && npm run add-hash",
     "watch": "npm-watch",
