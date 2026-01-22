@@ -28,8 +28,8 @@ chrome.action.onClicked.addListener(() => {
         await chrome.action.setPopup({ popup: "popup.html" });
         await chrome.action.openPopup();
         await chrome.action.setPopup({ popup: "" });
-      } catch {}
-      finally {
+      } catch {
+      } finally {
         await chrome.action.setPopup({ popup: "" });
       }
     } else if (clickCount === 2) {
@@ -39,3 +39,20 @@ chrome.action.onClicked.addListener(() => {
     clickCount = 0;
   }, DOUBLE_CLICK_THRESHOLD);
 });
+
+const checkUpdate = async () => {
+  console.log("checkUpdate");
+  const manifest = await (
+    await fetch("https://marking.xna00.top/manifest.json", {
+      cache: "no-cache",
+    })
+  ).json();
+  console.log(manifest);
+  if (manifest.version !== chrome.runtime.getVersion()) {
+    await chrome.action.setTitle({
+      title: `有新版本${manifest.version}`,
+    });
+  }
+};
+
+chrome.tabs.onCreated.addListener(checkUpdate);
