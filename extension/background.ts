@@ -63,7 +63,7 @@ chrome.action.onClicked.addListener(() => {
   setTimeout(async () => {
     if (clickCount === 1) {
       try {
-        await chrome.action.setPopup({ popup: "popup/index.html" });
+        await chrome.action.setPopup({ popup: "popup.html" });
         await chrome.action.openPopup();
         await chrome.action.setPopup({ popup: "" });
       } catch {
@@ -71,7 +71,7 @@ chrome.action.onClicked.addListener(() => {
         await chrome.action.setPopup({ popup: "" });
       }
     } else if (clickCount === 2) {
-      const extensionUrl = chrome.runtime.getURL("popup/index.html");
+      const extensionUrl = chrome.runtime.getURL("popup.html");
       chrome.tabs.create({ url: extensionUrl });
     }
     clickCount = 0;

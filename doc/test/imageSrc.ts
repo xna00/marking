@@ -1,9 +1,7 @@
+const imgs = import.meta.glob("./images/*.png", {
+  eager: true,
+});
+console.log(imgs);
 export const imageSrc = [
-  "./images/image1.png",
-  "./images/image2.png",
-  "./images/image3.png",
-  "./images/image4.png",
-  "./images/image5.png",
-  "./images/image6.png",
-  "./images/image7.png",
+  ...Object.values(imgs).map((img) => (img as { default: string }).default),
 ];

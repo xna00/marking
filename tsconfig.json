@@ -12,7 +12,7 @@
     "declaration": false,
     "declarationMap": false,
     "sourceMap": false,
-    "types": ["chrome", "wicg-file-system-access"],
+    "types": ["chrome", "wicg-file-system-access", "vite/client"],
     "verbatimModuleSyntax": true,
     "noEmit": true
   },
