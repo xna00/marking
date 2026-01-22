@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { build } from "vite";
 // @ts-ignore
 import fs from "fs";
