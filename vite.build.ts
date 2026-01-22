@@ -4,7 +4,7 @@ import { build } from "vite";
 import fs from "fs";
 // @ts-ignore
 import process from "process";
-import manifest from "./extension/manifest.json";
+import manifest from "./extension/manifest.json" with { type: "json" };
 
 process.chdir("extension");
 
