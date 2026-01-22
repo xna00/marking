@@ -1,7 +1,7 @@
-import { recognizeImage, parseAIResult, defaultAISettings } from "./ai.js";
-import { blobToDataUrl, scaleImage } from "./image.js";
-import { modelNames } from "./models.js";
-import "./criteriaTeable.js";
+import { recognizeImage, parseAIResult, defaultAISettings } from "../ai.js";
+import { blobToDataUrl, scaleImage } from "../image.js";
+import { modelNames } from "../models.js";
+import "../criteriaTeable.js";
 
 console.log("Marking extension popup loaded");
 

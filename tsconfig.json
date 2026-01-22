@@ -13,7 +13,8 @@
     "declarationMap": false,
     "sourceMap": false,
     "types": ["chrome", "wicg-file-system-access"],
-    "verbatimModuleSyntax": true
+    "verbatimModuleSyntax": true,
+    "noEmit": true
   },
   "include": [
     "extension/**/*",
