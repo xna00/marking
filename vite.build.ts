@@ -4,6 +4,7 @@ import { build } from "vite";
 import fs from "fs";
 // @ts-ignore
 import process from "process";
+import manifest from "./extension/manifest.json";
 
 process.chdir("extension");
 
@@ -82,3 +83,14 @@ await build({
     },
   },
 });
+
+fs.writeFileSync(
+  "../dist/doc/update.json",
+  JSON.stringify(
+    {
+      version: manifest.version,
+    },
+    null,
+    2
+  )
+);
