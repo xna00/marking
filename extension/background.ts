@@ -1,7 +1,45 @@
 console.log("Marking extension background script loaded");
 import "./logRequest.js";
 
-// 监听内容脚本发送的截图请求
+// 使用Canvas API手动绘制SVG图标并设置为扩展图标
+async function setSvgIcon(backgroundColor = "#4CAF50") {
+  try {
+    const canvas = new OffscreenCanvas(128, 128);
+    const ctx = canvas.getContext("2d");
+
+    if (!ctx) {
+      throw new Error("Failed to get canvas context");
+    }
+
+    ctx.fillStyle = backgroundColor;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.strokeStyle = "white";
+    ctx.lineWidth = 16;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    ctx.beginPath();
+    ctx.moveTo(32, 32);
+    ctx.lineTo(96, 96);
+    ctx.moveTo(96, 96);
+    ctx.lineTo(96, 64);
+    ctx.moveTo(96, 96);
+    ctx.lineTo(64, 96);
+    ctx.stroke();
+
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+    await chrome.action.setIcon({
+      imageData: imageData,
+    });
+
+    console.log("SVG icon set successfully using Canvas API");
+  } catch (error) {
+    console.error("Error setting SVG icon:", error);
+  }
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "reloadExtension") {
     chrome.runtime.reload();
@@ -43,7 +81,7 @@ chrome.action.onClicked.addListener(() => {
 const checkUpdate = async () => {
   console.log("checkUpdate");
   const manifest = await (
-    await fetch("https://marking.xna00.top/manifest.json", {
+    await fetch("https://marking.xna00.top/update.json", {
       cache: "no-cache",
     })
   ).json();
@@ -52,6 +90,7 @@ const checkUpdate = async () => {
     await chrome.action.setTitle({
       title: `有新版本${manifest.version}`,
     });
+    await setSvgIcon("red");
   }
 };
 
