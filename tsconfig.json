@@ -14,7 +14,8 @@
     "sourceMap": false,
     "types": ["chrome", "wicg-file-system-access", "vite/client"],
     "verbatimModuleSyntax": true,
-    "noEmit": true
+    "noEmit": true,
+    "jsx": "react-jsx"
   },
   "include": [
     "extension/**/*",

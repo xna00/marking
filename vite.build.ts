@@ -14,6 +14,7 @@ await build({
     minify: false,
     modulePreload: false,
     assetsDir: ".",
+
     rollupOptions: {
       input: {
         popup: "popup.html",
@@ -21,6 +22,9 @@ await build({
       },
       output: {
         entryFileNames: "[name].js",
+        manualChunks: {
+          vendor: ["react", "react-dom/client"],
+        },
       },
     },
   },
