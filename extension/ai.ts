@@ -97,6 +97,7 @@ export async function markByAI2(
   }
 ) {
   const fn = async () => {
+    // https://www.volcengine.com/docs/82379/1494384?lang=zh
     const response = await fetch(doubaoUrl, {
       method: "POST",
       headers: {
@@ -106,6 +107,7 @@ export async function markByAI2(
       body: JSON.stringify({
         model: aiSettings.model,
         thinking: { type: "disabled" },
+        max_completion_tokens: 200,
         messages: [
           {
             role: "system",
@@ -165,7 +167,6 @@ export async function recognizeImage(imageUrl: string) {
   const apiKey = (await chrome.storage.local.get([storageKeys.API_KEY]))[
     storageKeys.API_KEY
   ] as string;
-  // TODO: fix this !
   return markByAI2(imageUrl, {
     model: settings.model,
     prompt: settings.prompt,
