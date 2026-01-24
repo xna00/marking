@@ -95,14 +95,3 @@ await build({
     },
   },
 });
-
-fs.writeFileSync(
-  "../dist/doc/update.json",
-  JSON.stringify(
-    {
-      version: manifest.version,
-    },
-    null,
-    2
-  )
-);

@@ -5,7 +5,7 @@
   "main": "background.js",
   "type": "module",
   "scripts": {
-    "build": "rm dist/**/*.{js,css} ; ./scripts/vite.build.ts && zip -r dist/doc/extension.zip dist/extension",
+    "build": "rm dist/**/*.{js,css} ; ./scripts/vite.build.ts && zip -r dist/doc/extension.zip dist/extension && ./scripts/setUpdateUrl.ts",
     "watch": "npm-watch",
     "cp": "./scripts/copyfiles.sh",
     "add-hash": "scripts/add-hash.ts",
