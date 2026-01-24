@@ -1,5 +1,6 @@
 import { repairJson } from "./lib.js";
-import { getModelInfo, type ModelName } from "./models.js";
+import { doubaoUrl, getModelInfo, type ModelName } from "./models.js";
+import { storageKeys } from "./constants.js";
 
 export type AISettings = {
   model: ModelName;
@@ -14,7 +15,7 @@ export interface APIKeys {
 }
 
 export const defaultAISettings: AISettings = {
-  model: "doubao#doubao-seed-1-6-lite-251015",
+  model: "doubao-seed-1-6-lite-251015",
   prompt: `
 你是一名化学老师，正在批改试卷，你要批改的题有多个空。这是评分标准：
 {{评分标准}}
@@ -26,25 +27,49 @@ export const defaultAISettings: AISettings = {
 `.trim(),
 };
 
-const getCurrentSettings = async (): Promise<AISettings> => {
-  const result = await chrome.storage.local.get([
-    "aiModel",
-    "aiPrompt",
-    "criteria",
-    "criteriaHeader",
-  ]);
-  const model = (result.aiModel as ModelName) || defaultAISettings.model;
-  const prompt = (result.aiPrompt as string) || defaultAISettings.prompt;
-  const criteria = result.criteria as string[][];
-  const criteriaHeader = result.criteriaHeader as string[];
+export const makeCriteriaMDTable = ({
+  criteriaHeader,
+  criteriaRules,
+}: {
+  criteriaHeader: string[];
+  criteriaRules: string[][];
+}) => {
   const mdTable = `
 ${["序号", ...criteriaHeader].join("|")}
 -|${criteriaHeader.map(() => "-").join("|")}
-${criteria.map((row, index) => `${index + 1}|${row.join("|")}`).join("\n")}
+${criteriaRules.map((row, index) => `${index + 1}|${row.join("|")}`).join("\n")}
 `.trim();
+
+  return mdTable;
+};
+
+export const fillCriteriaPlaceholder = (
+  prompt: string,
+  criteriaMDTable: string
+) => {
+  return prompt.replace("{{评分标准}}", criteriaMDTable);
+};
+
+const getCurrentSettings = async (): Promise<AISettings> => {
+  const result = await chrome.storage.local.get([
+    storageKeys.AI_MODEL as string,
+    storageKeys.AI_PROMPT as string,
+    storageKeys.CRITERIA_RULES as string,
+    storageKeys.CRITERIA_HEADER as string,
+  ]);
+  const model =
+    (result[storageKeys.AI_MODEL] as ModelName) || defaultAISettings.model;
+  const prompt =
+    (result[storageKeys.AI_PROMPT] as string) || defaultAISettings.prompt;
+  const criteria = result[storageKeys.CRITERIA_RULES] as string[][];
+  const criteriaHeader = result[storageKeys.CRITERIA_HEADER] as string[];
+  const mdTable = makeCriteriaMDTable({
+    criteriaHeader,
+    criteriaRules: criteria,
+  });
   const ret = {
     model,
-    prompt: prompt.replace("{{评分标准}}", mdTable),
+    prompt: fillCriteriaPlaceholder(prompt, mdTable),
   };
   console.log(ret);
   return ret;
@@ -62,27 +87,24 @@ const tryManyTimes = async <T>(fn: () => Promise<T>, times = 3) => {
   }
   throw new Error(`尝试${times}次后失败: ${errors.join(", ")}`);
 };
-export async function markByAI(
+
+export async function markByAI2(
   dataUrl: string,
-  aiSettings: AISettings,
-  apiKeys: APIKeys
+  aiSettings: {
+    model: ModelName;
+    prompt: string;
+    apiKey: string;
+  }
 ) {
-  // 从存储中获取AI设置
-  const modelName = aiSettings.model;
-  const prompt = aiSettings.prompt;
-
-  const selectedModel = getModelInfo(modelName, apiKeys);
-
-  // console.log(selectedModel);
   const fn = async () => {
-    const response = await fetch(selectedModel.url, {
+    const response = await fetch(doubaoUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${selectedModel.key}`,
+        Authorization: `Bearer ${aiSettings.apiKey}`,
       },
       body: JSON.stringify({
-        model: selectedModel.model.split("#")[1],
+        model: aiSettings.model,
         thinking: { type: "disabled" },
         messages: [
           {
@@ -90,7 +112,7 @@ export async function markByAI(
             content: [
               {
                 type: "text",
-                text: prompt,
+                text: aiSettings.prompt,
               },
             ],
           },
@@ -141,9 +163,14 @@ export async function recognizeImage(imageUrl: string) {
   const settings = await getCurrentSettings();
   // 获取API Keys
   const apiKeys = await new Promise<APIKeys>((resolve) => {
-    chrome.storage.local.get(["apiKeys"], (result) => {
-      resolve((result.apiKeys as APIKeys) || {});
+    chrome.storage.local.get([storageKeys.API_KEY as string], (result) => {
+      resolve((result[storageKeys.API_KEY] as APIKeys) || {});
     });
   });
-  return markByAI(imageUrl, settings, apiKeys);
+  // TODO: fix this !
+  return markByAI2(imageUrl, {
+    model: settings.model,
+    prompt: settings.prompt,
+    apiKey: apiKeys.doubaoKey!,
+  });
 }

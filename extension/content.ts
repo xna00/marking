@@ -1,3 +1,5 @@
+import { storageKeys } from './constants';
+
 function parseAIResult2(aiResult: any): string {
   return aiResult.choices[0].message.content;
 }
@@ -52,12 +54,13 @@ let currentElement: HTMLElement | null = null;
 let startX = 0;
 let startY = 0;
 let initialX = 0;
+
 let initialY = 0;
 
 // 存储div位置的键名
-const POSITION_STORAGE_KEY = "div_positions";
+const POSITION_STORAGE_KEY = storageKeys.DIV_POSITIONS as string;
 // 总分存储键名
-const TOTAL_SCORE_KEY = "total_score";
+const TOTAL_SCORE_KEY = storageKeys.TOTAL_SCORE as string;
 
 // 获取存储的位置数据
 const getStoredPositions = (): Record<

@@ -7,16 +7,16 @@ export type Model = {
 };
 
 // 默认URL配置，API Key将从存储中获取
-const doubaoUrl = "https://ark.cn-beijing.volces.com/api/v3/chat/completions";
+export const doubaoUrl = "https://ark.cn-beijing.volces.com/api/v3/chat/completions";
 const glmUrl = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
 const hunyuanUrl = "https://api.hunyuan.cloud.tencent.com/v1/chat/completions";
 const qwenUrl =
   "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
 
 const doubaoModels = [
-  "doubao#doubao-seed-1-6-lite-251015",
-  "doubao#doubao-seed-1-8-251228",
-  "doubao#doubao-seed-1-6-flash-250828",
+  "doubao-seed-1-6-lite-251015",
+  "doubao-seed-1-8-251228",
+  "doubao-seed-1-6-flash-250828",
 ] as const;
 const glmModels = ["glm#glm-4.6v-flash"] as const;
 const hunyuanModels = ["hunyuan#hunyuan-lite"] as const;

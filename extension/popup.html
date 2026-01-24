@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
   <head>
     <meta charset="UTF-8" />
@@ -42,7 +42,8 @@
       }
       select,
       textarea,
-      button {
+      button,
+      input {
         width: 100%;
         margin-bottom: 10px;
         padding: 8px;
@@ -117,106 +118,6 @@
     </style>
   </head>
   <body>
-    <label for="doubaoKeyInput">API Key</label>
-    <input
-      type="text"
-      id="doubaoKeyInput"
-      placeholder="Enter your Doubao API Key"
-      style="
-        width: 100%;
-        margin-bottom: 10px;
-        padding: 8px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        box-sizing: border-box;
-      "
-    />
-
-    <label for="modelSelect">选择模型</label>
-    <select id="modelSelect"></select>
-
-    <label for="promptTextarea"
-      >系统提示词
-      <button popovertarget="previewPopover" style="width: auto">预览</button>
-      <div popover="auto" id="previewPopover" style="margin: auto;"></div>
-      <button style="width: auto" id="resetPrompt">重置</button>
-    </label>
-    <textarea id="promptTextarea"></textarea>
-    <label>评分标准</label>
-    <table id="criteriaTable">
-      <thead>
-        <tr id="tableHeadRow"></tr>
-      </thead>
-      <tbody id="tableBody"></tbody>
-    </table>
-    <div>
-      <label for="img" style="display: block">
-        答题卡图片<span
-          id="imageInfo"
-          style="font-size: 0.8em; color: gray"
-        ></span>
-        <button
-          id="syncButton"
-          style="
-            width: auto;
-            padding: 2px 8px;
-            font-size: 0.8em;
-            margin-left: 10px;
-          "
-        >
-          同步
-        </button>
-        <button
-          id="pasteButton"
-          style="
-            width: auto;
-            padding: 2px 8px;
-            font-size: 0.8em;
-            margin-left: 10px;
-          "
-        >
-          粘贴
-        </button>
-        <!-- 前后切换按钮放在label里 -->
-        <button
-          id="prevImage"
-          style="
-            width: auto;
-            padding: 2px 8px;
-            font-size: 0.8em;
-            margin-left: 5px;
-          "
-        >
-          ←
-        </button>
-        <span
-          id="imageHistoryInfo"
-          style="
-            text-align: center;
-            font-size: 0.8em;
-            color: gray;
-            margin-top: 5px;
-          "
-        ></span>
-        <button
-          id="nextImage"
-          style="
-            width: auto;
-            padding: 2px 8px;
-            font-size: 0.8em;
-            margin-left: 5px;
-          "
-        >
-          →
-        </button>
-      </label>
-      <div style="width: 100%; margin-top: 10px">
-        <img id="cardImage" width="100%" />
-      </div>
-    </div>
-    <div id="result" style="min-height: 100px; overflow: auto"></div>
-    <button id="markButton">评分</button>
-    
     <div id="app"></div>
     <script src="popup/index.tsx" type="module"></script>
   </body>

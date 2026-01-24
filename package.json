@@ -5,7 +5,7 @@
   "main": "background.js",
   "type": "module",
   "scripts": {
-    "build": "./vite.build.ts && zip -r dist/doc/extension.zip dist/extension",
+    "build": "rm dist/**/*.{js,css} ; ./scripts/vite.build.ts && zip -r dist/doc/extension.zip dist/extension",
     "watch": "npm-watch",
     "cp": "./scripts/copyfiles.sh",
     "add-hash": "scripts/add-hash.ts",
@@ -19,7 +19,7 @@
         "extension",
         "doc"
       ],
-      "extensions": "js,ts,html,png,json",
+      "extensions": "js,ts,tsx,html,png,json",
       "quiet": false
     }
   },
@@ -27,19 +27,21 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@tailwindcss/vite": "^4.1.18",
     "@types/chrome": "^0.1.32",
     "@types/react-dom": "^19.2.3",
+    "@types/uzip": "^0.20201231.2",
     "@types/wicg-file-system-access": "^2023.10.7",
+    "@vitejs/plugin-react": "^5.1.2",
+    "babel-plugin-react-compiler": "^1.0.0",
     "dirty-json": "^0.9.2",
     "esbuild": "^0.27.2",
     "jsonrepair": "^3.13.1",
     "npm-watch": "^0.13.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
+    "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3",
     "vite": "^7.3.1"
-  },
-  "dependencies": {
-    "@types/uzip": "^0.20201231.2"
   }
 }

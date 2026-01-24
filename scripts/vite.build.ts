@@ -4,12 +4,24 @@ import { build } from "vite";
 import fs from "fs";
 // @ts-ignore
 import process from "process";
-import manifest from "./extension/manifest.json" with { type: "json" };
+import manifest from "../extension/manifest.json" with { type: "json" };
+import tailwindcss from "@tailwindcss/vite"
+import react from "@vitejs/plugin-react";
 
 process.chdir("extension");
 
 await build({
+  plugins: [tailwindcss({}), 
+  //   react(
+  //   {
+  //     babel: {
+  //       plugins: ['babel-plugin-react-compiler']
+  //     }
+  //   }
+  // )
+],
   base: "./",
+  mode: "development",
   build: {
     outDir: "../dist/extension",
     minify: false,
@@ -62,8 +74,6 @@ await build({
     },
   },
 });
-
-fs.copyFileSync("manifest.json", "../dist/extension/manifest.json");
 
 process.chdir("../doc");
 
