@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { storageKeys } from "../constants";
+import type { InputRef } from ".";
 
 type CriteriaTableCellSize = {
   colsWidth: {
@@ -37,10 +38,12 @@ export const CriteriaTable = ({
   criteriaHeader,
   criteriaRules,
   setCriteriaRules,
+  setInputRef,
 }: {
   criteriaHeader: string[];
   criteriaRules: string[][];
   setCriteriaRules: (rules: string[][]) => void;
+  setInputRef: (ref: InputRef) => void;
 }) => {
   const resizeObserver = new ResizeObserver(
     debounce((entries: ResizeObserverEntry[]) => {
@@ -137,6 +140,16 @@ export const CriteriaTable = ({
                       const newRules = [...criteriaRules];
                       newRules[i][j] = e.target.value;
                       setCriteriaRules(newRules);
+                    }}
+                    onFocus={(e) => {
+                      setInputRef({
+                        e: e.target,
+                        setValue: (value) => {
+                          const newRules = [...criteriaRules];
+                          newRules[i][j] = value;
+                          setCriteriaRules(newRules);
+                        },
+                      });
                     }}
                   ></textarea>
                 </td>

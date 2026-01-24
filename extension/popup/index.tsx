@@ -15,7 +15,12 @@ import { Suspense, use, useEffect, useRef, useState } from "react";
 import { CriteriaTable } from "./CriteriaTable.js";
 import { defaultImageUrl } from "./imageUrl.js";
 import { Banner } from "./Banner.js";
+import { specialChars } from "./specialChars.js";
 
+export type InputRef = {
+  e: HTMLTextAreaElement | HTMLInputElement;
+  setValue: (value: string) => void;
+};
 const syncImageSrc = async () => {
   const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
   if (tabs[0]) {
@@ -89,6 +94,12 @@ const App = () => {
     msg: "",
   });
 
+  const inputRef = useRef<InputRef>(null);
+
+  const setInputRef = (o: InputRef) => {
+    inputRef.current = o;
+  };
+
   useEffect(() => {
     const control = new AbortController();
     document.addEventListener(
@@ -141,17 +152,15 @@ const App = () => {
             <div
               popover="auto"
               id="previewPopover"
-              className="m-auto p-4 border-2"
+              className="m-auto p-4 border-2 whitespace-pre-wrap"
             >
-              <pre>
-                {fillCriteriaPlaceholder(
-                  prompt,
-                  makeCriteriaMDTable({
-                    criteriaHeader,
-                    criteriaRules,
-                  })
-                )}
-              </pre>
+              {fillCriteriaPlaceholder(
+                prompt,
+                makeCriteriaMDTable({
+                  criteriaHeader,
+                  criteriaRules,
+                })
+              )}
             </div>
             <button
               id="resetPrompt"
@@ -165,14 +174,77 @@ const App = () => {
         <textarea
           id="promptTextarea"
           value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
+          onFocus={(e) => {
+            setInputRef({
+              e: e.target,
+              setValue: (value) => {
+                setPrompt(value);
+              },
+            });
+          }}
+          onChange={(e) => {
+            setPrompt(e.target.value);
+          }}
         ></textarea>
         <label>评分标准</label>
         <CriteriaTable
           criteriaHeader={criteriaHeader}
           criteriaRules={criteriaRules}
           setCriteriaRules={setCriteriaRules}
+          setInputRef={setInputRef}
         ></CriteriaTable>
+        <div className="fixed right-0 top-2/3">
+          <button
+            popoverTarget="specialKeyboard"
+            className="[anchor-name:--specialKeyboard-button] p-1"
+          >
+            特殊
+            <br />
+            键盘
+          </button>
+          <div
+            popover="manual"
+            id="specialKeyboard"
+            className="[position-anchor:--specialKeyboard-button] ml-auto top-[anchor(top)] right-[anchor(left)] border"
+          >
+            <div
+              className="grid p-2 gap-2"
+              style={{
+                gridTemplateColumns: "1fr ".repeat(specialChars[0].length),
+              }}
+            >
+              {specialChars.flat().map((c) => (
+                <div
+                  key={c}
+                  className="border rounded-sm w-5 h-5 p-0.5 cursor-pointer"
+                  onClick={() => {
+                    if (!inputRef.current) {
+                      return;
+                    }
+                    const textarea = inputRef.current.e;
+                    const currentValue = textarea.value;
+                    const cursorPosition =
+                      textarea.selectionStart ?? currentValue.length;
+                    const newValue =
+                      currentValue.slice(0, cursorPosition) +
+                      c +
+                      currentValue.slice(cursorPosition);
+                    inputRef.current.setValue(newValue);
+                    setTimeout(() => {
+                      textarea.setSelectionRange(
+                        cursorPosition + c.length,
+                        cursorPosition + c.length
+                      );
+                      textarea.focus();
+                    }, 0);
+                  }}
+                >
+                  {c}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
         <div>
           <label></label>
           <div className="inline-block">
@@ -211,7 +283,7 @@ const App = () => {
           </div>
           <div>
             <img
-              className="h-70"
+              className="max-h-70"
               src={imageUrl}
               onLoad={(e) => {
                 const img = e.target as HTMLImageElement;
