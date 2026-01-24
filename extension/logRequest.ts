@@ -30,7 +30,7 @@ const debuggerEnabledUrls = [
 ];
 const logUrls = [
   "http://127.0.0.1:8080/dist/doc/test/images/",
-  "https://marking.xna00.top/test/images/",
+  "https://marking.xna00.top/image",
   "https://data.wylkyj.com/PaperScan/",
   "https://data.wylkyj.com/AnswerSheet/",
 ];
@@ -104,7 +104,10 @@ chrome.debugger.onEvent.addListener(async (source, method, rawParams) => {
   if (method === "Network.responseReceived") {
     const responseParams = params as NetworkResponseReceivedParams;
     // console.log("Response received:", params);
-    if (logUrls.some((url) => responseParams.response.url.includes(url))) {
+    if (
+      responseParams.response.mimeType.startsWith("image/") &&
+      logUrls.some((url) => responseParams.response.url.includes(url))
+    ) {
       requestIdResponseMap.set(responseParams.requestId, responseParams);
     }
   } else if (method === "Network.loadingFinished") {
@@ -163,5 +166,5 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "getResponse") {
     const dataUrl = urlResponseMap.get(request.url);
     sendResponse({ dataUrl });
-  } 
-})
+  }
+});

@@ -6,12 +6,19 @@ import { checkUpdate } from "./update.js";
 
 // 使用Canvas API手动绘制SVG图标并设置为扩展图标
 
-chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
+/**
+ * async listener, return value as response to sender
+ * sync listener, return true to indicate you wish to send a response asynchronously (this will keep the message channel open to the other end until sendResponse is called)
+ */
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "reloadExtensionAfterUpgrade") {
-    await chrome.storage.local.set({
-      [storageKeys.UPDATE_INFO]: null,
-    });
-    chrome.runtime.reload();
+    chrome.storage.local
+      .set({
+        [storageKeys.UPDATE_INFO]: null,
+      })
+      .then(() => {
+        chrome.runtime.reload();
+      });
   } else if (message.action === "getAIResult") {
     getAIResultHandler(message, sender, sendResponse);
   } else if (message.action === "hello") {

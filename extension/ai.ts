@@ -162,15 +162,13 @@ export function parseAIResult(aiResult: any): string {
 export async function recognizeImage(imageUrl: string) {
   const settings = await getCurrentSettings();
   // 获取API Keys
-  const apiKeys = await new Promise<APIKeys>((resolve) => {
-    chrome.storage.local.get([storageKeys.API_KEY as string], (result) => {
-      resolve((result[storageKeys.API_KEY] as APIKeys) || {});
-    });
-  });
+  const apiKey = (await chrome.storage.local.get([storageKeys.API_KEY]))[
+    storageKeys.API_KEY
+  ] as string;
   // TODO: fix this !
   return markByAI2(imageUrl, {
     model: settings.model,
     prompt: settings.prompt,
-    apiKey: apiKeys.doubaoKey!,
+    apiKey: apiKey,
   });
 }
