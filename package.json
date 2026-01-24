@@ -19,7 +19,7 @@
         "extension",
         "doc"
       ],
-      "extensions": "js,ts,tsx,html,png,json",
+      "extensions": "js,ts,tsx,css,html,png,json",
       "quiet": false
     }
   },

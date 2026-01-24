@@ -9,9 +9,7 @@ import {
 import { blobToDataUrl, scaleImage } from "../image.js";
 import { modelNames } from "../models.js";
 import { storageKeys } from "../constants.js";
-// import "../criteriaTeable.js";
 import { createRoot } from "react-dom/client";
-import "./index.css";
 import { useStateWithChromeStorage } from "./hooks/useStateWithStorage.js";
 import { Suspense, use, useEffect, useRef, useState } from "react";
 import { CriteriaTable } from "./CriteriaTable.js";
@@ -131,16 +129,36 @@ const App = () => {
         ))}
       </select>
 
-      <label>
+      <div>
         系统提示词
-        <button popoverTarget="previewPopover" className="w-auto">
-          预览
-        </button>
-        <div popover="auto" id="previewPopover" className="m-auto"></div>
-        <button className="w-auto" id="resetPrompt">
-          重置
-        </button>
-      </label>
+        <div className="inline-flex gap-x-2">
+          <button popoverTarget="previewPopover" className="small-btn">
+            预览
+          </button>
+          <div
+            popover="auto"
+            id="previewPopover"
+            className="m-auto p-4 border-2"
+          >
+            <pre>
+              {fillCriteriaPlaceholder(
+                prompt,
+                makeCriteriaMDTable({
+                  criteriaHeader,
+                  criteriaRules,
+                })
+              )}
+            </pre>
+          </div>
+          <button
+            id="resetPrompt"
+            className="small-btn"
+            onClick={() => setPrompt(defaultAISettings.prompt)}
+          >
+            重置
+          </button>
+        </div>
+      </div>
       <textarea
         id="promptTextarea"
         value={prompt}
@@ -159,25 +177,34 @@ const App = () => {
           <span>
             {imageSize ? `(${imageSize.width}x${imageSize.height})` : ""}
           </span>
-          <button
-            onClick={() => {
-              syncImageSrc().then((dataUrl) => {
-                dataUrl && setImageUrl(dataUrl);
-              });
-            }}
-          >
-            同步
-          </button>
-          <button
-            onClick={() => {
-              pasteImageFromClipboard().then((dataUrl) => {
-                dataUrl && setImageUrl(dataUrl);
-              });
-            }}
-          >
-            粘贴
-          </button>
-          <button onClick={() => setImageUrl(defaultImageUrl)}>重置</button>
+          <div className="inline-flex gap-x-2">
+            <button
+              className="small-btn"
+              onClick={() => {
+                syncImageSrc().then((dataUrl) => {
+                  dataUrl && setImageUrl(dataUrl);
+                });
+              }}
+            >
+              同步
+            </button>
+            <button
+              className="small-btn"
+              onClick={() => {
+                pasteImageFromClipboard().then((dataUrl) => {
+                  dataUrl && setImageUrl(dataUrl);
+                });
+              }}
+            >
+              粘贴
+            </button>
+            <button
+              className="small-btn"
+              onClick={() => setImageUrl(defaultImageUrl)}
+            >
+              重置
+            </button>
+          </div>
         </div>
         <div>
           <img
@@ -197,6 +224,7 @@ const App = () => {
         {result.msg}
       </div>
       <button
+        className="w-full py-2"
         onClick={() => {
           markByAI2(imageUrl, {
             model: modelName,

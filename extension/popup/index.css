@@ -1,1 +1,80 @@
 @import "tailwindcss";
+
+body {
+  min-width: 400px;
+  padding: 10px;
+}
+label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  font-size: 14px;
+}
+select,
+textarea,
+input {
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+textarea#promptTextarea {
+  height: 150px;
+  resize: vertical;
+  font-family: monospace;
+  font-size: 12px;
+}
+button {
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  cursor: pointer;
+  border-radius: 4px;
+}
+button:hover {
+  background-color: #45a049;
+}
+table,
+th,
+td {
+  border: 1px solid black;
+}
+td {
+  overflow: auto;
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+  table-layout: fixed;
+}
+.small-btn {
+  font-size: 12px;
+  padding: 4px;
+  margin: 0;
+  display: inline-block;
+}
+th {
+  overflow: auto;
+}
+th:not(:last-child) {
+  resize: horizontal;
+}
+th:first-child {
+  resize: both;
+}
+td:first-child {
+  resize: vertical;
+  overflow: auto;
+}
+td textarea {
+  width: 100%;
+  height: 100%;
+  resize: none;
+  box-sizing: border-box;
+  margin: 0;
+}
+.criteria-cell {
+  /* height: 100%; */
+}
