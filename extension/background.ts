@@ -14,6 +14,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
   } else if (message.action === "hello") {
     sendResponse(`Hello ${sender.url}, I'm background script`);
   }
+  return true
 });
 
 let clickCount = 0;
