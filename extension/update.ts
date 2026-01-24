@@ -63,5 +63,10 @@ export const checkUpdate = async (): Promise<UpdateInfo | undefined> => {
     return {
       version: manifest.version,
     };
+  } else {
+    await setSvgIcon();
+    await chrome.storage.local.set({
+      [storageKeys.UPDATE_INFO]: undefined,
+    });
   }
 };

@@ -73,6 +73,9 @@ export const Banner = () => {
   };
   useEffect(() => {
     chrome.storage.local.get(storageKeys.UPDATE_INFO).then((res) => {
+      if (res[storageKeys.UPDATE_INFO]) {
+        fetchExtension();
+      }
       setUpdate(res[storageKeys.UPDATE_INFO] as UpdateInfo | undefined);
     });
   }, []);
@@ -86,6 +89,10 @@ export const Banner = () => {
       <button
         className="small-btn ml-4"
         onClick={() => {
+          if (update) {
+            updateExtension();
+            return;
+          }
           checkUpdate().then((res) => {
             if (res) {
               setUpdate(res);
