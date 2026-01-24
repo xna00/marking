@@ -75,6 +75,8 @@ await build({
   },
 });
 
+fs.copyFileSync("manifest.json", "../dist/extension/manifest.json");
+
 process.chdir("../doc");
 
 await build({
