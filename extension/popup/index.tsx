@@ -14,6 +14,7 @@ import { useStateWithChromeStorage } from "./hooks/useStateWithStorage.js";
 import { Suspense, use, useEffect, useRef, useState } from "react";
 import { CriteriaTable } from "./CriteriaTable.js";
 import { defaultImageUrl } from "./imageUrl.js";
+import { Banner } from "./Banner.js";
 
 const syncImageSrc = async () => {
   const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -107,6 +108,9 @@ const App = () => {
   }, []);
   return (
     <div>
+      <Suspense>
+        <Banner></Banner>
+      </Suspense>
       <label htmlFor="doubaoKeyInput">API Key</label>
       <input
         type="text"

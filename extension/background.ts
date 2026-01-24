@@ -1,4 +1,5 @@
 console.log("Marking extension background script loaded");
+import { storageKeys } from "./constants.js";
 import "./logRequest.js";
 
 // 使用Canvas API手动绘制SVG图标并设置为扩展图标
@@ -87,10 +88,15 @@ const checkUpdate = async () => {
   ).json();
   console.log(manifest);
   if (manifest.version !== chrome.runtime.getVersion()) {
+    await chrome.storage.local.set({
+      [storageKeys.UPDATE_INFO]: {
+        version: manifest.version,
+      },
+    });
+    await setSvgIcon("red");
     await chrome.action.setTitle({
       title: `有新版本${manifest.version}`,
     });
-    await setSvgIcon("red");
   }
 };
 

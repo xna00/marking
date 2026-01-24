@@ -1,4 +1,4 @@
-import { UZIP } from "./UZIP.js";
+import UZIP from "uzip";
 
 fetch("./extension.zip", { cache: "no-cache" });
 const downloadBtn = document.getElementById("download_btn")!;

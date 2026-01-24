@@ -38,7 +38,12 @@ export enum storageKeys {
   // localStorage 键（用于内容脚本）
   DIV_POSITIONS = "div_positions",
   TOTAL_SCORE = "total_score",
+
+
+  UPDATE_INFO = "updateInfo",
 }
+
+export const HOST = "https://marking.xna00.top";
 
 // 存储键的类型定义
 export type ChromeStorageKey = `${storageKeys}`;
