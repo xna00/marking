@@ -973,7 +973,14 @@ function requireUZIP() {
 }
 var UZIPExports = requireUZIP();
 const UZIP = /* @__PURE__ */ getDefaultExportFromCjs(UZIPExports);
-fetch("./extension.zip", { cache: "no-cache" });
+const fetchExtension = () => {
+  return fetch("./update.json?" + Date.now(), {
+    headers: {
+      "Cache-Control": "no-cache"
+    }
+  }).then((res) => res.json()).then((updateInfo) => fetch(updateInfo.extensionUrl));
+};
+fetchExtension();
 const downloadBtn = document.getElementById("download_btn");
 const updateBtn = document.getElementById("update_btn");
 const toast = document.getElementById("toast");
@@ -1010,9 +1017,7 @@ const saveFilesInDirectory = async (dirHandle, files) => {
   );
 };
 const saveExtensionFiles = async (dirHandle) => {
-  const buf = await (await fetch("./extension.zip", {
-    cache: "no-cache"
-  })).arrayBuffer();
+  const buf = await (await fetchExtension()).arrayBuffer();
   showToast("下载完成，正在保存文件...");
   const files = UZIP.parse(buf);
   console.log(files);
