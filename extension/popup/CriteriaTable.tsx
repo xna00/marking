@@ -104,6 +104,20 @@ export const CriteriaTable = ({
               }}
             >
               序号
+              <div
+                className="border rounded-full w-4 h-4 m-auto flex items-center justify-center cursor-pointer"
+                onClick={() => {
+                  const newRules = [...criteriaRules];
+                  newRules.splice(
+                    0,
+                    0,
+                    new Array(criteriaHeader.length).fill("")
+                  );
+                  setCriteriaRules(newRules);
+                }}
+              >
+                +
+              </div>
             </th>
             {criteriaHeader.map((head, index) => (
               <th
@@ -123,13 +137,38 @@ export const CriteriaTable = ({
           {criteriaRules.map((rule, i) => (
             <tr key={i}>
               <td
+                className="text-center"
                 ref={observe}
                 data-row={i + 1}
                 style={{
                   height: cellSize.rowsHeight[i + 1] ?? cellSize.rowsHeight[0],
                 }}
               >
+                <div
+                  className="border rounded-full w-4 h-4 m-auto flex items-center justify-center cursor-pointer"
+                  onClick={() => {
+                    const newRules = [...criteriaRules];
+                    newRules.splice(i, 1);
+                    setCriteriaRules(newRules);
+                  }}
+                >
+                  -
+                </div>
                 {i + 1}
+                <div
+                  className="border rounded-full w-4 h-4 m-auto flex items-center justify-center cursor-pointer"
+                  onClick={() => {
+                    const newRules = [...criteriaRules];
+                    newRules.splice(
+                      i + 1,
+                      0,
+                      new Array(criteriaHeader.length).fill("")
+                    );
+                    setCriteriaRules(newRules);
+                  }}
+                >
+                  +
+                </div>
               </td>
               {rule.map((item, j) => (
                 <td key={j} className="relative">
