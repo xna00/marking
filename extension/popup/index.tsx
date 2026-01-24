@@ -67,15 +67,15 @@ const App = () => {
   const [criteriaRules, setCriteriaRules] = useStateWithChromeStorage(
     storageKeys.CRITERIA_RULES,
     [
-      ["第一行左", "1", "500mL容量瓶(不写“500mL”0分，“容量瓶”写成“溶量瓶”0分)"],
-      ["第一行右", "2", "13.6"],
-      ["第二行", "1", "25"],
+      ["①左", "1", "500mL容量瓶(不写“500mL”0分，“容量瓶”写成“溶量瓶”0分)"],
+      ["①右", "2", "13.6"],
+      ["②", "1", "25"],
       [
-        "第三行",
+        "③",
         "2",
         "将浓硫酸沿烧杯内壁缓慢注入水中(给分点一),并用玻璃棒不断搅拌(给分点二)",
       ],
-      ["第四行", "2", "C"],
+      ["④", "2", "C"],
     ]
   );
   const [imageUrl, setImageUrl] = useStateWithChromeStorage(
