@@ -9,7 +9,7 @@ window.document.addEventListener("reloadExtension", async () => {
   }, 1000);
 });
 
-const updateBtn = document.getElementById("update_btn");
+const updateBtn = document.getElementById("updateBtn");
 
 const directoryId = "directoryId";
 
