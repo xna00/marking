@@ -1,4 +1,5 @@
 console.log("Marking extension background script loaded");
+import { getAIResultHandler } from "./aiHook.js";
 import { storageKeys } from "./constants.js";
 import "./logRequest.js";
 import { checkUpdate } from "./update.js";
@@ -11,10 +12,12 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
       [storageKeys.UPDATE_INFO]: null,
     });
     chrome.runtime.reload();
+  } else if (message.action === "getAIResult") {
+    getAIResultHandler(message, sender, sendResponse);
   } else if (message.action === "hello") {
     sendResponse(`Hello ${sender.url}, I'm background script`);
   }
-  return true
+  return true;
 });
 
 let clickCount = 0;

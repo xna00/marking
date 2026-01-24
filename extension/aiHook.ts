@@ -21,28 +21,29 @@ export async function aiHook(url: string, dataUrl: string) {
   });
 }
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === "getAIResult") {
-    // check if need delay
-    setTimeout(() => {
-      const pendingResult = urlResultMap.get(request.url);
-      console.log("getAIResult", request.url, pendingResult);
-      if (pendingResult) {
-        console.log("getAIResult found");
-        pendingResult.then(
-          (result) => {
-            sendResponse({ result });
-          },
-          (error) => {
-            console.error("Error fetching AI result:", error);
-            sendResponse({ error: String(error) });
-          }
-        );
-      } else {
-        console.log("getAIResult not found");
-        sendResponse({ error: "No result found" });
-      }
-    });
-  }
-  return true;
-});
+export const getAIResultHandler = (
+  request: any,
+  sender: chrome.runtime.MessageSender,
+  sendResponse: (response: any) => void
+) => {
+  // check if need delay
+  setTimeout(() => {
+    const pendingResult = urlResultMap.get(request.url);
+    console.log("getAIResult", request.url, pendingResult);
+    if (pendingResult) {
+      console.log("getAIResult found");
+      pendingResult.then(
+        (result) => {
+          sendResponse({ result });
+        },
+        (error) => {
+          console.error("Error fetching AI result:", error);
+          sendResponse({ error: String(error) });
+        }
+      );
+    } else {
+      console.log("getAIResult not found");
+      sendResponse({ error: "No result found" });
+    }
+  });
+};
