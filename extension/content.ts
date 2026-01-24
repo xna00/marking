@@ -1,4 +1,4 @@
-import { storageKeys } from './constants';
+import { storageKeys } from "./constants";
 
 function parseAIResult2(aiResult: any): string {
   return aiResult.choices[0].message.content;
@@ -89,7 +89,6 @@ const savePosition = (id: string, left: number, top: number): void => {
 
 // 总分相关变量
 let totalScore = 0;
-const totalScoreDiv = document.createElement("div");
 
 // 计算总分
 const calculateTotalScore = (res: [string, number, string][]): number => {
@@ -191,6 +190,15 @@ document.addEventListener("mouseup", () => {
   currentElement = null;
 });
 
+let scores: string[] = [];
+chrome.storage.local.get(storageKeys.CRITERIA_RULES).then((res) => {
+  const rules = res[storageKeys.CRITERIA_RULES] as [string, string][];
+  if (rules) {
+    scores = rules.map(([_, score]) => score);
+    console.log(scores);
+  }
+});
+
 const showAiResult = (result: string) => {
   try {
     const res = JSON.parse(result) as [string, number, string][];
@@ -216,7 +224,16 @@ const showAiResult = (result: string) => {
       div.style.border = "1px solid #ccc"; // 添加边框
       div.style.borderRadius = "4px"; // 添加圆角
       div.style.fontSize = "14px";
-      div.style.color = score === 0 ? "red" : "green";
+      let color = "";
+
+      if (score.toString() === "0") {
+        color = "red";
+      } else if (!scores[index] || score.toString() === scores[index]) {
+        color = "green";
+      } else {
+        color = "blue";
+      }
+      div.style.color = color;
 
       overlay.appendChild(div);
 
