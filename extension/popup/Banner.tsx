@@ -4,7 +4,7 @@ import UZIP from "uzip";
 import { checkUpdate, type UpdateInfo } from "../update";
 
 const fetchExtension = () => {
-  return fetch("./update.json?" + Date.now(), {
+  return fetch(new URL("/update.json?" + Date.now(), HOST), {
     headers: {
       "Cache-Control": "no-cache",
     },
