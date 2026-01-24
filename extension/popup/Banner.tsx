@@ -3,8 +3,15 @@ import { HOST, storageKeys } from "../constants";
 import UZIP from "uzip";
 import { checkUpdate, type UpdateInfo } from "../update";
 
-const fetchExtension = () =>
-  fetch(new URL("/extension.zip", HOST), { cache: "no-cache" });
+const fetchExtension = () => {
+  return fetch("./update.json", {
+    headers: {
+      "Cache-Control": "no-cache",
+    },
+  })
+    .then((res) => res.json())
+    .then((updateInfo) => fetch(updateInfo.extensionUrl));
+};
 
 const directoryId = "directoryId";
 

@@ -40,13 +40,16 @@ async function setSvgIcon(backgroundColor = "#4CAF50") {
 
 export type UpdateInfo = {
   version: string;
+  extensionUrl: string;
 };
 
 export const checkUpdate = async (): Promise<UpdateInfo | undefined> => {
   console.log("checkUpdate");
   const manifest = await (
     await fetch(new URL("/update.json", HOST), {
-      cache: "no-cache",
+      headers: {
+        "Cache-Control": "no-cache",
+      },
     })
   ).json();
   console.log(manifest);
@@ -62,6 +65,7 @@ export const checkUpdate = async (): Promise<UpdateInfo | undefined> => {
     });
     return {
       version: manifest.version,
+      extensionUrl: manifest.extensionUrl,
     };
   } else {
     await setSvgIcon();
