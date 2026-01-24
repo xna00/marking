@@ -11,7 +11,7 @@ type CriteriaTableCellSize = {
 };
 
 export let cellSize: CriteriaTableCellSize = ((
-  await chrome.storage.sync.get(storageKeys.CRITERIA_TABLE_CELL_SIZE)
+  await chrome.storage.local.get(storageKeys.CRITERIA_TABLE_CELL_SIZE)
 )[storageKeys.CRITERIA_TABLE_CELL_SIZE] as CriteriaTableCellSize) ?? {
   colsWidth: {
     0: 60,
@@ -68,7 +68,7 @@ export const CriteriaTable = ({
 
       cellSize = newCellSize;
 
-      chrome.storage.sync.set({
+      chrome.storage.local.set({
         [storageKeys.CRITERIA_TABLE_CELL_SIZE]: newCellSize,
       });
     })
