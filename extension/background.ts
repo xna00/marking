@@ -8,7 +8,7 @@ import { checkUpdate } from "./update.js";
 chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
   if (message.action === "reloadExtensionAfterUpgrade") {
     await chrome.storage.local.set({
-      [storageKeys.UPDATE_INFO]: undefined,
+      [storageKeys.UPDATE_INFO]: null,
     });
     chrome.runtime.reload();
   } else if (message.action === "hello") {

@@ -64,7 +64,7 @@ export const Banner = () => {
       console.log(dirHandle);
       await saveExtensionFiles(dirHandle);
       await chrome.storage.local.set({
-        [storageKeys.UPDATE_INFO]: undefined,
+        [storageKeys.UPDATE_INFO]: null,
       });
       chrome.runtime.reload();
     } catch (error) {
