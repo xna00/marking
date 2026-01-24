@@ -46,7 +46,7 @@ export type UpdateInfo = {
 export const checkUpdate = async (): Promise<UpdateInfo | undefined> => {
   console.log("checkUpdate");
   const manifest = await (
-    await fetch(new URL("/update.json", HOST), {
+    await fetch(new URL("/update.json?" + Date.now(), HOST), {
       headers: {
         "Cache-Control": "no-cache",
       },

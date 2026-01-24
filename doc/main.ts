@@ -1,7 +1,7 @@
 import UZIP from "uzip";
 
 const fetchExtension = () => {
-  return fetch("./update.json", {
+  return fetch("./update.json?" + Date.now(), {
     headers: {
       "Cache-Control": "no-cache",
     },
