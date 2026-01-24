@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "marking",
+  "name": "改卷仙人",
   "version": "1.15",
   "description": "A Chrome extension for marking and annotating web pages",
   "permissions": [
