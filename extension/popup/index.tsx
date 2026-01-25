@@ -243,6 +243,7 @@ const App = () => {
                 </div>
               ))}
             </div>
+            <a href="https://symboltown.com/zh/" target="_blank" className="text-blue-500 underline ml-2">更多符号</a>
           </div>
         </div>
         <div>
