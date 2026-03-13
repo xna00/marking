@@ -63,7 +63,10 @@ const App = () => {
     storageKeys.AI_PROMPT,
     defaultAISettings.prompt
   );
-  const criteriaHeader = ["位置", "分值", "评分标准"];
+  const [criteriaHeader] = useStateWithChromeStorage(
+    storageKeys.CRITERIA_HEADER,
+    ["位置", "分值", "评分标准"]
+  );
   const [criteriaRules, setCriteriaRules] = useStateWithChromeStorage(
     storageKeys.CRITERIA_RULES,
     [
@@ -302,17 +305,7 @@ const App = () => {
         <button
           className="w-full py-2"
           onClick={() => {
-            markByAI2(imageUrl, {
-              model: modelName,
-              prompt: fillCriteriaPlaceholder(
-                prompt,
-                makeCriteriaMDTable({
-                  criteriaHeader,
-                  criteriaRules,
-                })
-              ),
-              apiKey: apiKey,
-            }).then(
+            recognizeImage(imageUrl).then(
               (res) => {
                 setResult({
                   tag: "succeed",

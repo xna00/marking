@@ -14,8 +14,8 @@ const qwenUrl =
   "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
 
 const doubaoModels = [
-  "doubao-seed-1-6-lite-251015",
   "doubao-seed-1-8-251228",
+  "doubao-seed-1-6-lite-251015",
   "doubao-seed-1-6-flash-250828",
 ] as const;
 const glmModels = ["glm#glm-4.6v-flash"] as const;
