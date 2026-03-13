@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "改卷仙人",
-  "version": "1.22",
+  "version": "1.23",
   "description": "A Chrome extension for marking and annotating web pages",
   "permissions": [
     "activeTab",
