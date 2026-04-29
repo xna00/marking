@@ -53,7 +53,7 @@ const pasteImageFromClipboard = async () => {
 const App = () => {
   const [apiKey, setApiKey] = useStateWithChromeStorage(
     storageKeys.API_KEY,
-    ""
+    "t5y6u7"
   );
   const [modelName, setModelName] = useStateWithChromeStorage(
     storageKeys.AI_MODEL,
