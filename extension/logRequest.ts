@@ -26,7 +26,9 @@ const attachedTabs = new Map<number, boolean>();
 const debuggerEnabledUrls = [
   "http://127.0.0.1:8080/dist/doc/test/",
   "https://marking.xna00.top/test/",
-  "https://www.wylkyj.com/yuejuan/",
+  "https://www.wylkyj.com/",
+  "https://wylkyj.com/",
+
 ];
 const logUrls = [
   "http://127.0.0.1:8080/dist/doc/test/images/",

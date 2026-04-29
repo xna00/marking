@@ -40,9 +40,7 @@ const wyPageHandlers = {
   },
 };
 
-const { submit, getImageSrc, setTotalScore } = location.host.includes(
-  "www.wylkyj.com"
-)
+const { submit, getImageSrc, setTotalScore } = location.host.includes("wylkyj.com")
   ? wyPageHandlers
   : testPageHandlers;
 
