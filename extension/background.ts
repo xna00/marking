@@ -27,34 +27,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return true;
 });
 
-let clickCount = 0;
-let lastClickTime = 0;
-const DOUBLE_CLICK_THRESHOLD = 200; // 双击时间阈值（毫秒）
-
-chrome.action.onClicked.addListener(() => {
-  const currentTime = Date.now();
-  const timeDiff = currentTime - lastClickTime;
-
-  console.log("clickCount", clickCount, "timeDiff", timeDiff);
-  clickCount++;
-  lastClickTime = currentTime;
-
-  setTimeout(async () => {
-    if (clickCount === 1) {
-      try {
-        await chrome.action.setPopup({ popup: "popup.html" });
-        await chrome.action.openPopup();
-        await chrome.action.setPopup({ popup: "" });
-      } catch {
-      } finally {
-        await chrome.action.setPopup({ popup: "" });
-      }
-    } else if (clickCount === 2) {
-      const extensionUrl = chrome.runtime.getURL("popup.html");
-      chrome.tabs.create({ url: extensionUrl });
-    }
-    clickCount = 0;
-  }, DOUBLE_CLICK_THRESHOLD);
+chrome.action.onClicked.addListener((tab) => {
+  if (tab.windowId) {
+    chrome.sidePanel.open({ windowId: tab.windowId });
+  }
 });
 
 chrome.tabs.onCreated.addListener(checkUpdate);

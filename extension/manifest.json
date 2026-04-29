@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "改卷仙人",
-  "version": "1.26",
+  "version": "1.27",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtgjqLs/XO+y8MaMfMFZAQrEtR1qOPCwQhVFkybZZmjW92oRBEu27J2uRB3KzyTiVWqKP4gFAICZ3YPPDMys5P5u199zi9PeMoatvH7Jn6rVzXCM0nYFRrkEn2dZfY1NGQMUnIrQIErFSJk1CaKQay0uZ8k5xYSeUyB0luCyxNgZ+0M04KOrLy/ji7EppjrTlsaHMn2SImXJc0srQaCF8wmwg7E3U6nKrEisOqAAp+tlF9u0wvG2N541znCiwyu1BiTYvNwAIBdkrFlIcyTaajGFIlVe5j4ceArYYCwMgaqrDhNR2GBnPEyBm9/8UVf+/+GAcfFfgTmgTOu0mSFNGlQIDAQAB",
   "description": "A Chrome extension for marking and annotating web pages",
   "permissions": [
@@ -13,7 +13,8 @@
     "debugger",
     "management",
     "clipboardWrite",
-    "clipboardRead"
+    "clipboardRead",
+    "sidePanel"
   ],
   "host_permissions": ["<all_urls>"],
   "background": {
@@ -26,6 +27,9 @@
       "48": "images/icon.png",
       "128": "images/icon.png"
     }
+  },
+  "side_panel": {
+    "default_path": "popup.html"
   },
   "content_scripts": [
     {
