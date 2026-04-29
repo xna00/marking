@@ -12,7 +12,6 @@ const batPath = path.join(projectDir, "dist/doc/改卷仙人.bat");
 
 let ps1Content = fs.readFileSync(ps1Path, "utf-8");
 
-// Remove BOM if present
 if (ps1Content.charCodeAt(0) === 0xfeff) {
   ps1Content = ps1Content.slice(1);
 }
@@ -21,6 +20,8 @@ const encodedCommand = Buffer.from(ps1Content, "utf16le").toString("base64");
 
 const batContent = `@echo off
 chcp 65001 >nul
+set "MARKING_BAT_PATH=%~f0"
+set "MARKING_ARGS=%*"
 powershell.exe -NoProfile -ExecutionPolicy Bypass -EncodedCommand ${encodedCommand}
 `;
 
