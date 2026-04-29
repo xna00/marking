@@ -19,9 +19,16 @@ if ($env:MARKING_ARGS) {
 }
 
 $ErrorActionPreference = "Stop"
+
+trap {
+    Write-Host "`n错误: $_" -ForegroundColor Red
+    Write-Host "`n按回车键退出..."
+    Read-Host
+    exit 1
+}
 $AppDataDir = "$env:LOCALAPPDATA\MarkingMaster"
 $AppName = "改卷仙人"
-$BatFileName = "$AppName.bat"
+$BatFileName = "MarkingMaster.bat"
 $InstalledBatPath = Join-Path $AppDataDir $BatFileName
 
 function Install-App {
@@ -32,7 +39,7 @@ function Install-App {
     }
 
     $BatSource = $env:MARKING_BAT_PATH
-    if ($BatSource -and (Test-Path $BatSource)) {
+    if ($BatSource -and (Test-Path $BatSource) -and ($BatSource -ne $InstalledBatPath)) {
         Copy-Item -Path $BatSource -Destination $InstalledBatPath -Force
         Write-Host "已复制脚本到程序目录"
     }
@@ -245,6 +252,21 @@ Start-Process -FilePath $EdgePath -ArgumentList @(
 
 Write-Host "`n完成! Edge 应该已打开并加载扩展。"
 Write-Host "如果看不到扩展图标，请检查: chrome://extensions/"
+
+# 更新脚本本身
+if ($needDownload -and $info.setupUrls) {
+    foreach ($setupUrl in $info.setupUrls) {
+        try {
+            Write-Host "`n正在更新脚本: $setupUrl"
+            Invoke-WebRequest $setupUrl -OutFile $InstalledBatPath -UseBasicParsing
+            Write-Host "脚本更新成功"
+            break
+        }
+        catch {
+            Write-Host "脚本更新失败: $setupUrl"
+        }
+    }
+}
 
 Write-Host "`n5秒后自动关闭本窗口..."
 Start-Sleep -Seconds 5
