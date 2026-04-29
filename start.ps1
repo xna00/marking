@@ -97,6 +97,24 @@ if (-not (Test-Path $UserDataDir)) {
     New-Item -Path $UserDataDir -ItemType Directory -Force | Out-Null
 }
 
+# 只在需要更新时才关闭已运行的 Edge 进程
+if ($needDownload) {
+    $edgeProcesses = Get-Process -Name "msedge" -ErrorAction SilentlyContinue
+    if ($edgeProcesses) {
+        foreach ($proc in $edgeProcesses) {
+            try {
+                $cmdLine = (Get-CimInstance Win32_Process -Filter "ProcessId = $($proc.Id)").CommandLine
+                if ($cmdLine -and $cmdLine -like "*$UserDataDir*") {
+                    Write-Host "正在关闭已运行的 Edge 以加载更新..."
+                    Stop-Process -Id $proc.Id -Force
+                    Start-Sleep -Milliseconds 500
+                }
+            }
+            catch {}
+        }
+    }
+}
+
 Write-Host "`n正在启动 Edge..."
 Write-Host "扩展路径: $DestPath"
 Write-Host "用户数据目录: $UserDataDir"
