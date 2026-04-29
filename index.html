@@ -9,93 +9,40 @@
         color: red;
       }
     </style>
-    <script type="module" crossorigin src="./doc-DuVCU8rY.js"></script>
   </head>
   <body>
     <h1>改卷仙人使用说明</h1>
-    <p>改卷仙人是一个基于Chrome扩展的自动评分工具，用于批改学生的答题卡。</p>
-    <h2>安装Chrome/Edge</h2>
-
-    如果您没有安装Chrome或Edge浏览器，请先<a
-      href="https://www.google.cn/intl/zh-CN/chrome/"
-      target="_blank"
-      >下载</a
-    >并安装。
+    <p>改卷仙人是一个基于Edge扩展的自动评分工具，用于批改学生的答题卡。</p>
 
     <h2>安装改卷仙人</h2>
-    <h3>下载</h3>
-    <p>任意创建一个文件夹（记为<em>文件夹E</em>），用于保存改卷仙人扩展</p>
-    <p>点击下载按钮，选择<em>文件夹E</em>。</p>
-    <p>
-      <button id="download_btn">下载</button>
-    </p>
-    <h3>安装</h3>
-    <h4>在Edge浏览器中安装</h4>
     <ol>
-      <li>打开Edge浏览器</li>
-      <li>在地址栏中输入<code>edge://extensions/</code>，然后按Enter键。</li>
-      <li>启用“开发人员模式”</li>
       <li>
-        点击“加载解压缩的扩展”
-        <br />
-        <img src="./edge_extensions_page-CLhA-SGd.png" alt="" width="80%" />
+        <a id="download_link" href="./改卷仙人.bat">下载安装程序</a>
       </li>
-      <li>选择您保存改卷仙人扩展的<em>文件夹E</em></li>
+      <li>双击下载的文件，按提示完成安装</li>
       <li>
-        固定扩展程序
+        固定扩展程序（方便后续使用）
         <br />
         <img src="./edge_pin_extension-BK1BcVTl.png" alt="" width="80%" />
       </li>
     </ol>
-    <h4>在Chrome浏览器中安装</h4>
-    <ol>
-      <li>打开Chrome浏览器</li>
-      <li>
-        在地址栏中输入
-        <code>chrome://extensions/</code>，然后按Enter键。
-      </li>
-      <li>启用“开发者模式”</li>
-      <li>
-        点击“加载未打包的扩展程序”
-        <br />
-        <img src="./extensions_page-aTknvfrX.png" alt="" width="80%" />
-      </li>
-      <li>选择您保存Marking扩展的<em>文件夹E</em></li>
-      <li>
-        固定扩展程序
-        <br />
-        <img src="./pin_extension-47yO0DR4.png" alt="" width="80%" />
-      </li>
-    </ol>
 
-    <h2 id="update">更新</h2>
-    <p>点击更新按钮，选择下载时保存改卷仙人的<em>文件夹E</em></p>
-    <p><button id="update_btn">更新</button></p>
+    <h2>更新</h2>
+    <p>双击桌面快捷方式或开始菜单中的"改卷仙人"，程序会自动检查并更新到最新版本。</p>
 
     <h2>开始使用</h2>
     <p>单击或双击浏览器右上角的改卷仙人图标，开始使用。</p>
     <img src="./extension_icon-CYc4R3aT.png" alt="" width="80%">
     <p>在弹出的页面中输入 API key</p>
     <p>在表格中设置评分标准（表格单元格可拖动调整大小）</p>
-    <p>点击页面底部“评分”按钮测试配置是否正确</p>
+    <p>点击页面底部"评分"按钮测试配置是否正确</p>
 
     <h2>测试</h2>
     <p><a href="/test/" target="_blank">进入测试页</a></p>
 
-    <div
-      id="toast"
-      style="
-        position: fixed;
-        top: 20px;
-        left: 50%;
-        background: white;
-        border: 1px solid red;
-        border-radius: 8px;
-        color: red;
-        padding: 16px;
-        display: none;
-      "
-    ></div>
-
+    <script>
+      const link = document.getElementById('download_link');
+      link.href = link.href + '?t=' + Date.now();
+    </script>
   </body>
 </html>
