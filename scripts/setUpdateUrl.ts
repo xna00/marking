@@ -10,6 +10,11 @@ fs.copyFileSync(
   `dist/doc/extension_${manifest.version}.zip`
 );
 
+const timestamp = Date.now();
+
+const setupUrl = new URL(`改卷仙人.bat`, HOST);
+setupUrl.searchParams.set("t", String(timestamp));
+
 fs.writeFileSync(
   "dist/doc/update.json",
   JSON.stringify({
@@ -18,7 +23,7 @@ fs.writeFileSync(
       new URL(`extension_${manifest.version}.zip`, HOST).href,
     ],
     setupUrls: [
-      new URL(`改卷仙人.bat`, HOST).href,
+      setupUrl.href,
     ],
   })
 );
