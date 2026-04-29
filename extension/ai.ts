@@ -18,7 +18,7 @@ export interface APIKeys {
 export const defaultAISettings: AISettings = {
   model: "doubao-seed-1-8-251228",
   prompt: `
-你是一名化学老师，正在批改试卷，你要批改的题有多个空。这是评分标准：
+你是一名老师，正在批改试卷，你要批改的题有多个空。这是评分标准：
 {{评分标准}}
 
 给你发答题卡的图片，你需要做：

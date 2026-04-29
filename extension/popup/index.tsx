@@ -146,7 +146,7 @@ const App = () => {
           ))}
         </select>
 
-        <div>
+        <div style={{ display: 'none' }}>
           系统提示词
           <div className="inline-flex gap-x-2">
             <button popoverTarget="previewPopover" className="small-btn">
@@ -188,6 +188,7 @@ const App = () => {
           onChange={(e) => {
             setPrompt(e.target.value);
           }}
+          style={{ display: 'none' }}
         ></textarea>
         <label>评分标准</label>
         <CriteriaTable
