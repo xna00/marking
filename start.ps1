@@ -94,13 +94,31 @@ function Uninstall-App {
         Write-Host "已删除开始菜单"
     }
 
-    if (Test-Path $AppDataDir) {
-        Remove-Item $AppDataDir -Recurse -Force
-        Write-Host "已删除程序数据目录"
+    $edgeProcesses = Get-Process -Name "msedge" -ErrorAction SilentlyContinue
+    if ($edgeProcesses) {
+        foreach ($proc in $edgeProcesses) {
+            try {
+                $cmdLine = (Get-CimInstance Win32_Process -Filter "ProcessId = $($proc.Id)").CommandLine
+                if ($cmdLine -and $cmdLine -like "*$UserDataDir*") {
+                    Write-Host "正在关闭 Edge..."
+                    Stop-Process -Id $proc.Id -Force
+                }
+            }
+            catch {}
+        }
+        Start-Sleep -Milliseconds 500
     }
 
     Write-Host "`n卸载完成!"
-    Read-Host "按回车键退出"
+    
+    if (Test-Path $InstalledBatPath) {
+        Write-Host "正在清理..."
+        $tempBat = Join-Path $env:TEMP "cleanup.bat"
+        $batContent = "@echo off`r`ncd /d %TEMP%`r`ntimeout /t 2 /nobreak >nul`r`nrd /s /q `"$AppDataDir`"`r`ndel /f /q `"$tempBat`""
+        [System.IO.File]::WriteAllText($tempBat, $batContent, [System.Text.Encoding]::UTF8)
+        Start-Process cmd.exe -ArgumentList "/c `"$tempBat`"" -WindowStyle Hidden
+    }
+    
     exit 0
 }
 
