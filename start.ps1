@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$DestPath = "$env:LOCALAPPDATA\MarkingMaster\extension",
     [string[]]$UpdateUrls = @("https://marking.xna00.top/update.json", "https://marking.xna00.top/update.json"),
     [string]$EdgePath = "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
@@ -13,7 +13,9 @@ $info = $null
 foreach ($url in $UpdateUrls) {
     try {
         Write-Host "正在尝试: $url"
-        $info = Invoke-RestMethod $url -TimeoutSec 10
+        $ts = Get-Date -UFormat %s
+        $urlWithTs = $url + "?t=" + $ts
+        $info = Invoke-RestMethod $urlWithTs -TimeoutSec 10
         break
     }
     catch {
@@ -113,3 +115,4 @@ Write-Host "如果看不到扩展图标，请检查: chrome://extensions/"
 
 Write-Host "`n5秒后自动关闭..."
 Start-Sleep -Seconds 5
+

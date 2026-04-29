@@ -10,7 +10,12 @@ const projectDir = path.dirname(__dirname);
 const ps1Path = path.join(projectDir, "start.ps1");
 const batPath = path.join(projectDir, "dist/doc/start.bat");
 
-const ps1Content = fs.readFileSync(ps1Path, "utf-8");
+let ps1Content = fs.readFileSync(ps1Path, "utf-8");
+
+// Remove BOM if present
+if (ps1Content.charCodeAt(0) === 0xfeff) {
+  ps1Content = ps1Content.slice(1);
+}
 
 const encodedCommand = Buffer.from(ps1Content, "utf16le").toString("base64");
 
