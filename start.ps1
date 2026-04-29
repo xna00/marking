@@ -7,7 +7,7 @@
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "`n=== 阅卷仙人扩展启动器 ==="
+Write-Host "`n=== 改卷仙人扩展启动器 ==="
 
 $info = $null
 foreach ($url in $UpdateUrls) {
