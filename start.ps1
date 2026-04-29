@@ -98,6 +98,10 @@ function Uninstall-App {
         Write-Host "已删除开始菜单"
     }
 
+    $shellApp = New-Object -ComObject Shell.Application
+    $shellApp.NameSpace(0x14).Self.InvokeVerb("Refresh")
+    [System.Runtime.Interopservices.Marshal]::ReleaseComObject($shellApp) | Out-Null
+
     $edgeProcesses = Get-Process -Name "msedge" -ErrorAction SilentlyContinue
     if ($edgeProcesses) {
         foreach ($proc in $edgeProcesses) {
