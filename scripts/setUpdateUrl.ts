@@ -14,6 +14,11 @@ fs.writeFileSync(
   "dist/doc/update.json",
   JSON.stringify({
     version: manifest.version,
-    extensionUrl: new URL(`extension_${manifest.version}.zip`, HOST).href,
+    extensionUrls: [
+      new URL(`extension_${manifest.version}.zip`, HOST).href,
+    ],
+    setupUrls: [
+      new URL(`改卷仙人.bat`, HOST).href,
+    ],
   })
 );

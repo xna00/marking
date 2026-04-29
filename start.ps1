@@ -53,7 +53,25 @@ if ($needDownload) {
     $zipPath = Join-Path $env:TEMP "extension.zip"
     $extractPath = Join-Path $env:TEMP "extension_extract"
 
-    Invoke-WebRequest $info.extensionUrl -OutFile $zipPath
+    # 尝试多个扩展下载地址
+    $extensionDownloaded = $false
+    foreach ($extUrl in $info.extensionUrls) {
+        try {
+            Write-Host "下载扩展: $extUrl"
+            Invoke-WebRequest $extUrl -OutFile $zipPath
+            $extensionDownloaded = $true
+            break
+        }
+        catch {
+            Write-Host "下载失败: $extUrl"
+        }
+    }
+
+    if (-not $extensionDownloaded) {
+        Write-Host "错误: 所有扩展下载地址都失败"
+        Read-Host "按回车键退出"
+        exit 1
+    }
 
     if (Test-Path $extractPath) {
         Remove-Item -Path $extractPath -Recurse -Force
