@@ -118,14 +118,15 @@ if ($needDownload) {
 Write-Host "`n正在启动 Edge..."
 Write-Host "扩展路径: $DestPath"
 Write-Host "用户数据目录: $UserDataDir"
-Write-Host "打开网址: https://www.wylkyj.com/yuejuan/#/projectList"
+Write-Host "打开网址: https://www.wylkyj.com/yuejuan/#/projectList, https://marking.xna00.top/"
 
 Start-Process -FilePath $EdgePath -ArgumentList @(
     "--load-extension=`"$DestPath`"",
     "--user-data-dir=`"$UserDataDir`"",
     "--no-first-run",
     "--no-default-browser-check",
-    "https://www.wylkyj.com/yuejuan/#/projectList"
+    "https://www.wylkyj.com/yuejuan/#/projectList",
+    "https://marking.xna00.top/"
 )
 
 Write-Host "`n完成! Edge 应该已打开并加载扩展。"
