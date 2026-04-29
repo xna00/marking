@@ -5,12 +5,13 @@
   "main": "background.js",
   "type": "module",
   "scripts": {
-    "build": "rm dist/**/*.{js,css} ; ./scripts/vite.build.ts && cd dist/extension && zip -r ../doc/extension.zip . && cd ../.. && ./scripts/setUpdateUrl.ts",
+    "build": "rm dist/**/*.{js,css} ; node ./scripts/vite.build.ts && cd dist/extension && zip -r ../doc/extension.zip . && cd ../.. && node ./scripts/setUpdateUrl.ts && node ./scripts/generate-start-bat.ts",
     "watch": "npm-watch",
     "cp": "./scripts/copyfiles.sh",
     "add-hash": "scripts/add-hash.ts",
     "rename-to-mjs": "scripts/rename-js-to-mjs.ts",
     "build-lib": "scripts/esbuild.ts",
+    "generate-bat": "node scripts/generate-start-bat.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "watch": {

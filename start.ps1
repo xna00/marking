@@ -7,50 +7,47 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "`n=== Marking Master Extension Launcher ==="
+Write-Host "`n=== 阅卷仙人扩展启动器 ==="
 
-# Get update info
 $info = $null
 foreach ($url in $UpdateUrls) {
     try {
-        Write-Host "Trying: $url"
+        Write-Host "正在尝试: $url"
         $info = Invoke-RestMethod $url -TimeoutSec 10
         break
     }
     catch {
-        Write-Host "Failed: $url"
+        Write-Host "连接失败: $url"
     }
 }
 
 if (-not $info) {
-    Write-Host "Error: All update URLs failed"
-    Read-Host "Press Enter to exit"
+    Write-Host "错误: 所有更新地址都无法连接"
+    Read-Host "按回车键退出"
     exit 1
 }
 
-Write-Host "Remote version: $($info.version)"
+Write-Host "远程版本: $($info.version)"
 
-# Check local version
 $localManifestPath = Join-Path $DestPath "manifest.json"
 $needDownload = $true
 
 if (Test-Path $localManifestPath) {
     try {
         $localManifest = Get-Content $localManifestPath | ConvertFrom-Json
-        Write-Host "Local version: $($localManifest.version)"
+        Write-Host "本地版本: $($localManifest.version)"
         if ($localManifest.version -eq $info.version) {
-            Write-Host "Already up to date"
+            Write-Host "已是最新版本"
             $needDownload = $false
         }
     }
     catch {
-        Write-Host "Will download"
+        Write-Host "需要下载"
     }
 }
 
-# Download and install
 if ($needDownload) {
-    Write-Host "Downloading..."
+    Write-Host "正在下载..."
     $zipPath = Join-Path $env:TEMP "extension.zip"
     $extractPath = Join-Path $env:TEMP "extension_extract"
 
@@ -70,7 +67,7 @@ if ($needDownload) {
         $srcPath = Join-Path $extractPath "extension"
     }
 
-    Write-Host "Source: $srcPath"
+    Write-Host "源路径: $srcPath"
 
     if (-not (Test-Path $DestPath)) {
         New-Item -Path $DestPath -ItemType Directory -Force | Out-Null
@@ -91,19 +88,17 @@ if ($needDownload) {
     Remove-Item $zipPath
     Remove-Item $extractPath -Recurse -Force
 
-    Write-Host "Updated successfully"
+    Write-Host "更新成功"
 }
 
-# Create user data directory if needed
 if (-not (Test-Path $UserDataDir)) {
     New-Item -Path $UserDataDir -ItemType Directory -Force | Out-Null
 }
 
-# Launch Edge with extension and separate profile
-Write-Host "`nStarting Edge..."
-Write-Host "Extension path: $DestPath"
-Write-Host "User data dir: $UserDataDir"
-Write-Host "Opening URL: https://www.wylkyj.com/yuejuan/#/projectList"
+Write-Host "`n正在启动 Edge..."
+Write-Host "扩展路径: $DestPath"
+Write-Host "用户数据目录: $UserDataDir"
+Write-Host "打开网址: https://www.wylkyj.com/yuejuan/#/projectList"
 
 Start-Process -FilePath $EdgePath -ArgumentList @(
     "--load-extension=`"$DestPath`"",
@@ -113,5 +108,8 @@ Start-Process -FilePath $EdgePath -ArgumentList @(
     "https://www.wylkyj.com/yuejuan/#/projectList"
 )
 
-Write-Host "`nDone! Edge should open with the extension loaded."
-Write-Host "If you don't see the extension icon, check: chrome://extensions/"
+Write-Host "`n完成! Edge 应该已打开并加载扩展。"
+Write-Host "如果看不到扩展图标，请检查: chrome://extensions/"
+
+Write-Host "`n5秒后自动关闭..."
+Start-Sleep -Seconds 5
