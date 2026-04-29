@@ -27,10 +27,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return true;
 });
 
-chrome.action.onClicked.addListener((tab) => {
-  if (tab.windowId) {
-    chrome.sidePanel.open({ windowId: tab.windowId });
-  }
-});
+chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 
 chrome.tabs.onCreated.addListener(checkUpdate);
