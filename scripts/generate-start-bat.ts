@@ -8,7 +8,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectDir = path.dirname(__dirname);
 const ps1Path = path.join(projectDir, "start.ps1");
-const batPath = path.join(projectDir, "dist/doc/start.bat");
+const batPath = path.join(projectDir, "dist/doc/改卷仙人.bat");
 
 let ps1Content = fs.readFileSync(ps1Path, "utf-8");
 
@@ -30,4 +30,4 @@ if (!fs.existsSync(batDir)) {
 }
 
 fs.writeFileSync(batPath, batContent, "utf-8");
-console.log("Generated dist/doc/start.bat");
+console.log("Generated dist/doc/改卷仙人.bat");
