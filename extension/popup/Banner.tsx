@@ -92,7 +92,7 @@ export const Banner = () => {
       className={`p-2.5 flex items-center ${update ? "bg-red-300" : ""}`}
     >
       <h1 className="text-2xl">改卷仙人</h1>
-      <span className="mx-2">v{chrome.runtime.getVersion()}</span>
+      <span className="mx-2">v{chrome.runtime.getManifest().version}</span>
       <span>{msg}</span>
       <button
         className="small-btn ml-4"
