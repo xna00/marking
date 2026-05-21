@@ -17,7 +17,9 @@
     <h2>安装改卷仙人</h2>
     <ol>
       <li>
-        <a id="download_link" href="./改卷仙人.bat">下载安装程序</a>
+        下载安装程序：
+        <a id="download_link_bat" href="./改卷仙人.bat">链接1</a> /
+        <a id="download_link_exe" href="./MarkingMaster.exe">链接2</a>
       </li>
       <li>双击下载的文件，按提示完成安装</li>
       <li>
@@ -41,8 +43,11 @@
     <p><a href="/test/" target="_blank">进入测试页</a></p>
 
     <script>
-      const link = document.getElementById('download_link');
-      link.href = link.href + '?t=' + Date.now();
+      const linkExe = document.getElementById('download_link_exe');
+      const linkBat = document.getElementById('download_link_bat');
+      const t = Date.now();
+      linkExe.href = linkExe.href + '?t=' + t;
+      linkBat.href = linkBat.href + '?t=' + t;
     </script>
   </body>
 </html>
