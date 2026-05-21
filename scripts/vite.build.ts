@@ -79,7 +79,7 @@ fs.copyFileSync("manifest.json", "../dist/extension/manifest.json");
 
 process.chdir("../doc");
 
-fs.copyFileSync("MarkingMaster.exe", "../dist/doc/MarkingMaster.exe");
+// fs.copyFileSync("MarkingMaster.exe", "../dist/doc/MarkingMaster.exe");
 
 await build({
   base: "./",
