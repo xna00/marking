@@ -1,29 +1,24 @@
 #include <windows.h>
 #include <tlhelp32.h>
-#include <psapi.h>
 #include <shlobj.h>
-#include <shobjidl.h>
 #include <winhttp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <fcntl.h>
 #include <io.h>
+#include <minizip/unzip.h>
+#include <minizip/iowin32.h>
 
-#pragma comment(lib, "psapi.lib")
+const GUID CLSID_ShellLink = {0x00021401,0x0000,0x0000,{0xC0,0x00,0x00,0x00,0x00,0x00,0x00,0x46}};
+const GUID IID_IShellLinkW = {0x000214F9,0x0000,0x0000,{0xC0,0x00,0x00,0x00,0x00,0x00,0x00,0x46}};
+const GUID IID_IPersistFile = {0x0000010B,0x0000,0x0000,{0xC0,0x00,0x00,0x00,0x00,0x00,0x00,0x46}};
 
-#pragma comment(lib, "winhttp.lib")
-#pragma comment(lib, "ole32.lib")
-#pragma comment(lib, "shell32.lib")
-
-/* Define COM IIDs manually to avoid linking with -luuid */
-const IID IID_IShellLinkW = {0x000214F9, 0x0000, 0x0000, {0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46}};
-const IID IID_IPersistFile = {0x0000010B, 0x0000, 0x0000, {0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46}};
+/* Forward declarations for file tree operations */
+static BOOL DeleteFileTree(const WCHAR* path);
 
 #define APP_NAME L"改卷仙人"
 #define APP_DIR_NAME L"MarkingMaster"
-#define BAT_FILE_NAME L"MarkingMaster.bat"
 #define DEFAULT_UPDATE_URL L"https://marking.xna00.top/update.json"
 #define DEFAULT_EDGE_PATH L"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe"
 #define OPEN_URL1 L"https://www.wylkyj.com/yuejuan/#/projectList"
@@ -34,30 +29,22 @@ static WCHAR g_appDataDir[MAX_PATH];
 static WCHAR g_destPath[MAX_PATH];
 static WCHAR g_userDataDir[MAX_PATH];
 static WCHAR g_edgePath[MAX_PATH];
-static WCHAR g_installedBatPath[MAX_PATH];
 static WCHAR g_installedExePath[MAX_PATH];
 static WCHAR g_exePath[MAX_PATH];
 static BOOL g_uninstall = FALSE;
 static BOOL g_noInstall = FALSE;
 
-static void PrintColor(WORD color, const WCHAR* fmt, ...) {
+static void PrintError(const WCHAR* fmt, ...) {
     HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
     CONSOLE_SCREEN_BUFFER_INFO info;
     GetConsoleScreenBufferInfo(hConsole, &info);
-    SetConsoleTextAttribute(hConsole, color);
+    SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_INTENSITY);
+    wprintf(L"\n错误: ");
     va_list args;
     va_start(args, fmt);
     vwprintf(fmt, args);
     va_end(args);
     SetConsoleTextAttribute(hConsole, info.wAttributes);
-}
-
-static void PrintError(const WCHAR* fmt, ...) {
-    PrintColor(FOREGROUND_RED | FOREGROUND_INTENSITY, L"\n错误: ");
-    va_list args;
-    va_start(args, fmt);
-    vwprintf(fmt, args);
-    va_end(args);
     wprintf(L"\n\n按回车键退出...");
     getchar();
     exit(1);
@@ -69,7 +56,6 @@ static void InitPaths(void) {
     swprintf(g_destPath, MAX_PATH, L"%ls\\extension", g_appDataDir);
     swprintf(g_userDataDir, MAX_PATH, L"%ls\\edge-profile", g_appDataDir);
     wcscpy(g_edgePath, DEFAULT_EDGE_PATH);
-    swprintf(g_installedBatPath, MAX_PATH, L"%ls\\%ls", g_appDataDir, BAT_FILE_NAME);
     swprintf(g_installedExePath, MAX_PATH, L"%ls\\%ls.exe", g_appDataDir, APP_DIR_NAME);
     GetModuleFileNameW(NULL, g_exePath, MAX_PATH);
 }
@@ -125,7 +111,7 @@ static void InstallApp(void) {
     WCHAR shortcutDesktop[MAX_PATH], shortcutStart[MAX_PATH], shortcutUninstall[MAX_PATH];
     swprintf(shortcutDesktop, MAX_PATH, L"%ls\\%ls.lnk", desktopPath, APP_NAME);
     swprintf(shortcutStart, MAX_PATH, L"%ls\\Microsoft\\Windows\\Start Menu\\Programs\\%ls\\%ls.lnk", startMenuDir, APP_NAME, APP_NAME);
-    swprintf(shortcutUninstall, MAX_PATH, L"%ls\\Microsoft\\Windows\\Start Menu\\Programs\\%ls\\卸载 %ls.lnk", startMenuDir, APP_NAME, APP_NAME);
+    swprintf(shortcutUninstall, MAX_PATH, L"%ls\\Microsoft\\Windows\\Start Menu\\Programs\\%ls\\卸载%ls.lnk", startMenuDir, APP_NAME, APP_NAME);
     
     WCHAR startMenuPath[MAX_PATH];
     swprintf(startMenuPath, MAX_PATH, L"%ls\\Microsoft\\Windows\\Start Menu\\Programs\\%ls", startMenuDir, APP_NAME);
@@ -141,24 +127,88 @@ static void InstallApp(void) {
     wprintf(L"安装完成!\n");
 }
 
+/* Process command line matching via NtQueryInformationProcess */
+typedef struct {
+    USHORT Length;
+    USHORT MaximumLength;
+    PWSTR  Buffer;
+} KEP_UNICODE_STR;
+
+typedef struct {
+    LONG ExitStatus;
+    PVOID PebBaseAddress;
+    ULONG_PTR AffinityMask;
+    LONG BasePriority;
+    ULONG_PTR UniqueProcessId;
+    ULONG_PTR InheritedFromUniqueProcessId;
+} KEP_PBI;
+
+typedef LONG (NTAPI *KEP_NTQIP)(HANDLE, ULONG, PVOID, ULONG, PULONG);
+
+static BOOL ProcessHasUserDataDir(HANDLE hProcess) {
+    static KEP_NTQIP pNtQIP = NULL;
+    if (!pNtQIP) {
+        HMODULE hNtdll = GetModuleHandleW(L"ntdll.dll");
+        if (!hNtdll) return FALSE;
+        pNtQIP = (KEP_NTQIP)GetProcAddress(hNtdll, "NtQueryInformationProcess");
+        if (!pNtQIP) return FALSE;
+    }
+
+    KEP_PBI pbi;
+    ULONG retLen;
+    if (pNtQIP(hProcess, 0, &pbi, sizeof(pbi), &retLen) != 0)
+        return FALSE;
+
+#ifdef _WIN64
+    const ULONG offsetParams = 0x20, offsetCmdLine = 0x70;
+#else
+    const ULONG offsetParams = 0x10, offsetCmdLine = 0x40;
+#endif
+
+    BYTE pebBuf[0x28];
+    if (!ReadProcessMemory(hProcess, pbi.PebBaseAddress, pebBuf, sizeof(pebBuf), NULL))
+        return FALSE;
+
+    PVOID procParams;
+    memcpy(&procParams, pebBuf + offsetParams, sizeof(PVOID));
+    if (!procParams) return FALSE;
+
+    BYTE paramsBuf[0x88];
+    if (!ReadProcessMemory(hProcess, procParams, paramsBuf, sizeof(paramsBuf), NULL))
+        return FALSE;
+
+    KEP_UNICODE_STR cmdLine;
+    memcpy(&cmdLine, paramsBuf + offsetCmdLine, sizeof(cmdLine));
+    if (!cmdLine.Buffer || cmdLine.Length == 0) return FALSE;
+
+    WCHAR* cmdBuf = malloc(cmdLine.Length + sizeof(WCHAR));
+    if (!cmdBuf) return FALSE;
+    if (!ReadProcessMemory(hProcess, cmdLine.Buffer, cmdBuf, cmdLine.Length, NULL)) {
+        free(cmdBuf);
+        return FALSE;
+    }
+    cmdBuf[cmdLine.Length / sizeof(WCHAR)] = L'\0';
+
+    BOOL found = (wcsstr(cmdBuf, g_userDataDir) != NULL);
+    free(cmdBuf);
+    return found;
+}
+
 static void KillEdgeProcesses(void) {
     HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     if (hSnapshot == INVALID_HANDLE_VALUE) return;
-    
+
     PROCESSENTRY32W pe;
     pe.dwSize = sizeof(pe);
     if (Process32FirstW(hSnapshot, &pe)) {
         do {
             if (_wcsicmp(pe.szExeFile, L"msedge.exe") == 0) {
-                HANDLE hProcess = OpenProcess(PROCESS_TERMINATE | PROCESS_QUERY_INFORMATION, FALSE, pe.th32ProcessID);
+                HANDLE hProcess = OpenProcess(
+                    PROCESS_QUERY_INFORMATION | PROCESS_VM_READ | PROCESS_TERMINATE,
+                    FALSE, pe.th32ProcessID);
                 if (hProcess) {
-                    WCHAR cmdLine[MAX_PATH * 4] = {0};
-                    DWORD size = sizeof(cmdLine);
-                    if (GetProcessImageFileNameW(hProcess, cmdLine, size) > 0) {
-                        if (wcsstr(cmdLine, L"edge-profile") != NULL || TRUE) {
-                            wprintf(L"正在关闭 Edge...\n");
-                            TerminateProcess(hProcess, 0);
-                        }
+                    if (ProcessHasUserDataDir(hProcess)) {
+                        TerminateProcess(hProcess, 0);
                     }
                     CloseHandle(hProcess);
                 }
@@ -182,9 +232,7 @@ static void UninstallApp(void) {
     DeleteFileW(shortcutDesktop);
     wprintf(L"已删除桌面快捷方式\n");
     
-    WCHAR cmd[MAX_PATH * 2];
-    swprintf(cmd, MAX_PATH * 2, L"rd /s /q \"%ls\"", startMenuPath);
-    _wsystem(cmd);
+    DeleteFileTree(startMenuPath);
     wprintf(L"已删除开始菜单\n");
     
     KillEdgeProcesses();
@@ -218,7 +266,7 @@ static void UninstallApp(void) {
     exit(0);
 }
 
-static char* HttpGet(const WCHAR* url, DWORD* outSize) {
+static char* HttpGet(const WCHAR* url, DWORD* outSize, const WCHAR* userAgent) {
     WCHAR host[256] = {0}, path[1024] = {0};
     URL_COMPONENTSW uc = {0};
     uc.dwStructSize = sizeof(uc);
@@ -229,7 +277,7 @@ static char* HttpGet(const WCHAR* url, DWORD* outSize) {
     
     if (!WinHttpCrackUrl(url, 0, 0, &uc)) return NULL;
     
-    HINTERNET hSession = WinHttpOpen(L"MarkingMaster/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, NULL, NULL, 0);
+    HINTERNET hSession = WinHttpOpen(userAgent, WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, NULL, NULL, 0);
     if (!hSession) return NULL;
     
     HINTERNET hConnect = WinHttpConnect(hSession, host, uc.nPort, 0);
@@ -244,7 +292,7 @@ static char* HttpGet(const WCHAR* url, DWORD* outSize) {
     
     WinHttpReceiveResponse(hRequest, NULL);
     
-    DWORD dwSize = 0, dwDownloaded = 0, dwTotalSize = 0;
+    DWORD dwSize = 0, dwDownloaded = 0;
     char* buffer = NULL;
     DWORD bufferSize = 0;
     
@@ -269,9 +317,9 @@ static char* HttpGet(const WCHAR* url, DWORD* outSize) {
     return buffer;
 }
 
-static BOOL DownloadFile(const WCHAR* url, const WCHAR* localPath) {
+static BOOL DownloadFile(const WCHAR* url, const WCHAR* localPath, const WCHAR* userAgent) {
     DWORD size = 0;
-    char* data = HttpGet(url, &size);
+    char* data = HttpGet(url, &size, userAgent);
     if (!data) return FALSE;
     
     HANDLE hFile = CreateFileW(localPath, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -284,12 +332,138 @@ static BOOL DownloadFile(const WCHAR* url, const WCHAR* localPath) {
     return TRUE;
 }
 
+static BOOL CopyFileTree(const WCHAR* src, const WCHAR* dst) {
+    WCHAR srcSearch[MAX_PATH * 2];
+    swprintf(srcSearch, MAX_PATH * 2, L"%ls\\*", src);
+    
+    WIN32_FIND_DATAW ffd;
+    HANDLE hFind = FindFirstFileW(srcSearch, &ffd);
+    if (hFind == INVALID_HANDLE_VALUE) return FALSE;
+    
+    CreateDirectoryW(dst, NULL);
+    
+    do {
+        if (wcscmp(ffd.cFileName, L".") == 0 || wcscmp(ffd.cFileName, L"..") == 0)
+            continue;
+        
+        WCHAR srcPath[MAX_PATH * 2], dstPath[MAX_PATH * 2];
+        swprintf(srcPath, MAX_PATH * 2, L"%ls\\%ls", src, ffd.cFileName);
+        swprintf(dstPath, MAX_PATH * 2, L"%ls\\%ls", dst, ffd.cFileName);
+        
+        if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+            if (!CopyFileTree(srcPath, dstPath)) {
+                FindClose(hFind);
+                return FALSE;
+            }
+        } else {
+            if (!CopyFileW(srcPath, dstPath, FALSE)) {
+                FindClose(hFind);
+                return FALSE;
+            }
+        }
+    } while (FindNextFileW(hFind, &ffd));
+    
+    FindClose(hFind);
+    return TRUE;
+}
+
+static BOOL DeleteFileTree(const WCHAR* path) {
+    WCHAR searchPath[MAX_PATH * 2];
+    swprintf(searchPath, MAX_PATH * 2, L"%ls\\*", path);
+    
+    WIN32_FIND_DATAW ffd;
+    HANDLE hFind = FindFirstFileW(searchPath, &ffd);
+    if (hFind == INVALID_HANDLE_VALUE) {
+        return RemoveDirectoryW(path);
+    }
+    
+    do {
+        if (wcscmp(ffd.cFileName, L".") == 0 || wcscmp(ffd.cFileName, L"..") == 0)
+            continue;
+        
+        WCHAR fullPath[MAX_PATH * 2];
+        swprintf(fullPath, MAX_PATH * 2, L"%ls\\%ls", path, ffd.cFileName);
+        
+        if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+            DeleteFileTree(fullPath);
+        } else {
+            SetFileAttributesW(fullPath, FILE_ATTRIBUTE_NORMAL);
+            DeleteFileW(fullPath);
+        }
+    } while (FindNextFileW(hFind, &ffd));
+    
+    FindClose(hFind);
+    SetFileAttributesW(path, FILE_ATTRIBUTE_NORMAL);
+    return RemoveDirectoryW(path);
+}
+
+static void CreateDirTree(const WCHAR* path) {
+    WCHAR tmp[MAX_PATH * 2];
+    wcscpy(tmp, path);
+
+    WCHAR* p = tmp;
+    if (p[0] && p[1] == L':' && p[2] == L'\\')
+        p = tmp + 3;
+
+    while ((p = wcschr(p, L'\\')) != NULL) {
+        *p = L'\0';
+        CreateDirectoryW(tmp, NULL);
+        *p++ = L'\\';
+    }
+}
+
 static BOOL ExtractZip(const WCHAR* zipPath, const WCHAR* destPath) {
-    WCHAR cmd[MAX_PATH * 4];
-    swprintf(cmd, MAX_PATH * 4, 
-        L"powershell -NoProfile -Command \"Expand-Archive -Path '%ls' -DestinationPath '%ls' -Force\"", 
-        zipPath, destPath);
-    return _wsystem(cmd) == 0;
+    zlib_filefunc64_def ffunc;
+    fill_win32_filefunc64W(&ffunc);
+
+    unzFile uf = unzOpen2_64(zipPath, &ffunc);
+    if (!uf) return FALSE;
+
+    CreateDirectoryW(destPath, NULL);
+
+    int result = unzGoToFirstFile(uf);
+    while (result == UNZ_OK) {
+        unz_file_info64 fi;
+        char fileName[1024];
+        if (unzGetCurrentFileInfo64(uf, &fi, fileName, sizeof(fileName), NULL, 0, NULL, 0) != UNZ_OK) {
+            result = unzGoToNextFile(uf);
+            continue;
+        }
+
+        WCHAR wideName[1024];
+        MultiByteToWideChar(CP_UTF8, 0, fileName, -1, wideName, 1024);
+
+        WCHAR fullPath[MAX_PATH * 2];
+        swprintf(fullPath, MAX_PATH * 2, L"%ls\\%ls", destPath, wideName);
+
+        size_t nameLen = strlen(fileName);
+        int isDir = (nameLen > 0 && fileName[nameLen - 1] == '/');
+
+        if (isDir) {
+            CreateDirectoryW(fullPath, NULL);
+        } else {
+            CreateDirTree(fullPath);
+            if (unzOpenCurrentFile(uf) == UNZ_OK) {
+                HANDLE hFile = CreateFileW(fullPath, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+                if (hFile != INVALID_HANDLE_VALUE) {
+                    char buf[8192];
+                    int read;
+                    do {
+                        read = unzReadCurrentFile(uf, buf, 8192);
+                        if (read > 0) {
+                            DWORD written;
+                            WriteFile(hFile, buf, read, &written, NULL);
+                        }
+                    } while (read > 0);
+                    CloseHandle(hFile);
+                }
+                unzCloseCurrentFile(uf);
+            }
+        }
+        result = unzGoToNextFile(uf);
+    }
+    unzClose(uf);
+    return TRUE;
 }
 
 static char* FindJsonValue(const char* json, const char* key, int* outLen) {
@@ -352,8 +526,37 @@ static void StartEdge(void) {
 static void MainLogic(void) {
     wprintf(L"\n=== %ls 扩展启动器 ===\n", APP_NAME);
     
-    char* json = HttpGet(DEFAULT_UPDATE_URL, NULL);
+    WCHAR localManifestPath[MAX_PATH];
+    swprintf(localManifestPath, MAX_PATH, L"%ls\\manifest.json", g_destPath);
+    
+    char* localJson = NULL;
+    HANDLE hManifest = CreateFileW(localManifestPath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    if (hManifest != INVALID_HANDLE_VALUE) {
+        DWORD size = GetFileSize(hManifest, NULL);
+        localJson = malloc(size + 1);
+        DWORD read;
+        ReadFile(hManifest, localJson, size, &read, NULL);
+        localJson[read] = 0;
+        CloseHandle(hManifest);
+    }
+    
+    char localVerBuf[64] = "0";
+    if (localJson) {
+        int verLen = 0;
+        char* ver = FindJsonValue(localJson, "version", &verLen);
+        if (ver && verLen < 64) {
+            memcpy(localVerBuf, ver, verLen);
+            localVerBuf[verLen] = 0;
+        }
+    }
+    
+    WCHAR userAgent[128];
+    swprintf(userAgent, 128, L"MarkingMaster.exe/%hs", localVerBuf);
+    
+    wprintf(L"正在检查更新...\n");
+    char* json = HttpGet(DEFAULT_UPDATE_URL, NULL, userAgent);
     if (!json) {
+        free(localJson);
         PrintError(L"无法连接更新服务器");
     }
     
@@ -363,20 +566,10 @@ static void MainLogic(void) {
         wprintf(L"远程版本: %.*hs\n", versionLen, version);
     }
     
-    WCHAR localManifestPath[MAX_PATH];
-    swprintf(localManifestPath, MAX_PATH, L"%ls\\manifest.json", g_destPath);
-    
     BOOL needDownload = TRUE;
     WCHAR exeUrl[1024] = {0};
-    HANDLE hManifest = CreateFileW(localManifestPath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
-    if (hManifest != INVALID_HANDLE_VALUE) {
-        DWORD size = GetFileSize(hManifest, NULL);
-        char* localJson = malloc(size + 1);
-        DWORD read;
-        ReadFile(hManifest, localJson, size, &read, NULL);
-        localJson[read] = 0;
-        CloseHandle(hManifest);
-        
+    
+    if (localJson) {
         int localVersionLen = 0;
         char* localVersion = FindJsonValue(localJson, "version", &localVersionLen);
         if (localVersion && version && localVersionLen == versionLen && 
@@ -385,6 +578,7 @@ static void MainLogic(void) {
             needDownload = FALSE;
         }
         free(localJson);
+        localJson = NULL;
     }
     
     if (needDownload) {
@@ -421,7 +615,7 @@ static void MainLogic(void) {
         wcscat(extractPath, L"extension_extract");
         
         wprintf(L"下载扩展: %ls\n", extUrl);
-        if (!DownloadFile(extUrl, zipPath)) {
+        if (!DownloadFile(extUrl, zipPath, userAgent)) {
             free(json);
             PrintError(L"下载扩展失败");
         }
@@ -445,15 +639,15 @@ static void MainLogic(void) {
         
         wprintf(L"源路径: %ls\n", srcPath);
         
-        CreateDirectoryW(g_destPath, NULL);
-        
-        WCHAR copyCmd[MAX_PATH * 4];
-        swprintf(copyCmd, MAX_PATH * 4, L"xcopy /E /Y /I \"%ls\\*\" \"%ls\"", srcPath, g_destPath);
-        _wsystem(copyCmd);
-        
+        CreateDirectoryW(g_appDataDir, NULL);
+        DeleteFileTree(g_destPath);
+        if (!MoveFileExW(srcPath, g_destPath, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+            wprintf(L"移动失败，回退到复制...\n");
+            CreateDirectoryW(g_destPath, NULL);
+            CopyFileTree(srcPath, g_destPath);
+        }
+        DeleteFileTree(extractPath);
         DeleteFileW(zipPath);
-        swprintf(copyCmd, MAX_PATH * 4, L"rd /s /q \"%ls\"", extractPath);
-        _wsystem(copyCmd);
         
         wprintf(L"更新成功\n");
 
@@ -474,6 +668,7 @@ static void MainLogic(void) {
     
     free(json);
     
+    CreateDirectoryW(g_appDataDir, NULL);
     CreateDirectoryW(g_userDataDir, NULL);
     
     if (needDownload) {
@@ -492,7 +687,7 @@ static void MainLogic(void) {
         wcscat(newExePath, L"MarkingMaster_new.exe");
         wcscat(batPath, L"MarkingMaster_update.bat");
 
-        if (DownloadFile(exeUrl, newExePath)) {
+        if (DownloadFile(exeUrl, newExePath, userAgent)) {
             FILE* fBat = _wfopen(batPath, L"w");
             if (fBat) {
                 fprintf(fBat,

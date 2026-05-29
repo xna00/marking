@@ -15,7 +15,8 @@ if not exist "%MSYS2_PATH%\gcc.exe" (
 set PATH=%MSYS2_PATH%;%PATH%
 
 gcc -o doc/public/MarkingMaster.exe start.c ^
-    -lwinhttp -lole32 -lshell32 ^
+    -I/mingw64/include ^
+    -lwinhttp -lole32 -lshell32 -lminizip -lz -lbz2 ^
     -municode ^
     -static ^
     -O2
