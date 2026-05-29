@@ -24,12 +24,19 @@ static BOOL DeleteFileTree(const WCHAR* path);
 #define OPEN_URL1 L"https://www.wylkyj.com/yuejuan/#/projectList"
 #define OPEN_URL2 L"https://marking.xna00.top/"
 
+/* %LOCALAPPDATA% */
 static WCHAR g_localAppData[MAX_PATH];
+/* %LOCALAPPDATA%\MarkingMaster */
 static WCHAR g_appDataDir[MAX_PATH];
+/* %LOCALAPPDATA%\MarkingMaster\extension */
 static WCHAR g_destPath[MAX_PATH];
+/* %LOCALAPPDATA%\MarkingMaster\edge-profile */
 static WCHAR g_userDataDir[MAX_PATH];
+/* Edge 浏览器路径 */
 static WCHAR g_edgePath[MAX_PATH];
+/* %LOCALAPPDATA%\MarkingMaster\MarkingMaster.exe */
 static WCHAR g_installedExePath[MAX_PATH];
+/* 当前 exe 路径 */
 static WCHAR g_exePath[MAX_PATH];
 static BOOL g_uninstall = FALSE;
 static BOOL g_noInstall = FALSE;
