@@ -19,7 +19,20 @@ app.post("/api/v1/chat/completions", async (c) => {
   const id = Math.random().toString(36).slice(2, 8);
   const body = await c.req.json();
   const model = body.model || "unknown";
+
   log(`[${id}] => model=${model}`);
+  for (const [k, v] of c.req.raw.headers) {
+    log(`[${id}]   header: ${k}: ${v}`);
+  }
+  const logBody = structuredClone(body);
+  for (const msg of logBody.messages || []) {
+    for (const part of msg.content || []) {
+      if (part.image_url?.url?.length > 200) {
+        part.image_url.url = part.image_url.url.slice(0, 80) + `... (${part.image_url.url.length} chars)`;
+      }
+    }
+  }
+  log(`[${id}]   body: ${JSON.stringify(logBody)}`);
 
   const start = Date.now();
   const res = await fetch(DOUBAO_URL, {
@@ -32,12 +45,15 @@ app.post("/api/v1/chat/completions", async (c) => {
   });
   const ms = Date.now() - start;
   log(`[${id}] <= ${res.status} (${ms}ms)`);
+  for (const [k, v] of res.headers) {
+    log(`[${id}]   header: ${k}: ${v}`);
+  }
 
-  const headers = new Headers(res.headers);
-  headers.delete("content-encoding");
-  headers.delete("content-length");
+  const outHeaders = new Headers(res.headers);
+  outHeaders.delete("content-encoding");
+  outHeaders.delete("content-length");
 
-  return c.newResponse(res.body, res.status, headers);
+  return c.newResponse(res.body, res.status, outHeaders);
 });
 
 const port = Number(process.env.PORT) || 3000;
