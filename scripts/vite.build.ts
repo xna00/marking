@@ -24,7 +24,7 @@ await build({
   mode: "development",
   build: {
     outDir: "../dist/extension",
-    minify: false,
+    minify: true,
     modulePreload: false,
     assetsDir: ".",
 
@@ -47,7 +47,7 @@ await build({
   build: {
     outDir: "../dist/extension",
     emptyOutDir: false,
-    minify: false,
+    minify: true,
     rollupOptions: {
       input: {
         content: "content.ts",
@@ -70,7 +70,7 @@ await build({
   build: {
     outDir: "../dist/doc",
     emptyOutDir: true,
-    minify: false,
+    minify: true,
     modulePreload: false,
     assetsDir: ".",
     rollupOptions: {
