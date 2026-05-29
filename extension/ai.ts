@@ -1,7 +1,6 @@
 import { repairJson } from "./lib.js";
-import { doubaoUrl, getModelInfo, type ModelName } from "./models.js";
-import { storageKeys } from "./constants.js";
-import { simpleDecrypt } from "./encrypt.js";
+import type { ModelName } from "./models.js";
+import { storageKeys, BACKEND_URL } from "./constants.js";
 
 export type AISettings = {
   model: ModelName;
@@ -94,16 +93,13 @@ export async function markByAI2(
   aiSettings: {
     model: ModelName;
     prompt: string;
-    apiKey: string;
   }
 ) {
   const fn = async () => {
-    // https://www.volcengine.com/docs/82379/1494384?lang=zh
-    const response = await fetch(doubaoUrl, {
+    const response = await fetch(`${BACKEND_URL}/api/v1/chat/completions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${aiSettings.apiKey}`,
       },
       body: JSON.stringify({
         model: aiSettings.model,
@@ -163,26 +159,9 @@ export function parseAIResult(aiResult: any): string {
   return aiResult.choices[0].message.content;
 }
 export async function recognizeImage(imageUrl: string) {
-
-  const encryptedKeys = {
-    '1': 'BkBWEgYGAhUfFgJXAFwGQQtSHBMGRAdICEMCQgJTBhIFQABS',
-    't': 'Q1AdDkBRQQVUAxMHTRhNBEYOWVRAB0YaQlEbAkJURgwcVUMD'
-  }
   const settings = await getCurrentSettings();
-  // 获取API Keys
-  const _apiKey = (await chrome.storage.local.get([storageKeys.API_KEY]))[
-    storageKeys.API_KEY
-  ] as string;
-
-  let apiKey = ''
-  if (_apiKey.startsWith('1')) {
-    apiKey = simpleDecrypt(encryptedKeys['1'], _apiKey)
-  } else if (_apiKey.startsWith('t')) {
-    apiKey = simpleDecrypt(encryptedKeys['t'], _apiKey)
-  }
   return markByAI2(imageUrl, {
     model: settings.model,
     prompt: settings.prompt,
-    apiKey: apiKey,
   });
 }
