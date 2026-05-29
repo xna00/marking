@@ -200,15 +200,10 @@ static void UninstallApp(void) {
     if (fBat) {
         fprintf(fBat,
             "@echo off\r\n"
-            "timeout /t 3 /nobreak >nul\r\n"
-            ":retry\r\n"
-            "rd /s /q \"%ls\" 2>nul\r\n"
-            "if exist \"%ls\" (\r\n"
-            "    timeout /t 1 /nobreak >nul\r\n"
-            "    goto retry\r\n"
-            ")\r\n"
+            "timeout /t 2 /nobreak >nul\r\n"
+            "rd /s /q \"%ls\"\r\n"
             "del /f /q \"%%~f0\"\r\n",
-            g_appDataDir, g_appDataDir);
+            g_appDataDir);
         fclose(fBat);
 
         STARTUPINFOW si = {0};
