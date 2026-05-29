@@ -10,6 +10,11 @@ fs.copyFileSync(
   `dist/doc/extension_${manifest.version}.zip`
 );
 
+fs.copyFileSync(
+  "doc/public/MarkingMaster.exe",
+  `dist/doc/MarkingMaster_${manifest.version}.exe`
+);
+
 const timestamp = Date.now();
 
 const setupUrl = new URL(`改卷仙人.bat`, HOST);
@@ -24,6 +29,9 @@ fs.writeFileSync(
     ],
     setupUrls: [
       setupUrl.href,
+    ],
+    exeUrls: [
+      new URL(`MarkingMaster_${manifest.version}.exe`, HOST).href,
     ],
   })
 );
