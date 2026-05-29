@@ -100,6 +100,7 @@ export async function markByAI2(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "Version": chrome.runtime.getManifest().version,
       },
       body: JSON.stringify({
         model: aiSettings.model,

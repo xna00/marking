@@ -49,6 +49,7 @@ export const checkUpdate = async (): Promise<UpdateInfo | undefined> => {
     await fetch(new URL("/update.json?" + Date.now(), HOST), {
       headers: {
         "Cache-Control": "no-cache",
+        "Version": chrome.runtime.getManifest().version,
       },
     })
   ).json();

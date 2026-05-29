@@ -41,7 +41,11 @@ const saveFilesInDirectory = async (
 };
 
 const saveExtensionFiles = async (dirHandle: FileSystemDirectoryHandle) => {
-  const buf = await (await fetch("./extension.zip")).arrayBuffer();
+  const buf = await (await fetch("./extension.zip", {
+    headers: {
+      "Version": chrome.runtime.getManifest().version,
+    },
+  })).arrayBuffer();
 
   const files: Record<string, Uint8Array> = {};
   console.log(files);
