@@ -59,22 +59,6 @@ await build({
   },
 });
 
-await build({
-  build: {
-    outDir: "../dist/extension",
-    emptyOutDir: false,
-    minify: false,
-    rollupOptions: {
-      input: {
-        extensionHelper: "extensionHelper.ts",
-      },
-      output: {
-        entryFileNames: "[name].js",
-      },
-    },
-  },
-});
-
 fs.copyFileSync("manifest.json", "../dist/extension/manifest.json");
 
 process.chdir("../doc");
