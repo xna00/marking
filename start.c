@@ -267,6 +267,14 @@ static void UninstallApp(void) {
 }
 
 static char* HttpGet(const WCHAR* url, DWORD* outSize, const WCHAR* userAgent) {
+    WCHAR urlBuf[MAX_PATH * 4];
+    ULONGLONG ts = GetTickCount64();
+    if (wcschr(url, L'?')) {
+        swprintf(urlBuf, MAX_PATH * 4, L"%ls&t=%llu", url, ts);
+    } else {
+        swprintf(urlBuf, MAX_PATH * 4, L"%ls?t=%llu", url, ts);
+    }
+
     WCHAR host[256] = {0}, path[1024] = {0};
     URL_COMPONENTSW uc = {0};
     uc.dwStructSize = sizeof(uc);
@@ -275,7 +283,7 @@ static char* HttpGet(const WCHAR* url, DWORD* outSize, const WCHAR* userAgent) {
     uc.lpszUrlPath = path;
     uc.dwUrlPathLength = 1024;
     
-    if (!WinHttpCrackUrl(url, 0, 0, &uc)) return NULL;
+    if (!WinHttpCrackUrl(urlBuf, 0, 0, &uc)) return NULL;
     
     HINTERNET hSession = WinHttpOpen(userAgent, WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, NULL, NULL, 0);
     if (!hSession) return NULL;
