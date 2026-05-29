@@ -33,7 +33,11 @@ app.post("/api/v1/chat/completions", async (c) => {
   const ms = Date.now() - start;
   log(`[${id}] <= ${res.status} (${ms}ms)`);
 
-  return res;
+  const headers = new Headers(res.headers);
+  headers.delete("content-encoding");
+  headers.delete("content-length");
+
+  return c.newResponse(res.body, res.status, headers);
 });
 
 const port = Number(process.env.PORT) || 3000;
