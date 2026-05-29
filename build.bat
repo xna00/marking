@@ -14,7 +14,7 @@ if not exist "%MSYS2_PATH%\gcc.exe" (
 
 set PATH=%MSYS2_PATH%;%PATH%
 
-gcc -o start.exe start.c ^
+gcc -o doc/public/MarkingMaster.exe start.c ^
     -lwinhttp -lole32 -lshell32 ^
     -municode ^
     -static ^
@@ -22,8 +22,8 @@ gcc -o start.exe start.c ^
 
 if %ERRORLEVEL% EQU 0 (
     echo.
-    echo Build successful: start.exe
-    dir start.exe
+    echo Build successful: doc\public\MarkingMaster.exe
+    dir doc\public\MarkingMaster.exe
 ) else (
     echo.
     echo Build failed!
