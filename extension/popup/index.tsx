@@ -51,10 +51,6 @@ const pasteImageFromClipboard = async () => {
   }
 };
 const App = () => {
-  const [apiKey, setApiKey] = useStateWithChromeStorage(
-    storageKeys.API_KEY,
-    "t5y6u7"
-  );
   const [modelName, setModelName] = useStateWithChromeStorage(
     storageKeys.AI_MODEL,
     defaultAISettings.model
@@ -124,15 +120,6 @@ const App = () => {
     <>
       <Banner></Banner>
       <div className="p-2.5">
-        <label htmlFor="doubaoKeyInput">API Key</label>
-        <input
-          type="text"
-          placeholder="请输入API Key"
-          className="w-full"
-          value={apiKey}
-          onChange={(e) => setApiKey(e.target.value)}
-        />
-
         <label>选择模型</label>
         <select
           id="modelSelect"
