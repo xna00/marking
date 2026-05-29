@@ -1,5 +1,7 @@
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
+import { writeFile, mkdir } from "node:fs/promises";
+import { join } from "node:path";
 
 const API_KEY = process.env.DOUBAO_API_KEY;
 if (!API_KEY) {
@@ -33,6 +35,23 @@ app.post("/api/v1/chat/completions", async (c) => {
     }
   }
   log(`[${id}]   body: ${JSON.stringify(logBody)}`);
+
+  const imgDir = "images";
+  await mkdir(imgDir, { recursive: true });
+  let imgIdx = 0;
+  for (const msg of body.messages || []) {
+    for (const part of msg.content || []) {
+      const url: string | undefined = part.image_url?.url;
+      if (!url) continue;
+      const m = url.match(/^data:image\/(\w+);base64,(.+)$/);
+      if (!m) continue;
+      const ext = m[1] === "jpeg" ? "jpg" : m[1];
+      const data = Buffer.from(m[2], "base64");
+      const filename = `${id}_${imgIdx++}.${ext}`;
+      await writeFile(join(imgDir, filename), data);
+      log(`[${id}]   saved image: ${filename} (${data.length} bytes)`);
+    }
+  }
 
   const start = Date.now();
   const res = await fetch(DOUBAO_URL, {
