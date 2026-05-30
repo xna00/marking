@@ -8,6 +8,8 @@ import manifest from "../extension/manifest.json" with { type: "json" };
 import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react";
 
+const minify = true;
+
 process.chdir("extension");
 
 await build({
@@ -24,7 +26,7 @@ await build({
   mode: "development",
   build: {
     outDir: "../dist/extension",
-    minify: true,
+    minify,
     modulePreload: false,
     assetsDir: ".",
 
@@ -47,7 +49,7 @@ await build({
   build: {
     outDir: "../dist/extension",
     emptyOutDir: false,
-    minify: true,
+    minify,
     rollupOptions: {
       input: {
         content: "content.ts",
@@ -75,7 +77,7 @@ await build({
   build: {
     outDir: "../dist/doc",
     emptyOutDir: true,
-    minify: true,
+    minify,
     modulePreload: false,
     assetsDir: ".",
     rollupOptions: {
