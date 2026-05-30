@@ -22,7 +22,6 @@ const requestIdResponseMap = new Map<string, NetworkResponseReceivedParams>();
 
 let urlResponseMap = new Map<string, string>();
 const imageMap = new Map<string, string>(); // key = A图的完整URL, value = 合并后 dataUrl
-// 用于存储调试器附加状态
 const attachedTabs = new Map<number, boolean>();
 
 const debuggerEnabledUrls = [
@@ -30,7 +29,6 @@ const debuggerEnabledUrls = [
   "https://marking.xna00.top/test/",
   "https://www.wylkyj.com/",
   "https://wylkyj.com/",
-
 ];
 const logUrls = [
   "http://127.0.0.1:8080/dist/doc/test/images/",
@@ -40,10 +38,8 @@ const logUrls = [
 ];
 
 const attachAndEnableNetwork = async (tabId: number, tab: chrome.tabs.Tab) => {
-  // 检查是否已经附加了调试器
   if (!attachedTabs.get(tabId)) {
     try {
-      // 附加调试器到当前标签页
       await chrome.debugger.attach({ tabId }, "1.3");
       await chrome.debugger.sendCommand({ tabId }, "Network.enable");
       attachedTabs.set(tabId, true);
@@ -65,9 +61,8 @@ const detachDebugger = async (tabId: number) => {
     }
   }
 };
-// 监听标签页更新事件
+
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  // 当标签页加载完成且URL包含cn.bing.com时
   if (
     changeInfo.status === "complete" &&
     tab.url &&
@@ -75,7 +70,6 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   ) {
     attachAndEnableNetwork(tabId, tab);
   }
-  // 当标签页URL变化且不再包含cn.bing.com时，分离调试器
   else if (
     attachedTabs.get(tabId) &&
     tab.url &&
@@ -85,7 +79,6 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   }
 });
 
-// 监听新标签页创建事件
 chrome.tabs.onCreated.addListener((tab) => {
   const tabId = tab.id;
   if (!tabId) return;
@@ -98,7 +91,6 @@ chrome.tabs.onCreated.addListener((tab) => {
   }
 });
 
-// 监听调试器事件
 chrome.debugger.onEvent.addListener(async (source, method, rawParams) => {
   if (!source.tabId) return;
 
@@ -107,7 +99,6 @@ chrome.debugger.onEvent.addListener(async (source, method, rawParams) => {
 
   if (method === "Network.responseReceived") {
     const responseParams = params as NetworkResponseReceivedParams;
-    // console.log("Response received:", params);
     if (
       responseParams.response.mimeType.startsWith("image/") &&
       logUrls.some((url) => responseParams.response.url.includes(url))
@@ -210,7 +201,6 @@ chrome.debugger.onEvent.addListener(async (source, method, rawParams) => {
   }
 });
 
-// 监听标签页关闭事件，自动分离调试器
 chrome.tabs.onRemoved.addListener((tabId) => {
   detachDebugger(tabId);
 });
