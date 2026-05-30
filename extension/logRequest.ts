@@ -24,6 +24,31 @@ let urlResponseMap = new Map<string, string>();
 const imageMap = new Map<string, string>(); // key = A图的完整URL, value = 合并后 dataUrl
 const attachedTabs = new Map<number, boolean>();
 
+function makeDataUrl(body: string, base64: boolean, mimeType: string): string {
+  return base64
+    ? `data:${mimeType};base64,${body}`
+    : `data:${mimeType};charset=utf-8,${encodeURIComponent(body)}`;
+}
+
+const tabImageCount = new Map<number, number>();
+
+async function getImageCount(tabId: number): Promise<number> {
+  if (!tabImageCount.has(tabId)) {
+    await new Promise(r => setTimeout(r, 1000));
+    const [result] = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => document.querySelectorAll('.imgSection>img').length,
+      world: "ISOLATED",
+    });
+    tabImageCount.set(tabId, result ?? 1);
+  }
+  return tabImageCount.get(tabId)!;
+}
+
+function getBasePath(url: string): string {
+  return new URL(url).pathname.replace(/[A-Z]\.png$/, '');
+}
+
 const debuggerEnabledUrls = [
   "http://127.0.0.1:8080/dist/doc/test/",
   "https://marking.xna00.top/test/",
@@ -63,6 +88,7 @@ const detachDebugger = async (tabId: number) => {
 };
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'loading') tabImageCount.delete(tabId);
   if (
     changeInfo.status === "complete" &&
     tab.url &&
@@ -124,70 +150,24 @@ chrome.debugger.onEvent.addListener(async (source, method, rawParams) => {
         return;
       }
       const responseBody = response as NetworkGetResponseBodyResponse;
-      let dataUrl = "";
-
-      if (responseBody.base64Encoded) {
-        dataUrl =
-          "data:" +
-          responseParams.response.mimeType +
-          ";base64," +
-          responseBody.body;
-      } else {
-        dataUrl =
-          "data:" +
-          responseParams.response.mimeType +
-          ";charset=utf-8," +
-          encodeURIComponent(responseBody.body);
-      }
+      const dataUrl = makeDataUrl(responseBody.body, responseBody.base64Encoded, responseParams.response.mimeType);
       urlResponseMap.set(responseParams.response.url, dataUrl);
 
-      const mergeMatch = (() => {
-        try {
-          const u = new URL(responseParams.response.url);
-          const path = u.pathname;
-          const lastSlash = path.lastIndexOf('/');
-          if (lastSlash === -1) return null;
-          const filename = path.slice(lastSlash + 1);
-          if (!filename.endsWith('A.png') && !filename.endsWith('B.png')) return null;
-          const dotIndex = filename.lastIndexOf('.');
-          const letter = filename.slice(dotIndex - 1, dotIndex);
-          const prefix = filename.slice(0, dotIndex - 1);
-          return { dir: path.slice(0, lastSlash + 1), prefix, letter };
-        } catch {
-          return null;
-        }
-      })();
+      const base = getBasePath(responseParams.response.url);
+      const count = await getImageCount(tabId);
+      const matched = [...urlResponseMap.entries()]
+        .filter(([k]) => {
+          try { return new URL(k).pathname.startsWith(base); } catch { return false; }
+        })
+        .sort(([a], [b]) => new URL(a).pathname.localeCompare(new URL(b).pathname));
 
-      if (mergeMatch && responseParams.response.url.includes('AnswerSheet/')) {
-        const { dir, prefix, letter } = mergeMatch;
-        const otherPath = dir + prefix + (letter === 'A' ? 'B' : 'A') + '.png';
-
-        let otherDataUrl: string | undefined;
-        let otherFullUrl: string | undefined;
-        for (const [key, val] of urlResponseMap) {
-          try {
-            if (new URL(key).pathname === otherPath) {
-              otherFullUrl = key;
-              otherDataUrl = val;
-              break;
-            }
-          } catch {}
-        }
-
-        if (otherFullUrl) {
-          const isA = letter === 'A';
-          const aUrl = isA ? responseParams.response.url : otherFullUrl;
-          const bUrl = isA ? otherFullUrl : responseParams.response.url;
-          const aData = isA ? dataUrl : otherDataUrl;
-          const bData = isA ? otherDataUrl : dataUrl;
-
-          const mergedDataUrl = await mergeImagesVertically([aData, bData]);
-          imageMap.set(aUrl, mergedDataUrl);
-          urlResponseMap.delete(bUrl);
-          aiHook(aUrl, mergedDataUrl);
-        }
-      } else {
-        aiHook(responseParams.response.url, dataUrl);
+      if (matched.length >= count) {
+        const keys = matched.map(([k]) => k);
+        const dataUrls = matched.map(([_, v]) => v);
+        const merged = await mergeImagesVertically(dataUrls);
+        imageMap.set(keys[0], merged);
+        keys.forEach(k => urlResponseMap.delete(k));
+        aiHook(keys[0], merged);
       }
 
       urlResponseMap = new Map([...urlResponseMap.entries()].slice(-20));
