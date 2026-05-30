@@ -36,8 +36,6 @@ static WCHAR g_userDataDir[MAX_PATH];
 static WCHAR g_edgePath[MAX_PATH];
 /* %LOCALAPPDATA%\MarkingMaster\MarkingMaster.exe */
 static WCHAR g_installedExePath[MAX_PATH];
-/* 当前 exe 路径 */
-static WCHAR g_exePath[MAX_PATH];
 static BOOL g_uninstall = FALSE;
 static BOOL g_noInstall = FALSE;
 
@@ -64,7 +62,6 @@ static void InitPaths(void) {
     swprintf(g_userDataDir, MAX_PATH, L"%ls\\edge-profile", g_appDataDir);
     wcscpy(g_edgePath, DEFAULT_EDGE_PATH);
     swprintf(g_installedExePath, MAX_PATH, L"%ls\\%ls.exe", g_appDataDir, APP_DIR_NAME);
-    GetModuleFileNameW(NULL, g_exePath, MAX_PATH);
 }
 
 static void ParseArgs(int argc, wchar_t** argv) {
@@ -108,8 +105,9 @@ static void InstallApp(void) {
     
     CreateDirectoryW(g_appDataDir, NULL);
     
-    CopyFileW(g_exePath, g_installedExePath, FALSE);
-    wcscpy(g_exePath, g_installedExePath);
+    WCHAR curExe[MAX_PATH];
+    GetModuleFileNameW(NULL, curExe, MAX_PATH);
+    CopyFileW(curExe, g_installedExePath, FALSE);
     
     WCHAR desktopPath[MAX_PATH], startMenuDir[MAX_PATH];
     SHGetFolderPathW(NULL, CSIDL_DESKTOP, NULL, 0, desktopPath);
@@ -124,11 +122,11 @@ static void InstallApp(void) {
     swprintf(startMenuPath, MAX_PATH, L"%ls\\Microsoft\\Windows\\Start Menu\\Programs\\%ls", startMenuDir, APP_NAME);
     CreateDirectoryW(startMenuPath, NULL);
     
-    CreateShortcut(g_exePath, L"-NoInstall", shortcutDesktop, APP_NAME);
+    CreateShortcut(g_installedExePath, L"-NoInstall", shortcutDesktop, APP_NAME);
     wprintf(L"已创建桌面快捷方式\n");
     
-    CreateShortcut(g_exePath, L"-NoInstall", shortcutStart, APP_NAME);
-    CreateShortcut(g_exePath, L"-Uninstall", shortcutUninstall, L"卸载");
+    CreateShortcut(g_installedExePath, L"-NoInstall", shortcutStart, APP_NAME);
+    CreateShortcut(g_installedExePath, L"-Uninstall", shortcutUninstall, L"卸载");
     wprintf(L"已创建开始菜单快捷方式\n");
     
     wprintf(L"安装完成!\n");
@@ -247,28 +245,8 @@ static void UninstallApp(void) {
     
     wprintf(L"\n卸载完成!\n");
 
-    WCHAR batPath[MAX_PATH];
-    GetTempPathW(MAX_PATH, batPath);
-    wcscat(batPath, L"MarkingMaster_cleanup.bat");
-
-    FILE* fBat = _wfopen(batPath, L"w");
-    if (fBat) {
-        fprintf(fBat,
-            "@echo off\r\n"
-            "timeout /t 2 /nobreak >nul\r\n"
-            "rd /s /q \"%ls\"\r\n"
-            "del /f /q \"%%~f0\"\r\n",
-            g_appDataDir);
-        fclose(fBat);
-
-        STARTUPINFOW si = {0};
-        si.cb = sizeof(si);
-        PROCESS_INFORMATION pi;
-        CreateProcessW(NULL, batPath, NULL, NULL, FALSE,
-                       CREATE_NO_WINDOW, NULL, NULL, &si, &pi);
-        CloseHandle(pi.hProcess);
-        CloseHandle(pi.hThread);
-    }
+    DeleteFileTree(g_appDataDir);
+    wprintf(L"已删除程序目录\n");
 
     exit(0);
 }
@@ -727,39 +705,25 @@ static void MainLogic(void) {
     if (exeUrl[0]) {
         wprintf(L"下载 exe 更新: %ls\n", exeUrl);
 
-        WCHAR newExePath[MAX_PATH], batPath[MAX_PATH];
+        WCHAR newExePath[MAX_PATH];
         GetTempPathW(MAX_PATH, newExePath);
-        GetTempPathW(MAX_PATH, batPath);
         wcscat(newExePath, L"MarkingMaster_new.exe");
-        wcscat(batPath, L"MarkingMaster_update.bat");
 
         if (DownloadFile(exeUrl, newExePath, userAgent)) {
-            FILE* fBat = _wfopen(batPath, L"w");
-            if (fBat) {
-                fprintf(fBat,
-                    "@echo off\r\n"
-                    "timeout /t 3 /nobreak >nul\r\n"
-                    "del /f /q \"%ls\"\r\n"
-                    "move /y \"%ls\" \"%ls\"\r\n"
-                    "del /f /q \"%%~f0\"\r\n",
-                    g_exePath, newExePath, g_exePath);
-                fclose(fBat);
-
-                STARTUPINFOW si = {0};
-                si.cb = sizeof(si);
-                PROCESS_INFORMATION pi;
-                if (CreateProcessW(NULL, batPath, NULL, NULL, FALSE,
-                                   CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
-                    CloseHandle(pi.hProcess);
-                    CloseHandle(pi.hThread);
-                    wprintf(L"exe 已更新，即将重启...\n");
-                }
-            }
+            _wremove(g_installedExePath);
+            MoveFileExW(newExePath, g_installedExePath, MOVEFILE_REPLACE_EXISTING);
+            wprintf(L"exe 已更新，重启后生效\n");
         }
     }
 
     wprintf(L"\n5秒后自动关闭本窗口...\n");
     Sleep(5000);
+}
+
+static BOOL IsRunningInTemp(const WCHAR* path) {
+    WCHAR tmp[MAX_PATH];
+    GetTempPathW(MAX_PATH, tmp);
+    return _wcsnicmp(path, tmp, wcslen(tmp)) == 0;
 }
 
 int wmain(int argc, wchar_t** argv) {
@@ -770,6 +734,35 @@ int wmain(int argc, wchar_t** argv) {
     
     InitPaths();
     ParseArgs(argc, argv);
+    
+    /* 如果不在 TEMP 中运行，先复制到 TEMP 再重新启动，避免 exe 自更新或卸载时被锁 */
+    WCHAR curExe[MAX_PATH];
+    GetModuleFileNameW(NULL, curExe, MAX_PATH);
+    if (!IsRunningInTemp(curExe)) {
+        WCHAR tmpExe[MAX_PATH];
+        GetTempPathW(MAX_PATH, tmpExe);
+        wcscat(tmpExe, L"MarkingMaster_runner.exe");
+        if (CopyFileW(curExe, tmpExe, FALSE)) {
+            WCHAR cmdLine[32768] = {0};
+            for (int i = 0; i < argc; i++) {
+                if (i > 0) wcscat(cmdLine, L" ");
+                if (wcschr(argv[i], L' '))
+                    swprintf(cmdLine + wcslen(cmdLine), 32768 - wcslen(cmdLine), L"\"%ls\"", argv[i]);
+                else
+                    wcscat(cmdLine, argv[i]);
+            }
+            WCHAR fullCmd[32768];
+            swprintf(fullCmd, 32768, L"\"%ls\" %ls", tmpExe, cmdLine);
+            STARTUPINFOW si = {0}; si.cb = sizeof(si);
+            PROCESS_INFORMATION pi;
+            if (CreateProcessW(NULL, fullCmd, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
+                CloseHandle(pi.hProcess);
+                CloseHandle(pi.hThread);
+                return 0;
+            }
+        }
+        /* 复制或启动失败 → fallback 原地跑 */
+    }
     
     if (g_uninstall) {
         UninstallApp();
