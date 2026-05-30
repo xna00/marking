@@ -717,12 +717,10 @@ static void MainLogic(void) {
     CreateDirectoryW(g_appDataDir, NULL);
     CreateDirectoryW(g_userDataDir, NULL);
     
-    if (needDownload) {
-        KillEdgeProcesses();
-        Sleep(500);
-    }
-    
     WriteMachineInfo();
+    
+    KillEdgeProcesses();
+    Sleep(500);
     
     StartEdge();
 
