@@ -1,4 +1,5 @@
 import { aiHook } from "./aiHook.js";
+import { mergeImagesVertically } from "./merge.js";
 
 type NetworkResponseReceivedParams = {
   requestId: string;
@@ -20,6 +21,7 @@ type NetworkGetResponseBodyResponse = {
 const requestIdResponseMap = new Map<string, NetworkResponseReceivedParams>();
 
 let urlResponseMap = new Map<string, string>();
+const imageMap = new Map<string, string>(); // key = A图的完整URL, value = 合并后 dataUrl
 // 用于存储调试器附加状态
 const attachedTabs = new Map<number, boolean>();
 
@@ -147,8 +149,78 @@ chrome.debugger.onEvent.addListener(async (source, method, rawParams) => {
           encodeURIComponent(responseBody.body);
       }
       urlResponseMap.set(responseParams.response.url, dataUrl);
+
+      const url = responseParams.response.url;
+      console.log(`[merge] checking url: ${url}`);
+      const mergeMatch = (() => {
+        try {
+          const u = new URL(url);
+          const path = u.pathname;
+          console.log(`[merge] pathname: ${path}`);
+          const lastSlash = path.lastIndexOf('/');
+          if (lastSlash === -1) return null;
+          const filename = path.slice(lastSlash + 1);
+          console.log(`[merge] filename: ${filename}`);
+          if (!filename.endsWith('A.png') && !filename.endsWith('B.png')) {
+            console.log(`[merge] filename doesn't end with A.png or B.png`);
+            return null;
+          }
+          const dotIndex = filename.lastIndexOf('.');
+          const letter = filename.slice(dotIndex - 1, dotIndex);
+          const prefix = filename.slice(0, dotIndex - 1);
+          console.log(`[merge] letter: ${letter}, prefix: ${prefix}`);
+          return { dir: path.slice(0, lastSlash + 1), prefix, letter };
+        } catch (e) {
+          console.log(`[merge] URL parse error:`, e);
+          return null;
+        }
+      })();
+      console.log(`[merge] mergeMatch result:`, mergeMatch);
+      console.log(`[merge] includes AnswerSheet/: ${url.includes('AnswerSheet/')}`);
+
+      if (mergeMatch && url.includes('AnswerSheet/')) {
+        const { dir, prefix, letter } = mergeMatch;
+        const otherPath = dir + prefix + (letter === 'A' ? 'B' : 'A') + '.png';
+
+        console.log(`[merge] ${letter}.png arrived, looking for path: ${otherPath}`);
+        console.log(`[merge] urlResponseMap keys:`, [...urlResponseMap.keys()]);
+        let otherDataUrl: string | undefined;
+        let otherFullUrl: string | undefined;
+        for (const [key, val] of urlResponseMap) {
+          try {
+            const otherPathname = new URL(key).pathname;
+            console.log(`[merge] comparing ${otherPathname} === ${otherPath}? ${otherPathname === otherPath}`);
+            if (otherPathname === otherPath) {
+              otherFullUrl = key;
+              otherDataUrl = val;
+              break;
+            }
+          } catch (e) {
+            console.log(`[merge] error parsing key ${key}:`, e);
+          }
+        }
+
+        if (otherFullUrl) {
+          const isA = letter === 'A';
+          const aUrl = isA ? url : otherFullUrl;
+          const bUrl = isA ? otherFullUrl : url;
+          const aData = isA ? dataUrl : otherDataUrl;
+          const bData = isA ? otherDataUrl : dataUrl;
+
+          console.log(`[merge] both A and B ready, merging...`);
+          const mergedDataUrl = await mergeImagesVertically([aData, bData]);
+          console.log(`[merge] merged done, length=${mergedDataUrl.length}, storing imageMap[${aUrl}]`);
+          imageMap.set(aUrl, mergedDataUrl);
+          urlResponseMap.delete(bUrl);
+          aiHook(aUrl, mergedDataUrl);
+        } else {
+          console.log(`[merge] ${otherPath} not yet in urlResponseMap, waiting`);
+        }
+      } else {
+        aiHook(responseParams.response.url, dataUrl);
+      }
+
       urlResponseMap = new Map([...urlResponseMap.entries()].slice(-20));
-      aiHook(responseParams.response.url, dataUrl);
       console.log("Response body:", {
         requestId: responseParams.requestId,
         base64Encoded: responseBody.base64Encoded,
@@ -166,7 +238,10 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "getResponse") {
-    const dataUrl = urlResponseMap.get(request.url);
+    const merged = imageMap.get(request.url);
+    const single = !merged ? urlResponseMap.get(request.url) : undefined;
+    const dataUrl = merged ?? single;
+    console.log(`[getResponse] url=${request.url} ${merged ? 'from imageMap(merged)' : single ? 'from urlResponseMap' : 'not found'}`);
     sendResponse({ dataUrl });
   }
 });
