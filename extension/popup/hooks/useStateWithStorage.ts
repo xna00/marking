@@ -1,4 +1,4 @@
-import { use, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 export const useStateWithChromeStorage = <T>(key: string, initialValue: T) => {
   const [value, setValue] = useState<T>(initialValue);

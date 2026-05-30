@@ -1,8 +1,6 @@
 import { storageKeys } from "./constants";
+import { parseAIResult } from "./ai";
 
-function parseAIResult2(aiResult: any): string {
-  return aiResult.choices[0].message.content;
-}
 console.log("content.ts loaded");
 
 const testPageHandlers = {
@@ -263,7 +261,7 @@ const h = async () => {
     const result = res?.result;
     if (result) {
       showedResult = true;
-      const aiResult = parseAIResult2(result);
+      const aiResult = parseAIResult(result);
       showAiResult(aiResult);
     } else {
       console.error("No result from AI");

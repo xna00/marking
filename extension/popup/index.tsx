@@ -2,7 +2,6 @@ import {
   recognizeImage,
   parseAIResult,
   defaultAISettings,
-  markByAI2,
   fillCriteriaPlaceholder,
   makeCriteriaMDTable,
 } from "../ai.js";
@@ -11,7 +10,7 @@ import { modelNames } from "../models.js";
 import { storageKeys } from "../constants.js";
 import { createRoot } from "react-dom/client";
 import { useStateWithChromeStorage } from "./hooks/useStateWithStorage.js";
-import { Suspense, use, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CriteriaTable } from "./CriteriaTable.js";
 import { defaultImageUrl } from "./imageUrl.js";
 import { Banner } from "./Banner.js";

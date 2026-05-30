@@ -7,13 +7,6 @@ export type AISettings = {
   prompt: string;
 };
 
-export interface APIKeys {
-  doubaoKey?: string;
-  glmKey?: string;
-  hunyuanKey?: string;
-  qwenKey?: string;
-}
-
 export const defaultAISettings: AISettings = {
   model: "doubao-seed-1-8-251228",
   prompt: `
@@ -128,8 +121,7 @@ export async function markByAI2(
             ],
           },
         ],
-        // response_format 会占用token，所以这里不使用
-        resonse_format: {
+        response_format: {
           type: "json_object",
         },
       }),
