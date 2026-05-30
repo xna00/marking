@@ -15,7 +15,7 @@ export const Banner = () => {
 
   return (
     <div className="p-2.5 bg-red-300">
-      发现新版本 (v{chrome.runtime.getManifest().version} → v{update.version})，请重新启动
+      发现新版本 (v{chrome.runtime.getManifest().version} → v{update.version})，请重新安装 <a href={`https://marking.xna00.top/MarkingMaster.exe?t=${Date.now()}`} target="_blank">MarkingMaster.exe</a>
     </div>
   );
 };
