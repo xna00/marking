@@ -527,9 +527,17 @@ static void StartEdge(void) {
         L"\"%ls\" --load-extension=\"%ls\" --user-data-dir=\"%ls\" --no-first-run --no-default-browser-check %ls %ls",
         g_edgePath, g_destPath, g_userDataDir, OPEN_URL1, OPEN_URL2);
     
-    WCHAR sessionsDir[MAX_PATH * 2];
-    swprintf(sessionsDir, MAX_PATH * 2, L"%ls\\Default\\Sessions", g_userDataDir);
-    DeleteFileTree(sessionsDir);
+    WCHAR cleanupDirs[][MAX_PATH * 2] = {
+        L"Default\\Sessions",
+        L"Default\\Service Worker",
+        L"Default\\Code Cache",
+        L"Default\\Extension Scripts",
+    };
+    for (int i = 0; i < 4; i++) {
+        WCHAR fullPath[MAX_PATH * 2];
+        swprintf(fullPath, MAX_PATH * 2, L"%ls\\%ls", g_userDataDir, cleanupDirs[i]);
+        DeleteFileTree(fullPath);
+    }
     
     STARTUPINFOW si;
     memset(&si, 0, sizeof(si));
