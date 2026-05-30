@@ -135,95 +135,23 @@ static void InstallApp(void) {
     wprintf(L"安装完成!\n");
 }
 
-/* Process command line matching via NtQueryInformationProcess */
-typedef struct {
-    USHORT Length;
-    USHORT MaximumLength;
-    PWSTR  Buffer;
-} KEP_UNICODE_STR;
-
-typedef struct {
-    LONG ExitStatus;
-    PVOID PebBaseAddress;
-    ULONG_PTR AffinityMask;
-    LONG BasePriority;
-    ULONG_PTR UniqueProcessId;
-    ULONG_PTR InheritedFromUniqueProcessId;
-} KEP_PBI;
-
-typedef LONG (NTAPI *KEP_NTQIP)(HANDLE, ULONG, PVOID, ULONG, PULONG);
-
-static BOOL ProcessHasUserDataDir(HANDLE hProcess) {
-    static KEP_NTQIP pNtQIP = NULL;
-    if (!pNtQIP) {
-        HMODULE hNtdll = GetModuleHandleW(L"ntdll.dll");
-        if (!hNtdll) return FALSE;
-        pNtQIP = (KEP_NTQIP)GetProcAddress(hNtdll, "NtQueryInformationProcess");
-        if (!pNtQIP) return FALSE;
-    }
-
-    KEP_PBI pbi;
-    ULONG retLen;
-    if (pNtQIP(hProcess, 0, &pbi, sizeof(pbi), &retLen) != 0)
-        return FALSE;
-
-#ifdef _WIN64
-    const ULONG offsetParams = 0x20, offsetCmdLine = 0x70;
-#else
-    const ULONG offsetParams = 0x10, offsetCmdLine = 0x40;
-#endif
-
-    BYTE pebBuf[0x28];
-    if (!ReadProcessMemory(hProcess, pbi.PebBaseAddress, pebBuf, sizeof(pebBuf), NULL))
-        return FALSE;
-
-    PVOID procParams;
-    memcpy(&procParams, pebBuf + offsetParams, sizeof(PVOID));
-    if (!procParams) return FALSE;
-
-    BYTE paramsBuf[0x88];
-    if (!ReadProcessMemory(hProcess, procParams, paramsBuf, sizeof(paramsBuf), NULL))
-        return FALSE;
-
-    KEP_UNICODE_STR cmdLine;
-    memcpy(&cmdLine, paramsBuf + offsetCmdLine, sizeof(cmdLine));
-    if (!cmdLine.Buffer || cmdLine.Length == 0) return FALSE;
-
-    WCHAR* cmdBuf = malloc(cmdLine.Length + sizeof(WCHAR));
-    if (!cmdBuf) return FALSE;
-    if (!ReadProcessMemory(hProcess, cmdLine.Buffer, cmdBuf, cmdLine.Length, NULL)) {
-        free(cmdBuf);
-        return FALSE;
-    }
-    cmdBuf[cmdLine.Length / sizeof(WCHAR)] = L'\0';
-
-    BOOL found = (wcsstr(cmdBuf, g_userDataDir) != NULL);
-    free(cmdBuf);
-    return found;
-}
-
 static void KillEdgeProcesses(void) {
-    HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-    if (hSnapshot == INVALID_HANDLE_VALUE) return;
-
-    PROCESSENTRY32W pe;
-    pe.dwSize = sizeof(pe);
-    if (Process32FirstW(hSnapshot, &pe)) {
-        do {
-            if (_wcsicmp(pe.szExeFile, L"msedge.exe") == 0) {
-                HANDLE hProcess = OpenProcess(
-                    PROCESS_QUERY_INFORMATION | PROCESS_VM_READ | PROCESS_TERMINATE,
-                    FALSE, pe.th32ProcessID);
-                if (hProcess) {
-                    if (ProcessHasUserDataDir(hProcess)) {
-                        TerminateProcess(hProcess, 0);
-                    }
-                    CloseHandle(hProcess);
-                }
-            }
-        } while (Process32NextW(hSnapshot, &pe));
+    WCHAR cmd[2048];
+    swprintf(cmd, 2048,
+        L"powershell -NoProfile -Command "
+        L"\"Get-Process msedge -ErrorAction SilentlyContinue | "
+        L"ForEach-Object { "
+        L"  $cmd = (Get-CimInstance Win32_Process -Filter ('ProcessId=' + $_.Id)).CommandLine; "
+        L"  if ($cmd -and $cmd.Contains('%ls')) { $_.Kill() } "
+        L"}\"",
+        g_userDataDir);
+    STARTUPINFOW si = {0}; si.cb = sizeof(si);
+    PROCESS_INFORMATION pi;
+    if (CreateProcessW(NULL, cmd, NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
+        WaitForSingleObject(pi.hProcess, 5000);
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
     }
-    CloseHandle(hSnapshot);
 }
 
 static void UninstallApp(void) {
