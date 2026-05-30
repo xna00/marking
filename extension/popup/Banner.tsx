@@ -1,121 +1,20 @@
-import { use, useEffect, useState } from "react";
-import { HOST, storageKeys } from "../constants";
-import UZIP from "uzip";
+import { useEffect, useState } from "react";
 import { checkUpdate, type UpdateInfo } from "../update";
 
-const fetchExtension = () => {
-  return fetch(new URL("/update.json?" + Date.now(), HOST), {
-    headers: {
-      "Cache-Control": "no-cache",
-    },
-  })
-    .then((res) => res.json())
-    .then((updateInfo) => fetch(updateInfo.extensionUrl));
-};
-
-const directoryId = "directoryId";
-
-const saveFilesInDirectory = async (
-  dirHandle: FileSystemDirectoryHandle,
-  files: Record<string, Uint8Array>
-) => {
-  return Promise.all(
-    Object.entries(files).map(async ([p, fileContent]) => {
-      if (!p) return;
-      const filePath = p.split("/");
-      if (filePath.length > 1) {
-        const dir = await dirHandle.getDirectoryHandle(filePath[0], {
-          create: true,
-        });
-        await saveFilesInDirectory(dir, {
-          [filePath.slice(1).join("/")]: fileContent,
-        });
-      } else {
-        const fileHandle = await dirHandle.getFileHandle(p, {
-          create: true,
-        });
-        const writable = await fileHandle.createWritable();
-        await writable.write(fileContent.buffer as ArrayBuffer);
-        await writable.close();
-      }
-    })
-  );
-};
 export const Banner = () => {
-  const [update, setUpdate] = useState<{
-    version: string;
-  }>();
-  const [progress, setProgress] = useState<string>();
+  const [update, setUpdate] = useState<UpdateInfo>();
 
-  const msg = progress ?? (update ? `发现新版本${update.version}，请更新` : "");
-
-  const saveExtensionFiles = async (dirHandle: FileSystemDirectoryHandle) => {
-    setProgress("正在下载...");
-    const buf = await (await fetchExtension()).arrayBuffer();
-    setProgress("正在保存...");
-    const files = UZIP.parse(buf);
-    console.log(files);
-    const f = Object.fromEntries(
-      Object.entries(files)
-        .filter(([k, v]) => !k.endsWith("/"))
-        .map(([k, v]) => [k.replace("dist/extension/", ""), v])
-    );
-    await saveFilesInDirectory(dirHandle, f);
-  };
-  const updateExtension = async () => {
-    try {
-      const dirHandle = await window.showDirectoryPicker({
-        id: directoryId,
-        mode: "readwrite",
-      });
-      console.log(dirHandle);
-      await saveExtensionFiles(dirHandle);
-      await chrome.storage.local.set({
-        [storageKeys.UPDATE_INFO]: null,
-      });
-      chrome.runtime.reload();
-    } catch (error) {
-      console.error(error);
-    }
-  };
   useEffect(() => {
-    chrome.storage.local.get(storageKeys.UPDATE_INFO).then((res) => {
-      if (res[storageKeys.UPDATE_INFO]) {
-        fetchExtension();
-      }
-      setUpdate(res[storageKeys.UPDATE_INFO] as UpdateInfo | undefined);
+    checkUpdate().then((info) => {
+      setUpdate(info);
     });
   }, []);
 
+  if (!update) return null;
+
   return (
-    <div
-      className={`p-2.5 flex items-center ${update ? "bg-red-300" : ""}`}
-    >
-      <h1 className="text-2xl">改卷仙人</h1>
-      <span className="mx-2">v{chrome.runtime.getManifest().version}</span>
-      <span>{msg}</span>
-      <button
-        className="small-btn ml-4"
-        onClick={() => {
-          if (update) {
-            updateExtension();
-            return;
-          }
-          checkUpdate().then((res) => {
-            if (res) {
-              setUpdate(res);
-              updateExtension();
-            } else {
-              setProgress("已是最新版本");
-              setTimeout(() => {
-                setProgress(undefined);
-              }, 3000);
-            }
-          });
-        }}
-      >
-        更新
-      </button>
+    <div className="p-2.5 bg-red-300">
+      发现新版本 (v{chrome.runtime.getManifest().version} → v{update.version})，请重新启动
     </div>
   );
 };
