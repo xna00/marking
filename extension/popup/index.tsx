@@ -50,9 +50,6 @@ const pasteImageFromClipboard = async () => {
     }
   }
 };
-const { version } = chrome.runtime.getManifest();
-document.title = `改卷仙人 v${version}`;
-
 const App = () => {
   const [modelName, setModelName] = useStateWithChromeStorage(
     storageKeys.AI_MODEL,

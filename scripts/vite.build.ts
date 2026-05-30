@@ -61,6 +61,11 @@ await build({
 
 fs.copyFileSync("manifest.json", "../dist/extension/manifest.json");
 
+const popupHtml = fs
+  .readFileSync("../dist/extension/popup.html", "utf-8")
+  .replace("<title>改卷仙人</title>", `<title>改卷仙人 v${manifest.version}</title>`);
+fs.writeFileSync("../dist/extension/popup.html", popupHtml);
+
 process.chdir("../doc");
 
 // fs.copyFileSync("MarkingMaster.exe", "../dist/doc/MarkingMaster.exe");
