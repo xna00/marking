@@ -8,17 +8,19 @@ export async function aiHook(url: string, dataUrl: string) {
   if (urlResultMap.has(url)) {
     return;
   }
+  const promise = runAiRecognition(dataUrl);
+  urlResultMap.set(url, promise);
+  urlResultMap = new Map([...urlResultMap.entries()].slice(-20));
+  promise.catch(() => urlResultMap.delete(url));
+}
+
+async function runAiRecognition(dataUrl: string) {
   const scaledDataUrl = await scaleImage(dataUrl);
   const bitmap = await getImageBitmap(scaledDataUrl);
+  console.log("AI hook for URL:", scaledDataUrl, scaledDataUrl.length, "bitmap size:", bitmap.width, bitmap.height);
   printImageInConsole(scaledDataUrl, bitmap.width, bitmap.height);
   bitmap.close();
-  const result = recognizeImage(scaledDataUrl);
-
-  urlResultMap.set(url, result);
-  urlResultMap = new Map([...urlResultMap.entries()].slice(-20));
-  result.catch(() => {
-    urlResultMap.delete(url);
-  });
+  return recognizeImage(scaledDataUrl);
 }
 
 export const getAIResultHandler = (

@@ -21,7 +21,7 @@ type NetworkGetResponseBodyResponse = {
 const requestIdResponseMap = new Map<string, NetworkResponseReceivedParams>();
 
 let urlResponseMap = new Map<string, string>();
-const imageMap = new Map<string, string>(); // key = A图的完整URL, value = 合并后 dataUrl
+let imageMap = new Map<string, string>(); // key = A图的完整URL, value = 合并后 dataUrl
 const attachedTabs = new Map<number, boolean>();
 
 function makeDataUrl(body: string, base64: boolean, mimeType: string): string {
@@ -30,17 +30,21 @@ function makeDataUrl(body: string, base64: boolean, mimeType: string): string {
     : `data:${mimeType};charset=utf-8,${encodeURIComponent(body)}`;
 }
 
-const tabImageCount = new Map<number, number>();
+const tabImageCount = new Map<number, Promise<number>>();
 
 async function getImageCount(tabId: number): Promise<number> {
   if (!tabImageCount.has(tabId)) {
-    await new Promise(r => setTimeout(r, 1000));
-    const [result] = await chrome.scripting.executeScript({
-      target: { tabId },
-      func: () => document.querySelectorAll('.imgSection>img').length,
-      world: "ISOLATED",
-    });
-    tabImageCount.set(tabId, result ?? 1);
+    const promise = new Promise<void>(r => setTimeout(r, 1000))
+      .then(() => chrome.scripting.executeScript({
+        target: { tabId },
+        func: () => document.querySelectorAll('.outBox:not(.hideBox) .imgSection>img').length,
+        world: "ISOLATED",
+      }))
+      .then(([{ result }]) => {
+        console.log("Image count for tab", tabId, "is", result);
+        return result ?? 1;
+      });
+    tabImageCount.set(tabId, promise);
   }
   return tabImageCount.get(tabId)!;
 }
@@ -88,7 +92,7 @@ const detachDebugger = async (tabId: number) => {
 };
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (changeInfo.status === 'loading') tabImageCount.delete(tabId);
+  tabImageCount.delete(tabId);
   if (
     changeInfo.status === "complete" &&
     tab.url &&
@@ -151,13 +155,13 @@ chrome.debugger.onEvent.addListener(async (source, method, rawParams) => {
       }
       const responseBody = response as NetworkGetResponseBodyResponse;
       const dataUrl = makeDataUrl(responseBody.body, responseBody.base64Encoded, responseParams.response.mimeType);
-      urlResponseMap.set(responseParams.response.url, dataUrl);
 
       const base = getBasePath(responseParams.response.url);
       const count = await getImageCount(tabId);
+      urlResponseMap.set(responseParams.response.url, dataUrl); // 必须在 await getImageCount 之后才 set，否则多个并发的 loadingFinished handler 在 yield 回来的 matched 检查中都会看到 count 张图，导致重复 merge
       const matched = [...urlResponseMap.entries()]
         .filter(([k]) => {
-          try { return new URL(k).pathname.startsWith(base); } catch { return false; }
+          return new URL(k).pathname.startsWith(base)
         })
         .sort(([a], [b]) => new URL(a).pathname.localeCompare(new URL(b).pathname));
 
@@ -168,9 +172,9 @@ chrome.debugger.onEvent.addListener(async (source, method, rawParams) => {
         imageMap.set(keys[0], merged);
         keys.forEach(k => urlResponseMap.delete(k));
         aiHook(keys[0], merged);
+        imageMap = new Map([...imageMap.entries()].slice(-20));
       }
 
-      urlResponseMap = new Map([...urlResponseMap.entries()].slice(-20));
       console.log("Response body:", {
         requestId: responseParams.requestId,
         base64Encoded: responseBody.base64Encoded,
