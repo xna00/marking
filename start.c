@@ -513,6 +513,33 @@ static char* FindJsonValue(const char* json, const char* key, int* outLen) {
     return NULL;
 }
 
+static void WriteMachineInfo(void) {
+    HKEY hKey;
+    if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Cryptography", 0, KEY_READ | KEY_WOW64_64KEY, &hKey) != ERROR_SUCCESS)
+        return;
+
+    WCHAR uuid[64];
+    DWORD size = sizeof(uuid);
+    DWORD type;
+    if (RegQueryValueExW(hKey, L"MachineGuid", NULL, &type, (BYTE*)uuid, &size) != ERROR_SUCCESS || type != REG_SZ) {
+        RegCloseKey(hKey);
+        return;
+    }
+    RegCloseKey(hKey);
+
+    WCHAR path[MAX_PATH * 2];
+    swprintf(path, MAX_PATH * 2, L"%ls\\machine_info.json", g_destPath);
+
+    HANDLE hFile = CreateFileW(path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hFile == INVALID_HANDLE_VALUE) return;
+
+    char buf[256];
+    int len = snprintf(buf, sizeof(buf), "{\"uuid\":\"%ls\"}", uuid);
+    DWORD written;
+    WriteFile(hFile, buf, len, &written, NULL);
+    CloseHandle(hFile);
+}
+
 static void StartEdge(void) {
     WCHAR args[MAX_PATH * 4];
     swprintf(args, MAX_PATH * 4, 
@@ -690,6 +717,8 @@ static void MainLogic(void) {
         KillEdgeProcesses();
         Sleep(500);
     }
+    
+    WriteMachineInfo();
     
     StartEdge();
 
