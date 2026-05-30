@@ -36,6 +36,8 @@ static WCHAR g_userDataDir[MAX_PATH];
 static WCHAR g_edgePath[MAX_PATH];
 /* %LOCALAPPDATA%\MarkingMaster\MarkingMaster.exe */
 static WCHAR g_installedExePath[MAX_PATH];
+/* %LOCALAPPDATA%\MarkingMaster_runner\ */
+static WCHAR g_runnerDir[MAX_PATH];
 static BOOL g_uninstall = FALSE;
 static BOOL g_noInstall = FALSE;
 
@@ -62,6 +64,7 @@ static void InitPaths(void) {
     swprintf(g_userDataDir, MAX_PATH, L"%ls\\edge-profile", g_appDataDir);
     wcscpy(g_edgePath, DEFAULT_EDGE_PATH);
     swprintf(g_installedExePath, MAX_PATH, L"%ls\\%ls.exe", g_appDataDir, APP_DIR_NAME);
+    swprintf(g_runnerDir, MAX_PATH, L"%ls_runner", g_appDataDir);
 }
 
 static void ParseArgs(int argc, wchar_t** argv) {
@@ -720,10 +723,8 @@ static void MainLogic(void) {
     Sleep(5000);
 }
 
-static BOOL IsRunningInTemp(const WCHAR* path) {
-    WCHAR tmp[MAX_PATH];
-    GetTempPathW(MAX_PATH, tmp);
-    return _wcsnicmp(path, tmp, wcslen(tmp)) == 0;
+static BOOL IsRunningFromRunner(const WCHAR* path) {
+    return _wcsnicmp(path, g_runnerDir, wcslen(g_runnerDir)) == 0;
 }
 
 int wmain(int argc, wchar_t** argv) {
@@ -735,14 +736,14 @@ int wmain(int argc, wchar_t** argv) {
     InitPaths();
     ParseArgs(argc, argv);
     
-    /* 如果不在 TEMP 中运行，先复制到 TEMP 再重新启动，避免 exe 自更新或卸载时被锁 */
+    /* 如果不在 runner 目录中运行，先复制到 runner 目录再重新启动，避免 exe 自更新或卸载时被锁 */
     WCHAR curExe[MAX_PATH];
     GetModuleFileNameW(NULL, curExe, MAX_PATH);
-    if (!IsRunningInTemp(curExe)) {
-        WCHAR tmpExe[MAX_PATH];
-        GetTempPathW(MAX_PATH, tmpExe);
-        wcscat(tmpExe, L"MarkingMaster_runner.exe");
-        if (CopyFileW(curExe, tmpExe, FALSE)) {
+    if (!IsRunningFromRunner(curExe)) {
+        CreateDirectoryW(g_runnerDir, NULL);
+        WCHAR runnerPath[MAX_PATH];
+        swprintf(runnerPath, MAX_PATH, L"%ls\\%ls.exe", g_runnerDir, APP_DIR_NAME);
+        if (CopyFileW(curExe, runnerPath, FALSE)) {
             WCHAR cmdLine[32768] = {0};
             for (int i = 0; i < argc; i++) {
                 if (i > 0) wcscat(cmdLine, L" ");
@@ -752,7 +753,7 @@ int wmain(int argc, wchar_t** argv) {
                     wcscat(cmdLine, argv[i]);
             }
             WCHAR fullCmd[32768];
-            swprintf(fullCmd, 32768, L"\"%ls\" %ls", tmpExe, cmdLine);
+            swprintf(fullCmd, 32768, L"\"%ls\" %ls", runnerPath, cmdLine);
             STARTUPINFOW si = {0}; si.cb = sizeof(si);
             PROCESS_INFORMATION pi;
             if (CreateProcessW(NULL, fullCmd, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
