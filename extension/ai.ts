@@ -121,9 +121,9 @@ export async function markByAI2(
             ],
           },
         ],
-        response_format: {
-          type: "json_object",
-        },
+        // response_format: {
+        //   type: "json_object",
+        // },
       }),
     });
     if (!response.ok) {
