@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { checkUpdate, type UpdateInfo } from "../update";
+import { checkUpdate, setUpdateIcon, type UpdateInfo } from "../update";
 
 export const Banner = () => {
   const [update, setUpdate] = useState<UpdateInfo>();
@@ -7,6 +7,7 @@ export const Banner = () => {
   useEffect(() => {
     checkUpdate().then((info) => {
       setUpdate(info);
+      setUpdateIcon(!!info);
     });
   }, []);
 
