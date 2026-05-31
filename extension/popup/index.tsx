@@ -15,6 +15,7 @@ import { CriteriaTable } from "./CriteriaTable.js";
 import { defaultImageUrl } from "./imageUrl.js";
 import { Banner } from "./Banner.js";
 import { specialChars } from "./specialChars.js";
+import { UserPanel } from "./UserPanel.js";
 
 export type InputRef = {
   e: HTMLTextAreaElement | HTMLInputElement;
@@ -120,6 +121,7 @@ const App = () => {
     <>
       <Banner></Banner>
       <div className="p-2.5">
+        <UserPanel></UserPanel>
         <label>选择模型</label>
         <select
           id="modelSelect"

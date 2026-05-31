@@ -1,6 +1,7 @@
 import { repairJson } from "./lib.js";
 import type { ModelName } from "./models.js";
 import { storageKeys, BACKEND_URL } from "./constants.js";
+import { getStoredToken } from "./api.js";
 
 export type AISettings = {
   model: ModelName;
@@ -89,12 +90,17 @@ export async function markByAI2(
   }
 ) {
   const fn = async () => {
+    const token = await getStoredToken();
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "Version": chrome.runtime.getManifest().version,
+    };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
     const response = await fetch(`${BACKEND_URL}/api/v1/chat/completions`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Version": chrome.runtime.getManifest().version,
-      },
+      headers,
       body: JSON.stringify({
         model: aiSettings.model,
         thinking: { type: "disabled" },

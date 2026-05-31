@@ -6,3 +6,4 @@ node_modules
 key.pem
 .env
 secret.h
+marking.db*

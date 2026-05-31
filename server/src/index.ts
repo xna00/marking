@@ -1,7 +1,16 @@
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
+import type { Context } from "hono";
 import { writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
+import {
+  createUser,
+  verifyLogin,
+  findUserByToken,
+  incrementUsage,
+  getUserUsage,
+} from "./db.ts";
+import type { User } from "./db.ts";
 
 const API_KEY = process.env.DOUBAO_API_KEY;
 if (!API_KEY) {
@@ -15,9 +24,62 @@ function log(...args: unknown[]) {
   console.log(`[${new Date().toLocaleString()}]`, ...args);
 }
 
-const app = new Hono();
+type AppVariables = { user: User };
+const app = new Hono<{ Variables: AppVariables }>();
 
-app.post("/api/v1/chat/completions", async (c) => {
+async function requireAuth(
+  c: Context<{ Variables: AppVariables }>,
+  next: () => Promise<void>,
+) {
+  const auth = c.req.header("Authorization");
+  if (!auth || !auth.startsWith("Bearer ")) {
+    return c.json({ error: "请先登录" }, 401);
+  }
+  const token = auth.slice(7);
+  const user = findUserByToken(token);
+  if (!user) {
+    return c.json({ error: "无效的 token，请重新登录" }, 401);
+  }
+  c.set("user", user);
+  await next();
+}
+
+app.post("/api/v1/auth/register", async (c) => {
+  const { username, password, email, phone } = await c.req.json();
+  if (!username || !password) {
+    return c.json({ error: "用户名和密码不能为空" }, 400);
+  }
+  if (username.length < 2 || password.length < 4) {
+    return c.json({ error: "用户名至少2个字符，密码至少4个字符" }, 400);
+  }
+  try {
+    const user = createUser(username, password, email, phone);
+    return c.json({ token: user.token, user: { username: user.username, email: user.email, phone: user.phone } });
+  } catch (e: any) {
+    return c.json({ error: e.message }, 409);
+  }
+});
+
+app.post("/api/v1/auth/login", async (c) => {
+  const { username, password } = await c.req.json();
+  if (!username || !password) {
+    return c.json({ error: "用户名和密码不能为空" }, 400);
+  }
+  const user = verifyLogin(username, password);
+  if (!user) {
+    return c.json({ error: "用户名或密码错误" }, 401);
+  }
+  return c.json({ token: user.token, user: { username: user.username, email: user.email, phone: user.phone } });
+});
+
+app.get("/api/v1/user/usage", requireAuth, async (c) => {
+  const user = c.get("user");
+  const usage = getUserUsage(user.id);
+  return c.json({ usage });
+});
+
+app.post("/api/v1/chat/completions", requireAuth, async (c) => {
+  const user = c.get("user");
   const id = Math.random().toString(36).slice(2, 8);
 
   const originalStream = c.req.raw.body;
@@ -54,7 +116,7 @@ app.post("/api/v1/chat/completions", async (c) => {
     const body = JSON.parse(bodyText);
     const model = body.model || "unknown";
 
-    log(`[${id}] => model=${model}`);
+    log(`[${id}] user=${user.username} => model=${model}`);
     for (const [k, v] of c.req.raw.headers) {
       log(`[${id}]   header: ${k}: ${v}`);
     }
@@ -88,19 +150,27 @@ app.post("/api/v1/chat/completions", async (c) => {
 
   const res = await fetchPromise;
   const ms = Date.now() - start;
-  log(`[${id}] <= ${res.status} (${ms}ms)`);
+  log(`[${id}] user=${user.username} <= ${res.status} (${ms}ms)`);
   for (const [k, v] of res.headers) {
     log(`[${id}]   header: ${k}: ${v}`);
+  }
+
+  // 记录用户调用次数
+  if (res.ok) {
+    incrementUsage(user.id);
   }
 
   // 保存逻辑不要阻塞响应
   savePromise.catch((e) => log(`[${id}]   save error:`, e));
 
-  const outHeaders = new Headers(res.headers);
-  outHeaders.delete("content-encoding");
-  outHeaders.delete("content-length");
+  const outHeaders: Record<string, string> = {};
+  for (const [k, v] of res.headers) {
+    if (k !== "content-encoding" && k !== "content-length") {
+      outHeaders[k] = v;
+    }
+  }
 
-  return c.newResponse(res.body, res.status, outHeaders);
+  return c.newResponse(res.body, res.status as any, outHeaders);
 });
 
 const port = Number(process.env.PORT) || 3000;
