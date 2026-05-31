@@ -11,8 +11,9 @@ export type AuthResult = {
 
 export type UsageResult = {
   usage: {
-    totalCalls: number;
-    todayCalls: number;
+    remainingQuota: number;
+    totalUsed: number;
+    todayUsed: number;
   };
 };
 

@@ -7,7 +7,8 @@ import {
   createUser,
   verifyLogin,
   findUserByToken,
-  incrementUsage,
+  checkAndDeductQuota,
+  rechargeQuota,
   getUserUsage,
 } from "./db.ts";
 import type { User } from "./db.ts";
@@ -78,8 +79,23 @@ app.get("/api/v1/user/usage", requireAuth, async (c) => {
   return c.json({ usage });
 });
 
+app.post("/api/v1/user/recharge", requireAuth, async (c) => {
+  const user = c.get("user");
+  const { amount, quota } = await c.req.json();
+  if (!amount || !quota || amount <= 0 || quota <= 0) {
+    return c.json({ error: "参数错误" }, 400);
+  }
+  rechargeQuota(user.id, amount, quota);
+  return c.json({ success: true });
+});
+
 app.post("/api/v1/chat/completions", requireAuth, async (c) => {
   const user = c.get("user");
+
+  if (user.quota <= 0) {
+    return c.json({ error: "剩余可用量不足，请联系管理员充值", usage: getUserUsage(user.id) }, 403);
+  }
+
   const id = Math.random().toString(36).slice(2, 8);
 
   const originalStream = c.req.raw.body;
@@ -100,7 +116,7 @@ app.post("/api/v1/chat/completions", requireAuth, async (c) => {
     },
     body: forwardStream,
     duplex: "half",
-  });
+  } as any);
 
   // 收集 clone 用于日志和图片保存（与转发并行）
   const savePromise = (async () => {
@@ -156,9 +172,8 @@ app.post("/api/v1/chat/completions", requireAuth, async (c) => {
     log(`[${id}]   header: ${k}: ${v}`);
   }
 
-  // 记录用户调用次数
   if (res.ok) {
-    incrementUsage(user.id);
+    checkAndDeductQuota(user.id);
   }
 
   // 保存逻辑不要阻塞响应

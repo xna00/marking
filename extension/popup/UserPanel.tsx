@@ -75,7 +75,7 @@ export function UserPanel({ onLoginChange }: Props) {
         </div>
         {usage && (
           <div className="text-xs text-gray-600 mt-1">
-            今日调用: {usage.todayCalls} | 总调用: {usage.totalCalls}
+            剩余可用量: {usage.remainingQuota} | 今日已用: {usage.todayUsed}
           </div>
         )}
       </div>
