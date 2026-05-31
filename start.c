@@ -1,4 +1,5 @@
 #include <windows.h>
+#include <wincrypt.h>
 #include <shlobj.h>
 #include <winhttp.h>
 #include <stdio.h>
@@ -8,6 +9,22 @@
 #include <io.h>
 #include <minizip/unzip.h>
 #include <minizip/iowin32.h>
+#include <time.h>
+
+#include "secret.h"
+#ifndef ENCRYPTION_KEY
+#error "ENCRYPTION_KEY not defined. Copy secret.h.example to secret.h and set your key."
+#endif
+
+#ifndef CALG_AES_256
+#define CALG_AES_256 0x00006610
+#endif
+#ifndef PROV_RSA_AES
+#define PROV_RSA_AES 24
+#endif
+#ifndef CRYPT_MODE_CBC
+#define CRYPT_MODE_CBC 1
+#endif
 
 const GUID CLSID_ShellLink = {0x00021401,0x0000,0x0000,{0xC0,0x00,0x00,0x00,0x00,0x00,0x00,0x46}};
 const GUID IID_IShellLinkW = {0x000214F9,0x0000,0x0000,{0xC0,0x00,0x00,0x00,0x00,0x00,0x00,0x46}};
@@ -495,6 +512,68 @@ static char* FindJsonValue(const char* json, const char* key, int* outLen) {
     return NULL;
 }
 
+static void HexEncode(const BYTE* data, int len, char* out) {
+    static const char hex[] = "0123456789abcdef";
+    for (int i = 0; i < len; i++) {
+        out[i * 2]     = hex[(data[i] >> 4) & 0xF];
+        out[i * 2 + 1] = hex[ data[i]        & 0xF];
+    }
+    out[len * 2] = '\0';
+}
+
+static BOOL EncryptUuid(WCHAR* uuid, WCHAR* uuidEnd, char* outHex, int outHexSize) {
+    time_t t = time(NULL);
+    int uuidUtf8Len = WideCharToMultiByte(CP_UTF8, 0, uuid, (int)(uuidEnd - uuid), NULL, 0, NULL, NULL);
+    char tsStr[32];
+    int tsLen = snprintf(tsStr, sizeof(tsStr), "%lld", (long long)t);
+    int plainLen = uuidUtf8Len + 1 + tsLen;  /* uuid + ":" + timestamp */
+    int bufLen = ((plainLen + 15) / 16 + 1) * 16;  /* room for PKCS#7 padding */
+    BYTE* plain = malloc(bufLen);
+    if (!plain) return FALSE;
+    WideCharToMultiByte(CP_UTF8, 0, uuid, (int)(uuidEnd - uuid), (char*)plain, uuidUtf8Len, NULL, NULL);
+    plain[uuidUtf8Len] = ':';
+    memcpy(plain + uuidUtf8Len + 1, tsStr, tsLen);
+
+    int keyLen = (int)strlen(ENCRYPTION_KEY);
+    HCRYPTPROV hProv = 0;
+    HCRYPTHASH hHash = 0;
+    HCRYPTKEY hKey = 0;
+    BOOL ok = FALSE;
+
+    if (!CryptAcquireContextW(&hProv, NULL, NULL, PROV_RSA_AES, CRYPT_VERIFYCONTEXT))
+        goto cleanup;
+    if (!CryptCreateHash(hProv, CALG_SHA_256, 0, 0, &hHash))
+        goto cleanup;
+    if (!CryptHashData(hHash, (BYTE*)ENCRYPTION_KEY, keyLen, 0))
+        goto cleanup;
+    if (!CryptDeriveKey(hProv, CALG_AES_256, hHash, 0, &hKey))
+        goto cleanup;
+
+    DWORD mode = CRYPT_MODE_CBC;
+    CryptSetKeyParam(hKey, KP_MODE, (BYTE*)&mode, 0);
+
+    BYTE iv[16];
+    CryptGenRandom(hProv, 16, iv);
+    CryptSetKeyParam(hKey, KP_IV, iv, 0);
+
+    DWORD dataLen = plainLen;
+    if (!CryptEncrypt(hKey, 0, TRUE, 0, plain, &dataLen, bufLen))
+        goto cleanup;
+
+    if (16 + dataLen > outHexSize / 2)  /* hex doubles the size */
+        goto cleanup;
+    HexEncode(iv, 16, outHex);
+    HexEncode(plain, dataLen, outHex + 32);
+    ok = TRUE;
+
+cleanup:
+    if (hKey) CryptDestroyKey(hKey);
+    if (hHash) CryptDestroyHash(hHash);
+    if (hProv) CryptReleaseContext(hProv, 0);
+    free(plain);
+    return ok;
+}
+
 static void WriteMachineInfo(void) {
     HKEY hKey;
     if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Cryptography", 0, KEY_READ | KEY_WOW64_64KEY, &hKey) != ERROR_SUCCESS)
@@ -509,14 +588,18 @@ static void WriteMachineInfo(void) {
     }
     RegCloseKey(hKey);
 
+    char hexBuf[1024];
+    if (!EncryptUuid(uuid, uuid + wcslen(uuid), hexBuf, sizeof(hexBuf)))
+        return;
+
     WCHAR path[MAX_PATH * 2];
     swprintf(path, MAX_PATH * 2, L"%ls\\machine_info.json", g_destPath);
 
     HANDLE hFile = CreateFileW(path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hFile == INVALID_HANDLE_VALUE) return;
 
-    char buf[256];
-    int len = snprintf(buf, sizeof(buf), "{\"uuid\":\"%ls\"}", uuid);
+    char buf[1024 + 32];
+    int len = snprintf(buf, sizeof(buf), "{\"uuid\":\"%s\"}", hexBuf);
     DWORD written;
     WriteFile(hFile, buf, len, &written, NULL);
     CloseHandle(hFile);

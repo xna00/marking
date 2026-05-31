@@ -5,3 +5,4 @@ node_modules
 *.local.*
 key.pem
 .env
+secret.h
