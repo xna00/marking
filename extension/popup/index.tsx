@@ -84,6 +84,7 @@ const App = () => {
     width: number;
     height: number;
   } | null>(null);
+  const [aiDelay, setAiDelay] = useStateWithChromeStorage<[number, number]>(storageKeys.AI_DELAY, [0, 0]);
   const [result, setResult] = useState<{
     tag: "succeed" | "error";
     msg: string;
@@ -176,6 +177,35 @@ const App = () => {
           }}
           style={{ display: 'none' }}
         ></textarea>
+        <label>AI 结果延迟 (秒)</label>
+        <div className="flex gap-x-2 items-center">
+          <label className="flex items-center gap-x-1">
+            最小
+            <input
+              type="number"
+              min={0}
+              className="!w-28"
+              value={aiDelay[0]}
+              onChange={e => {
+                const val = Math.max(0, Number(e.target.value));
+                setAiDelay([val, Math.max(val, aiDelay[1])]);
+              }}
+            />
+          </label>
+          <label className="flex items-center gap-x-1">
+            最大
+            <input
+              type="number"
+              min={0}
+              className="!w-28"
+              value={aiDelay[1]}
+              onChange={e => {
+                const val = Math.max(0, Number(e.target.value));
+                setAiDelay([Math.min(aiDelay[0], val), val]);
+              }}
+            />
+          </label>
+        </div>
         <label>评分标准</label>
         <CriteriaTable
           criteriaHeader={criteriaHeader}

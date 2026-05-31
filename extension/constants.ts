@@ -31,6 +31,9 @@ export enum storageKeys {
   EXTENSION_STATUS = "extensionStatus",
   LAST_SYNC = "lastSync",
 
+  // AI 结果延迟
+  AI_DELAY = "aiDelay",
+
   // 缓存数据
   CACHE_DATA = "cacheData",
   IMAGE_CACHE = "imageCache",

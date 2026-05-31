@@ -249,6 +249,7 @@ const h = async () => {
   let delay = 500;
   const currentSrc = getImageSrc();
   if (currentSrc && (currentSrc !== previousSrc || !showedResult)) {
+    overlay.remove();
     showedResult = false;
     delay = 1000;
     console.log("Image src changed:", currentSrc);
@@ -262,6 +263,11 @@ const h = async () => {
     if (result) {
       showedResult = true;
       const aiResult = parseAIResult(result);
+      const { [storageKeys.AI_DELAY]: delayRange = [0, 0] } = await chrome.storage.local.get(storageKeys.AI_DELAY);
+      const [min, max] = delayRange as [number, number];
+      const delay = Math.random() * (max - min) + min;
+      console.log(`Delaying AI result by ${delay.toFixed(2)} seconds`);
+      await new Promise(r => setTimeout(r, delay * 1000));
       showAiResult(aiResult);
     } else {
       console.error("No result from AI");
