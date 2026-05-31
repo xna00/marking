@@ -36,8 +36,7 @@ static WCHAR g_userDataDir[MAX_PATH];
 static WCHAR g_edgePath[MAX_PATH];
 /* %LOCALAPPDATA%\MarkingMaster\MarkingMaster.exe */
 static WCHAR g_installedExePath[MAX_PATH];
-/* %LOCALAPPDATA%\MarkingMaster_runner\ */
-static WCHAR g_runnerDir[MAX_PATH];
+
 static BOOL g_uninstall = FALSE;
 static BOOL g_noInstall = FALSE;
 
@@ -64,7 +63,6 @@ static void InitPaths(void) {
     swprintf(g_userDataDir, MAX_PATH, L"%ls\\edge-profile", g_appDataDir);
     wcscpy(g_edgePath, DEFAULT_EDGE_PATH);
     swprintf(g_installedExePath, MAX_PATH, L"%ls\\%ls.exe", g_appDataDir, APP_DIR_NAME);
-    swprintf(g_runnerDir, MAX_PATH, L"%ls_runner", g_appDataDir);
 }
 
 static void ParseArgs(int argc, wchar_t** argv) {
@@ -173,11 +171,57 @@ static void UninstallApp(void) {
     
     KillEdgeProcesses();
     Sleep(500);
-    
+
+    /* 删除除自己外的所有文件，自己的 exe 由下面的 bat 清理 */
+    WCHAR searchPath[MAX_PATH * 2];
+    swprintf(searchPath, MAX_PATH * 2, L"%ls\\*", g_appDataDir);
+
+    WIN32_FIND_DATAW ffd;
+    HANDLE hFind = FindFirstFileW(searchPath, &ffd);
+    if (hFind != INVALID_HANDLE_VALUE) {
+        do {
+            if (wcscmp(ffd.cFileName, L".") == 0 || wcscmp(ffd.cFileName, L"..") == 0)
+                continue;
+            if (_wcsicmp(ffd.cFileName, APP_DIR_NAME L".exe") == 0)
+                continue;
+            WCHAR fullPath[MAX_PATH * 2];
+            swprintf(fullPath, MAX_PATH * 2, L"%ls\\%ls", g_appDataDir, ffd.cFileName);
+            if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+                DeleteFileTree(fullPath);
+            else
+                DeleteFileW(fullPath);
+        } while (FindNextFileW(hFind, &ffd));
+        FindClose(hFind);
+    }
+
+    /* 生成 bat：等当前进程退出 → 删 exe → 删目录 → 删自己 */
+    WCHAR batPath[MAX_PATH];
+    GetTempPathW(MAX_PATH, batPath);
+    wcscat(batPath, L"uninstall_MarkingMaster.bat");
+
+    HANDLE hBat = CreateFileW(batPath, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hBat != INVALID_HANDLE_VALUE) {
+        char content[4096];
+        int len = snprintf(content, sizeof(content),
+            "@echo off\r\n"
+            "timeout /t 3 /nobreak > nul\r\n"
+            "del /q \"%ls\" > nul 2>&1\r\n"
+            "rmdir /s /q \"%ls\" > nul 2>&1\r\n"
+            "del /q \"%%~f0\"\r\n",
+            g_installedExePath, g_appDataDir);
+        DWORD written;
+        WriteFile(hBat, content, len, &written, NULL);
+        CloseHandle(hBat);
+    }
+
+    wprintf(L"已删除程序文件，将在 3 秒后完成清理\n");
     wprintf(L"\n卸载完成!\n");
 
-    DeleteFileTree(g_appDataDir);
-    wprintf(L"已删除程序目录\n");
+    WCHAR cmdLine[4096];
+    swprintf(cmdLine, 4096, L"cmd.exe /c start /b \"\" \"%ls\"", batPath);
+    STARTUPINFOW si = {0}; si.cb = sizeof(si);
+    PROCESS_INFORMATION pi;
+    CreateProcessW(NULL, cmdLine, NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi);
 
     exit(0);
 }
@@ -649,7 +693,9 @@ static void MainLogic(void) {
         wcscat(newExePath, L"MarkingMaster_new.exe");
 
         if (DownloadFile(exeUrl, newExePath, userAgent)) {
-            _wremove(g_installedExePath);
+            WCHAR oldExePath[MAX_PATH];
+            swprintf(oldExePath, MAX_PATH, L"%ls.old", g_installedExePath);
+            MoveFileExW(g_installedExePath, oldExePath, MOVEFILE_REPLACE_EXISTING);
             MoveFileExW(newExePath, g_installedExePath, MOVEFILE_REPLACE_EXISTING);
             wprintf(L"exe 已更新，重启后生效\n");
         }
@@ -657,10 +703,6 @@ static void MainLogic(void) {
 
     wprintf(L"\n5秒后自动关闭本窗口...\n");
     Sleep(5000);
-}
-
-static BOOL IsRunningFromRunner(const WCHAR* path) {
-    return _wcsnicmp(path, g_runnerDir, wcslen(g_runnerDir)) == 0;
 }
 
 int wmain(int argc, wchar_t** argv) {
@@ -671,35 +713,6 @@ int wmain(int argc, wchar_t** argv) {
     
     InitPaths();
     ParseArgs(argc, argv);
-    
-    /* 如果不在 runner 目录中运行，先复制到 runner 目录再重新启动，避免 exe 自更新或卸载时被锁 */
-    WCHAR curExe[MAX_PATH];
-    GetModuleFileNameW(NULL, curExe, MAX_PATH);
-    if (!IsRunningFromRunner(curExe)) {
-        CreateDirectoryW(g_runnerDir, NULL);
-        WCHAR runnerPath[MAX_PATH];
-        swprintf(runnerPath, MAX_PATH, L"%ls\\%ls.exe", g_runnerDir, APP_DIR_NAME);
-        if (CopyFileW(curExe, runnerPath, FALSE)) {
-            WCHAR cmdLine[32768] = {0};
-            for (int i = 0; i < argc; i++) {
-                if (i > 0) wcscat(cmdLine, L" ");
-                if (wcschr(argv[i], L' '))
-                    swprintf(cmdLine + wcslen(cmdLine), 32768 - wcslen(cmdLine), L"\"%ls\"", argv[i]);
-                else
-                    wcscat(cmdLine, argv[i]);
-            }
-            WCHAR fullCmd[32768];
-            swprintf(fullCmd, 32768, L"\"%ls\" %ls", runnerPath, cmdLine);
-            STARTUPINFOW si = {0}; si.cb = sizeof(si);
-            PROCESS_INFORMATION pi;
-            if (CreateProcessW(NULL, fullCmd, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
-                CloseHandle(pi.hProcess);
-                CloseHandle(pi.hThread);
-                return 0;
-            }
-        }
-        /* 复制或启动失败 → fallback 原地跑 */
-    }
     
     if (g_uninstall) {
         UninstallApp();
