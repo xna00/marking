@@ -1,5 +1,4 @@
 #include <windows.h>
-#include <tlhelp32.h>
 #include <shlobj.h>
 #include <winhttp.h>
 #include <stdio.h>
@@ -20,7 +19,12 @@ static BOOL DeleteFileTree(const WCHAR* path);
 #define APP_NAME L"改卷仙人"
 #define APP_DIR_NAME L"MarkingMaster"
 #define DEFAULT_UPDATE_URL L"https://marking.xna00.top/update.json"
-#define DEFAULT_EDGE_PATH L"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe"
+#define EDGE_PATHS_COUNT 3
+static const WCHAR* const EDGE_PATHS[EDGE_PATHS_COUNT] = {
+    L"C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe",
+    L"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+    L"\\Microsoft\\Edge\\Application\\msedge.exe",  /* appended to %LOCALAPPDATA% at runtime */
+};
 #define OPEN_URL1 L"https://www.wylkyj.com/yuejuan/#/projectList"
 #define OPEN_URL2 L"https://marking.xna00.top/"
 
@@ -61,8 +65,24 @@ static void InitPaths(void) {
     swprintf(g_appDataDir, MAX_PATH, L"%ls\\%ls", g_localAppData, APP_DIR_NAME);
     swprintf(g_destPath, MAX_PATH, L"%ls\\extension", g_appDataDir);
     swprintf(g_userDataDir, MAX_PATH, L"%ls\\edge-profile", g_appDataDir);
-    wcscpy(g_edgePath, DEFAULT_EDGE_PATH);
     swprintf(g_installedExePath, MAX_PATH, L"%ls\\%ls.exe", g_appDataDir, APP_DIR_NAME);
+
+    /* auto-detect Edge path */
+    BOOL found = FALSE;
+    for (int i = 0; i < EDGE_PATHS_COUNT && !found; i++) {
+        WCHAR fullPath[MAX_PATH];
+        const WCHAR* path = EDGE_PATHS[i];
+        if (i == EDGE_PATHS_COUNT - 1) {
+            swprintf(fullPath, MAX_PATH, L"%ls%ls", g_localAppData, path);
+            path = fullPath;
+        }
+        if (GetFileAttributesW(path) != INVALID_FILE_ATTRIBUTES) {
+            wcscpy(g_edgePath, path);
+            found = TRUE;
+        }
+    }
+    if (!found)
+        wcscpy(g_edgePath, EDGE_PATHS[1]);  /* fallback to 32-bit path */
 }
 
 static void ParseArgs(int argc, wchar_t** argv) {
@@ -194,23 +214,32 @@ static void UninstallApp(void) {
         FindClose(hFind);
     }
 
-    /* 生成 bat：等当前进程退出 → 删 exe → 删目录 → 删自己 */
+    /* 生成 bat（UTF-8 BOM + chcp 65001，避免中文路径编码问题）：
+       等当前进程退出 → 删 exe → 删目录 → 删自己 */
     WCHAR batPath[MAX_PATH];
     GetTempPathW(MAX_PATH, batPath);
     wcscat(batPath, L"uninstall_MarkingMaster.bat");
 
     HANDLE hBat = CreateFileW(batPath, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hBat != INVALID_HANDLE_VALUE) {
+        char utf8Exe[MAX_PATH * 4], utf8Dir[MAX_PATH * 4];
+        WideCharToMultiByte(CP_UTF8, 0, g_installedExePath, -1, utf8Exe, sizeof(utf8Exe), NULL, NULL);
+        WideCharToMultiByte(CP_UTF8, 0, g_appDataDir, -1, utf8Dir, sizeof(utf8Dir), NULL, NULL);
+
         char content[4096];
-        int len = snprintf(content, sizeof(content),
+        const unsigned char bom[] = {0xEF, 0xBB, 0xBF};
+        int pos = 0;
+        memcpy(content + pos, bom, 3); pos += 3;
+        pos += snprintf(content + pos, sizeof(content) - pos,
             "@echo off\r\n"
+            "chcp 65001 > nul\r\n"
             "timeout /t 3 /nobreak > nul\r\n"
-            "del /q \"%ls\" > nul 2>&1\r\n"
-            "rmdir /s /q \"%ls\" > nul 2>&1\r\n"
+            "del /q \"%s\" > nul 2>&1\r\n"
+            "rmdir /s /q \"%s\" > nul 2>&1\r\n"
             "del /q \"%%~f0\"\r\n",
-            g_installedExePath, g_appDataDir);
+            utf8Exe, utf8Dir);
         DWORD written;
-        WriteFile(hBat, content, len, &written, NULL);
+        WriteFile(hBat, content, pos, &written, NULL);
         CloseHandle(hBat);
     }
 
