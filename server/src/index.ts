@@ -99,6 +99,7 @@ app.post("/api/v1/chat/completions", requireAuth, async (c) => {
       Authorization: `Bearer ${API_KEY}`,
     },
     body: forwardStream,
+    duplex: "half",
   });
 
   // 收集 clone 用于日志和图片保存（与转发并行）
