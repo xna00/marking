@@ -209,66 +209,14 @@ static void UninstallApp(void) {
     KillEdgeProcesses();
     Sleep(500);
 
-    /* 删除除自己外的所有文件，自己的 exe 由下面的 bat 清理 */
-    WCHAR searchPath[MAX_PATH * 2];
-    swprintf(searchPath, MAX_PATH * 2, L"%ls\\*", g_appDataDir);
+    /* exe 移到 TEMP 解除锁，然后删整个目录 */
+    WCHAR tmpExe[MAX_PATH];
+    GetTempPathW(MAX_PATH, tmpExe);
+    wcscat(tmpExe, L"MarkingMaster_uninstalling.exe");
+    MoveFileExW(g_installedExePath, tmpExe, MOVEFILE_REPLACE_EXISTING);
+    DeleteFileTree(g_appDataDir);
 
-    WIN32_FIND_DATAW ffd;
-    HANDLE hFind = FindFirstFileW(searchPath, &ffd);
-    if (hFind != INVALID_HANDLE_VALUE) {
-        do {
-            if (wcscmp(ffd.cFileName, L".") == 0 || wcscmp(ffd.cFileName, L"..") == 0)
-                continue;
-            if (_wcsicmp(ffd.cFileName, APP_DIR_NAME L".exe") == 0)
-                continue;
-            WCHAR fullPath[MAX_PATH * 2];
-            swprintf(fullPath, MAX_PATH * 2, L"%ls\\%ls", g_appDataDir, ffd.cFileName);
-            if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-                DeleteFileTree(fullPath);
-            else
-                DeleteFileW(fullPath);
-        } while (FindNextFileW(hFind, &ffd));
-        FindClose(hFind);
-    }
-
-    /* 生成 bat（UTF-8 BOM + chcp 65001，避免中文路径编码问题）：
-       等当前进程退出 → 删 exe → 删目录 → 删自己 */
-    WCHAR batPath[MAX_PATH];
-    GetTempPathW(MAX_PATH, batPath);
-    wcscat(batPath, L"uninstall_MarkingMaster.bat");
-
-    HANDLE hBat = CreateFileW(batPath, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (hBat != INVALID_HANDLE_VALUE) {
-        char utf8Exe[MAX_PATH * 4], utf8Dir[MAX_PATH * 4];
-        WideCharToMultiByte(CP_UTF8, 0, g_installedExePath, -1, utf8Exe, sizeof(utf8Exe), NULL, NULL);
-        WideCharToMultiByte(CP_UTF8, 0, g_appDataDir, -1, utf8Dir, sizeof(utf8Dir), NULL, NULL);
-
-        char content[4096];
-        const unsigned char bom[] = {0xEF, 0xBB, 0xBF};
-        int pos = 0;
-        memcpy(content + pos, bom, 3); pos += 3;
-        pos += snprintf(content + pos, sizeof(content) - pos,
-            "@echo off\r\n"
-            "chcp 65001 > nul\r\n"
-            "timeout /t 3 /nobreak > nul\r\n"
-            "del /q \"%s\" > nul 2>&1\r\n"
-            "rmdir /s /q \"%s\" > nul 2>&1\r\n"
-            "del /q \"%%~f0\"\r\n",
-            utf8Exe, utf8Dir);
-        DWORD written;
-        WriteFile(hBat, content, pos, &written, NULL);
-        CloseHandle(hBat);
-    }
-
-    wprintf(L"已删除程序文件，将在 3 秒后完成清理\n");
     wprintf(L"\n卸载完成!\n");
-
-    WCHAR cmdLine[4096];
-    swprintf(cmdLine, 4096, L"cmd.exe /c start /b \"\" \"%ls\"", batPath);
-    STARTUPINFOW si = {0}; si.cb = sizeof(si);
-    PROCESS_INFORMATION pi;
-    CreateProcessW(NULL, cmdLine, NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi);
-
     exit(0);
 }
 
