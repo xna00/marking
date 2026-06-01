@@ -20,8 +20,9 @@ async function logRequestBody(id: string, bodyText: string, headers: Headers) {
   const model = body.model || "unknown";
 
   log(`[${id}] => model=${model}`);
-  for (const [k, v] of headers) {
-    log(`[${id}]   header: ${k}: ${v}`);
+  for (const key of ["user-agent", "host", "origin", "version"]) {
+    const v = headers.get(key);
+    if (v) log(`[${id}]   ${key}: ${v}`);
   }
   const logBody = structuredClone(body);
   for (const msg of logBody.messages || []) {
@@ -78,9 +79,6 @@ app.post("/api/v1/chat/completions", async (c) => {
   const res = await fetchPromise;
   const ms = Date.now() - start;
   log(`[${id}] <= ${res.status} (${ms}ms)`);
-  for (const [k, v] of res.headers) {
-    log(`[${id}]   header: ${k}: ${v}`);
-  }
 
   res.clone().text()
     .then(body => log(`[${id}] body: ${body}`))
