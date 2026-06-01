@@ -1,12 +1,6 @@
 @echo off
 echo Compiling start.c with MSYS2/MinGW...
 
-if not exist secret.h (
-    echo [ERROR] secret.h not found. Copy secret.h.example to secret.h and set ENCRYPTION_KEY.
-    pause
-    exit /b 1
-)
-
 set MSYS2_PATH=C:\msys64\mingw64\bin
 if not exist "%MSYS2_PATH%\gcc.exe" (
     set MSYS2_PATH=C:\msys64\ucrt64\bin
@@ -22,7 +16,7 @@ set PATH=%MSYS2_PATH%;%PATH%
 
 gcc -o doc/public/MarkingMaster.exe start.c ^
     -I/mingw64/include ^
-    -lwinhttp -lole32 -lshell32 -lminizip -lz -lbz2 -ladvapi32 ^
+    -lwinhttp -lole32 -lshell32 -lminizip -lz -lbz2 ^
     -municode ^
     -static ^
     -O2
