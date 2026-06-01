@@ -15,20 +15,55 @@ function log(...args: unknown[]) {
   console.log(`[${new Date().toLocaleString()}]`, ...args);
 }
 
+async function logRequestBody(id: string, bodyText: string, headers: Headers) {
+  const body = JSON.parse(bodyText);
+  const model = body.model || "unknown";
+
+  log(`[${id}] => model=${model}`);
+  for (const [k, v] of headers) {
+    log(`[${id}]   header: ${k}: ${v}`);
+  }
+  const logBody = structuredClone(body);
+  for (const msg of logBody.messages || []) {
+    for (const part of msg.content || []) {
+      if (part.image_url?.url?.length > 200) {
+        part.image_url.url = part.image_url.url.slice(0, 80) + `... (${part.image_url.url.length} chars)`;
+      }
+    }
+  }
+  log(`[${id}]   body: ${JSON.stringify(logBody)}`);
+
+  const imgDir = "images";
+  await mkdir(imgDir, { recursive: true });
+  let imgIdx = 0;
+  for (const msg of body.messages || []) {
+    for (const part of msg.content || []) {
+      const url: string | undefined = part.image_url?.url;
+      if (!url) continue;
+      const m = url.match(/^data:image\/(\w+);base64,(.+)$/);
+      if (!m) continue;
+      const ext = m[1] === "jpeg" ? "jpg" : m[1];
+      const data = Buffer.from(m[2], "base64");
+      const filename = `${id}_${imgIdx++}.${ext}`;
+      await writeFile(join(imgDir, filename), data);
+      log(`[${id}]   saved image: ${filename} (${data.length} bytes)`);
+    }
+  }
+}
+
 const app = new Hono();
 
 app.post("/api/v1/chat/completions", async (c) => {
   const id = Math.random().toString(36).slice(2, 8);
 
-  const originalStream = c.req.raw.body;
-  if (!originalStream) {
+  if (!c.req.raw.body) {
     return c.text("request body is required", 400);
   }
 
-  // tee 成两路：一路直接转发（不等待收完 body），一路收集用于保存
-  const [forwardStream, saveStream] = originalStream.tee();
+  const savePromise = c.req.raw.clone().text().then((bodyText) =>
+    logRequestBody(id, bodyText, c.req.raw.headers));
 
-  // 立即转发，body 边收边发
+  // 立即转发
   const start = Date.now();
   const fetchPromise = fetch(DOUBAO_URL, {
     method: "POST",
@@ -36,56 +71,9 @@ app.post("/api/v1/chat/completions", async (c) => {
       "Content-Type": "application/json",
       Authorization: `Bearer ${API_KEY}`,
     },
-    body: forwardStream,
+    body: c.req.raw.body,
     duplex: "half",
-  } as any);
-
-  // 收集 clone 用于日志和图片保存（与转发并行）
-  const savePromise = (async () => {
-    const reader = saveStream.getReader();
-    const decoder = new TextDecoder();
-    let bodyText = "";
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      bodyText += decoder.decode(value, { stream: true });
-    }
-    bodyText += decoder.decode();
-
-    const body = JSON.parse(bodyText);
-    const model = body.model || "unknown";
-
-    log(`[${id}] => model=${model}`);
-    for (const [k, v] of c.req.raw.headers) {
-      log(`[${id}]   header: ${k}: ${v}`);
-    }
-    const logBody = structuredClone(body);
-    for (const msg of logBody.messages || []) {
-      for (const part of msg.content || []) {
-        if (part.image_url?.url?.length > 200) {
-          part.image_url.url = part.image_url.url.slice(0, 80) + `... (${part.image_url.url.length} chars)`;
-        }
-      }
-    }
-    log(`[${id}]   body: ${JSON.stringify(logBody)}`);
-
-    const imgDir = "images";
-    await mkdir(imgDir, { recursive: true });
-    let imgIdx = 0;
-    for (const msg of body.messages || []) {
-      for (const part of msg.content || []) {
-        const url: string | undefined = part.image_url?.url;
-        if (!url) continue;
-        const m = url.match(/^data:image\/(\w+);base64,(.+)$/);
-        if (!m) continue;
-        const ext = m[1] === "jpeg" ? "jpg" : m[1];
-        const data = Buffer.from(m[2], "base64");
-        const filename = `${id}_${imgIdx++}.${ext}`;
-        await writeFile(join(imgDir, filename), data);
-        log(`[${id}]   saved image: ${filename} (${data.length} bytes)`);
-      }
-    }
-  })();
+  });
 
   const res = await fetchPromise;
   const ms = Date.now() - start;
@@ -105,7 +93,7 @@ app.post("/api/v1/chat/completions", async (c) => {
   outHeaders.delete("content-encoding");
   outHeaders.delete("content-length");
 
-  return c.newResponse(res.body, res.status, outHeaders);
+  return c.newResponse(res.body, { status: res.status as any, statusText: res.statusText, headers: outHeaders });
 });
 
 const port = Number(process.env.PORT) || 3000;
