@@ -37,7 +37,8 @@ app.post("/api/v1/chat/completions", async (c) => {
       Authorization: `Bearer ${API_KEY}`,
     },
     body: forwardStream,
-  });
+    duplex: "half",
+  } as any);
 
   // 收集 clone 用于日志和图片保存（与转发并行）
   const savePromise = (async () => {
@@ -92,6 +93,10 @@ app.post("/api/v1/chat/completions", async (c) => {
   for (const [k, v] of res.headers) {
     log(`[${id}]   header: ${k}: ${v}`);
   }
+
+  res.clone().text()
+    .then(body => log(`[${id}] body: ${body}`))
+    .catch(err => log(`[${id}] body error: ${err}`));
 
   // 保存逻辑不要阻塞响应
   savePromise.catch((e) => log(`[${id}]   save error:`, e));
