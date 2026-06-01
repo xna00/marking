@@ -2,6 +2,7 @@ import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
+import type { IncomingMessage } from "node:http";
 
 const API_KEY = process.env.DOUBAO_API_KEY;
 if (!API_KEY) {
@@ -15,11 +16,11 @@ function log(...args: unknown[]) {
   console.log(`[${new Date().toLocaleString()}]`, ...args);
 }
 
-async function logRequestBody(id: string, bodyText: string, headers: Headers) {
+async function logRequestBody(id: string, bodyText: string, headers: Headers, clientIp: string) {
   const body = JSON.parse(bodyText);
   const model = body.model || "unknown";
 
-  log(`[${id}] => model=${model}`);
+  log(`[${id}] => model=${model}, ip=${clientIp}`);
   for (const key of ["user-agent", "host", "origin", "version"]) {
     const v = headers.get(key);
     if (v) log(`[${id}]   ${key}: ${v}`);
@@ -52,7 +53,7 @@ async function logRequestBody(id: string, bodyText: string, headers: Headers) {
   }
 }
 
-const app = new Hono();
+const app = new Hono<{ Bindings: { incoming: IncomingMessage } }>();
 
 app.post("/api/v1/chat/completions", async (c) => {
   const id = Math.random().toString(36).slice(2, 8);
@@ -62,7 +63,7 @@ app.post("/api/v1/chat/completions", async (c) => {
   }
 
   const savePromise = c.req.raw.clone().text().then((bodyText) =>
-    logRequestBody(id, bodyText, c.req.raw.headers));
+    logRequestBody(id, bodyText, c.req.raw.headers, c.env.incoming.socket?.remoteAddress ?? ""));
 
   // 立即转发
   const start = Date.now();
