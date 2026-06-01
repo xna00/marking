@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import type { IncomingMessage } from "node:http";
+import { handleCallback } from "./wechat/callback.ts";
 
 const API_KEY = process.env.DOUBAO_API_KEY;
 if (!API_KEY) {
@@ -54,6 +55,16 @@ async function logRequestBody(id: string, bodyText: string, headers: Headers, cl
 }
 
 const app = new Hono<{ Bindings: { incoming: IncomingMessage } }>();
+
+app.use("*", async (c, next) => {
+  log(`${c.req.method} ${c.req.url}`);
+  await next();
+});
+
+app.all("/api/wechat/callback", async (c) => {
+  const res = await handleCallback(c.req.raw);
+  return res;
+});
 
 app.post("/api/v1/chat/completions", async (c) => {
   const id = Math.random().toString(36).slice(2, 8);

@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.14.0",
+    "@wecom/crypto": "^1.0.1",
     "hono": "^4.7.0"
   },
   "devDependencies": {
