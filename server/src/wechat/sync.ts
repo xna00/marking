@@ -1,4 +1,5 @@
 import { getAccessToken } from "./token.ts";
+import { loadCursor, saveCursor } from "../db.ts";
 
 export type EventMessage = {
   event_type: string;
@@ -76,37 +77,42 @@ type SyncMsgResponse = {
   msg_list?: KfMessage[];
 };
 
-export async function syncMessages(
-  openKfId: string,
-  cursor?: string,
-): Promise<{ msgList: KfMessage[]; nextCursor?: string; hasMore: boolean }> {
-  const accessToken = await getAccessToken();
-  const url = `https://qyapi.weixin.qq.com/cgi-bin/kf/sync_msg?access_token=${accessToken}`;
+export async function syncMessages(openKfId: string): Promise<KfMessage[]> {
+  const allMessages: KfMessage[] = [];
+  let cursor: string | undefined = loadCursor(openKfId) ?? undefined;
 
-  const body: Record<string, unknown> = {
-    open_kfid: openKfId,
-    limit: 1000,
-    voice_format: 0,
-  };
-  if (cursor) {
-    body.cursor = cursor;
+  while (true) {
+    const accessToken = await getAccessToken();
+    const url = `https://qyapi.weixin.qq.com/cgi-bin/kf/sync_msg?access_token=${accessToken}`;
+
+    const body: Record<string, unknown> = {
+      open_kfid: openKfId,
+      limit: 1000,
+      voice_format: 0,
+    };
+    if (cursor) body.cursor = cursor;
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    const data = await res.json() as SyncMsgResponse;
+
+    if (data.errcode !== 0) {
+      throw new Error(`同步消息失败: ${data.errmsg} (errcode: ${data.errcode})`);
+    }
+
+    if (data.msg_list) allMessages.push(...data.msg_list);
+
+    if (data.next_cursor) {
+      saveCursor(openKfId, data.next_cursor);
+    }
+
+    if (data.has_more !== 1 || !data.next_cursor) break;
+    cursor = data.next_cursor;
   }
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-
-  const data = await res.json() as SyncMsgResponse;
-
-  if (data.errcode !== 0) {
-    throw new Error(`同步消息失败: ${data.errmsg} (errcode: ${data.errcode})`);
-  }
-
-  return {
-    msgList: data.msg_list || [],
-    nextCursor: data.next_cursor,
-    hasMore: data.has_more === 1,
-  };
+  return allMessages;
 }

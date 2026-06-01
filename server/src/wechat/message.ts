@@ -1,8 +1,13 @@
 import { sendEventResponseMessage } from "./send.ts";
-import type { KfEventMessage, KfTextMessage } from "./sync.ts";
+import type { KfEventMessage, KfTextMessage, KfMessage } from "./sync.ts";
 
 function log(...args: unknown[]) {
   console.log(`[${new Date().toLocaleString()}] [wechat]`, ...args);
+}
+
+function getExternalUserId(msg: KfMessage): string {
+  if (msg.msgtype === "event") return msg.event.external_userid;
+  return msg.external_userid;
 }
 
 async function handleEnterSession(msg: KfEventMessage) {
@@ -29,20 +34,23 @@ async function handleTextMessage(msg: KfTextMessage) {
   log(`收到文字消息: ${content}`);
 }
 
-export async function handleMessages(messages: import("./sync.ts").KfMessage[]) {
+export async function handleMessages(messages: KfMessage[]) {
   log(`共 ${messages.length} 条消息`);
 
-  for (const msg of messages) {
-    switch (msg.msgtype) {
-      case "event":
+  const grouped = Object.groupBy(messages, msg => getExternalUserId(msg));
+
+  for (const [userId, msgs = []] of Object.entries(grouped)) {
+    log(`用户 ${userId} 的 ${msgs.length} 条消息`);
+
+    for (const msg of msgs) {
+      if (msg.msgtype === "event") {
         log(`事件消息: ${msg.event.event_type}`);
         if (msg.event.event_type === "enter_session") {
           await handleEnterSession(msg);
         }
-        break;
-      case "text":
+      } else if (msg.msgtype === "text") {
         await handleTextMessage(msg);
-        break;
+      }
     }
   }
 }

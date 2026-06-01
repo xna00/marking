@@ -70,11 +70,9 @@ async function handlePost(req: Request): Promise<Response> {
 
     if (event.Event === "kf_msg_or_event") {
       log("\n开始拉取消息...");
-      const { msgList, hasMore } = await syncMessages(event.OpenKfId);
-      log(`拉取到 ${msgList.length} 条消息（hasMore=${hasMore}）`);
-      if (msgList.length > 0) {
-        await handleMessages(msgList);
-      }
+      const msgList = await syncMessages(event.OpenKfId);
+      log(`拉取到 ${msgList.length} 条消息`);
+      if (msgList.length > 0) await handleMessages(msgList);
     }
 
     log("==============================\n");

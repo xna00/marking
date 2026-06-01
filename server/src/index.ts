@@ -4,6 +4,7 @@ import { writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import type { IncomingMessage } from "node:http";
 import { handleCallback } from "./wechat/callback.ts";
+import { initDb } from "./db.ts";
 
 const API_KEY = process.env.DOUBAO_API_KEY;
 if (!API_KEY) {
@@ -108,4 +109,5 @@ app.post("/api/v1/chat/completions", async (c) => {
 
 const port = Number(process.env.PORT) || 3000;
 log(`server running on http://localhost:${port}`);
+initDb();
 serve({ fetch: app.fetch, port });
