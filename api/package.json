@@ -1,0 +1,13 @@
+{
+  "name": "@marking/api",
+  "version": "1.0.0",
+  "main": "index.js",
+  "types": "index.ts",
+  "type": "module",
+  "scripts": {
+    "build": "npx tsc"
+  },
+  "dependencies": {
+    "@marking/server": "*"
+  }
+}

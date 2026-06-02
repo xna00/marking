@@ -90,7 +90,7 @@ export async function markByAI2(
   }
 ) {
   const fn = async () => {
-    const response = await fetch(`${BACKEND_URL}/api/v1/chat/completions`, {
+    const response = await fetch(`${BACKEND_URL}/api/ai/_outChat`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

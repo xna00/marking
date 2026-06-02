@@ -1,16 +1,16 @@
 {
-  "name": "marking-server",
+  "name": "@marking/server",
   "version": "1.0.0",
   "type": "module",
+  "types": "dist/index.d.ts",
   "scripts": {
-    "dev": "node --env-file=.env --watch src/index.ts",
-    "start": "node --env-file=.env src/index.ts",
-    "typecheck": "tsc --noEmit"
+    "dev": "node --env-file=.env --watch main.ts",
+    "start": "node --env-file=.env main.ts",
+    "typecheck": "tsc --noEmit",
+    "gen-types": "tsc && node scripts/strip-types.js"
   },
   "dependencies": {
-    "@hono/node-server": "^1.14.0",
-    "@wecom/crypto": "^1.0.1",
-    "hono": "^4.7.0"
+    "@wecom/crypto": "^1.0.1"
   },
   "devDependencies": {
     "@types/node": "^25.9.1"

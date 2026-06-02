@@ -1,0 +1,75 @@
+import assert from "node:assert";
+import { idMap, state } from "./global.ts";
+import * as api from "./index.ts";
+import { ApiError, makeJsonResponse } from "./utils.ts";
+import { logger } from "../logger.ts";
+
+const parseFn = (req: Request): [fn: any, fnName: string] => {
+  const pathname = new URL(req.url).pathname;
+  const segs = pathname.split("/").slice(2);
+  const fnName = segs[segs.length - 1];
+  if (
+    !(
+      (fnName.startsWith("get") && req.method === "GET") ||
+      req.method === "POST" ||
+      fnName.startsWith("_out")
+    )
+  ) {
+    return [null, fnName] as const;
+  }
+  const fn = segs.reduce((prev, curr) => (prev as any)?.[curr], api);
+  return [fn, fnName] as const;
+};
+
+export const apiHandler = async (req: Request): Promise<Response> => {
+  let res: Response;
+
+  const [fn, fnName] = parseFn(req);
+  if (!fn) {
+    res = makeJsonResponse(404, {}, { errorCode: "API_NOT_FOUND", url: req.url });
+    return res;
+  }
+  let params: any = null;
+  if (fnName.startsWith("_out")) {
+    params = [req];
+  } else {
+    try {
+      if (req.method === "POST") params = await req.json();
+      else if (req.method === "GET")
+        params = JSON.parse(new URL(req.url).searchParams.get("data") ?? "");
+    } catch (e) {
+      assert(e instanceof Error);
+      logger.error(e);
+      res = makeJsonResponse(400, {}, { message: e.message });
+      return res;
+    }
+  }
+
+  const id = state.id;
+  idMap[id] = {
+    request: req,
+    status: 200,
+    headers: {},
+  };
+  try {
+    const tmp = fn(...params);
+    state.id++;
+    const ret = await tmp;
+    if (ret instanceof Response) res = ret;
+    else res = makeJsonResponse(idMap[id].status, idMap[id].headers, ret);
+  } catch (e) {
+    logger.error(e);
+    let status = 500;
+    let headers: ResponseInit["headers"] = {};
+    let obj: object = { message: e };
+    if (e instanceof ApiError) {
+      status = e.status;
+      headers = e.headers;
+      obj = { errorCode: e.errorCode || "ERROR", message: e.message };
+    }
+    res = makeJsonResponse(status, headers, obj);
+  }
+
+  delete idMap[id];
+  return res;
+};

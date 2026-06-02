@@ -18,6 +18,7 @@
     "jsx": "react-jsx"
   },
   "include": [
+    "api/**/*",
     "extension/**/*",
     "extension/*.json",
     "doc/**/*"

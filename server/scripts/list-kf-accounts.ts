@@ -1,4 +1,4 @@
-import { getAccessToken } from "../src/wechat/token.ts";
+import { getAccessToken } from "../wechat/token.ts";
 
 const accessToken = await getAccessToken();
 

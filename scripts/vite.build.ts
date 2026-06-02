@@ -8,7 +8,7 @@ import manifest from "../extension/manifest.json" with { type: "json" };
 import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react";
 
-const minify = true;
+const minify = false;
 
 process.chdir("extension");
 

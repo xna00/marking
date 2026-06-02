@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { BACKEND_URL } from "../constants";
+import { api } from "../api";
 
 type Props = {
   onLogin: (token: string) => void;
@@ -16,27 +17,23 @@ export function Login({ onLogin }: Props) {
     const uuid = crypto.randomUUID();
     uuidRef.current = uuid;
 
-    const controller = new AbortController();
+    // const controller = new AbortController();
 
-    fetch(`${BACKEND_URL}/api/wechat/qr?sceneParam=${uuid}`, {
-      signal: controller.signal,
+    api.wechat.qr({
+      sceneParam: uuid
     })
-      .then((res) => res.json())
       .then((data) => {
         if (data.url && canvasRef.current) {
           QRCode.toCanvas(canvasRef.current, data.url, { width: 200 });
         }
       })
-      .catch(() => {});
+      .catch(() => { });
 
     const interval = setInterval(async () => {
       try {
-        const res = await fetch(
-          `${BACKEND_URL}/api/wechat/session/${uuid}`,
-          { signal: controller.signal },
-        );
-        const data = await res.json();
-        if (data.status === "completed") {
+        ;
+        const data = await api.wechat.poll({uuid})
+        if (data.status === "completed" && data.token) {
           clearInterval(interval);
           setDone(true);
           onLogin(data.token);
@@ -44,11 +41,11 @@ export function Login({ onLogin }: Props) {
           clearInterval(interval);
           setError("二维码已过期，请刷新");
         }
-      } catch {}
+      } catch { }
     }, 2000);
 
     return () => {
-      controller.abort();
+      // controller.abort();
       clearInterval(interval);
     };
   }, []);

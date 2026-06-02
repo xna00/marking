@@ -1,15 +1,20 @@
 {
   "compilerOptions": {
-    "lib": ["esnext"],
     "target": "esnext",
-    "module": "esnext",
-    "moduleResolution": "bundler",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "lib": ["ESNext"],
     "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
-    "noEmit": true,
-    "skipLibCheck": true,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "outDir": "dist",
     "types": ["node"]
   },
-  "include": ["src", "scripts"]
+  "include": ["."],
+  "exclude": ["node_modules", "dist"]
 }
