@@ -5,7 +5,8 @@
   "main": "background.js",
   "type": "module",
   "scripts": {
-    "build": "rm dist/**/*.{js,css} ; node ./scripts/vite.build.ts && cd dist/extension && zip -r ../doc/extension.zip . && cd ../.. && node ./scripts/setUpdateUrl.ts && node ./scripts/generate-start-bat.ts",
+    "build": "rm dist/**/*.{js,css} ; NODE_ENV=production node ./scripts/vite.build.ts && cd dist/extension && zip -r ../doc/extension.zip . && cd ../.. && node ./scripts/setUpdateUrl.ts && node ./scripts/generate-start-bat.ts",
+    "build:dev": "NODE_ENV=development node ./scripts/vite.build.ts",
     "watch": "npm-watch",
     "cp": "./scripts/copyfiles.sh",
     "add-hash": "scripts/add-hash.ts",

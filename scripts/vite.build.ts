@@ -23,7 +23,7 @@ await build({
   // )
 ],
   base: "./",
-  mode: "development",
+  mode: process.env.NODE_ENV || "development",
   build: {
     outDir: "../dist/extension",
     minify,
