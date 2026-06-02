@@ -1,6 +1,7 @@
 import { repairJson } from "./lib.js";
 import type { ModelName } from "./models.js";
 import { storageKeys, BACKEND_URL } from "./constants.js";
+import { getAuthToken } from "./auth.js";
 
 export type AISettings = {
   model: ModelName;
@@ -94,6 +95,7 @@ export async function markByAI2(
       headers: {
         "Content-Type": "application/json",
         "Version": chrome.runtime.getManifest().version,
+        ...(getAuthToken() ? { "Authorization": `Bearer ${getAuthToken()}` } : {}),
       },
       body: JSON.stringify({
         model: aiSettings.model,

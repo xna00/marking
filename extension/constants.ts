@@ -44,6 +44,9 @@ export enum storageKeys {
 
 
   UPDATE_INFO = "updateInfo",
+
+  // 登录
+  AUTH_TOKEN = "authToken",
 }
 
 export const HOST = "https://marking.xna00.top";

@@ -15,6 +15,8 @@ import { CriteriaTable } from "./CriteriaTable.js";
 import { defaultImageUrl } from "./imageUrl.js";
 import { Banner } from "./Banner.js";
 import { specialChars } from "./specialChars.js";
+import { Login } from "./Login.js";
+import { setAuthToken } from "../auth.js";
 
 export type InputRef = {
   e: HTMLTextAreaElement | HTMLInputElement;
@@ -50,6 +52,20 @@ const pasteImageFromClipboard = async () => {
   }
 };
 const App = () => {
+  const [token, setToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    chrome.storage.local.get(storageKeys.AUTH_TOKEN).then((result) => {
+      const t = result[storageKeys.AUTH_TOKEN] as string | undefined;
+      if (t) {
+        setAuthToken(t);
+        setToken(t);
+      }
+      setLoading(false);
+    });
+  }, []);
+
   const [modelName, setModelName] = useStateWithChromeStorage(
     storageKeys.AI_MODEL,
     defaultAISettings.model
@@ -116,6 +132,13 @@ const App = () => {
       control.abort();
     };
   }, []);
+  if (loading) return <div className="p-5 text-center text-gray-500">加载中...</div>;
+  if (!token) return <Login onLogin={(t) => {
+    chrome.storage.local.set({ [storageKeys.AUTH_TOKEN]: t });
+    setAuthToken(t);
+    setToken(t);
+  }} />;
+
   return (
     <>
       <Banner></Banner>
