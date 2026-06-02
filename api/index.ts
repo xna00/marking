@@ -57,3 +57,11 @@ type Promisify<T> = {
   }
   : Promisify<T[K]>;
 };
+
+
+export const callWithFetchOption =
+  <const F extends ((...args: any) => any) & { makeRequest: (...args: Parameters<F>) => Promise<Request> }>
+    (fn: F, params: Parameters<F>, options: { signal?: AbortSignal }): ReturnType<F> => {
+    return fn.makeRequest(...params).then(req => fetch(req, options)).then(res => res.json()) as ReturnType<F>
+  }
+

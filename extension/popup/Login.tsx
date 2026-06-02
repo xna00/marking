@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { BACKEND_URL } from "../constants";
 import { api } from "../api";
+import { callWithFetchOption } from "@marking/api";
 
 type Props = {
   onLogin: (token: string) => void;
@@ -17,11 +18,9 @@ export function Login({ onLogin }: Props) {
     const uuid = crypto.randomUUID();
     uuidRef.current = uuid;
 
-    // const controller = new AbortController();
+    const controller = new AbortController();
 
-    api.wechat.qr({
-      sceneParam: uuid
-    })
+    callWithFetchOption(api.wechat.qr, [{ sceneParam: uuid }], { signal: controller.signal })
       .then((data) => {
         if (data.url && canvasRef.current) {
           QRCode.toCanvas(canvasRef.current, data.url, { width: 200 });
@@ -31,8 +30,7 @@ export function Login({ onLogin }: Props) {
 
     const interval = setInterval(async () => {
       try {
-        ;
-        const data = await api.wechat.poll({uuid})
+        const data = await callWithFetchOption(api.wechat.poll, [{uuid}], {signal: controller.signal})
         if (data.status === "completed" && data.token) {
           clearInterval(interval);
           setDone(true);
@@ -45,7 +43,7 @@ export function Login({ onLogin }: Props) {
     }, 2000);
 
     return () => {
-      // controller.abort();
+      controller.abort();
       clearInterval(interval);
     };
   }, []);
