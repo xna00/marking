@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { sendEventResponseMessage, sendTextMessage } from "./send.ts";
 import { createUser, findUserByExternalUserId } from "../db.ts";
+import { completeLoginSession } from "./login.ts";
 import type { KfEventMessage, KfTextMessage, KfMessage } from "./sync.ts";
 
 function log(...args: unknown[]) {
@@ -33,6 +34,10 @@ async function handleEnterSession(msg: KfEventMessage) {
     createUser(external_userid, username, password);
     reply = `已为您分配账号：${username}，${password}`;
     log(`新用户注册: ${username}`);
+  }
+
+  if (msg.event.scene_param) {
+    completeLoginSession(msg.event.scene_param, external_userid);
   }
 
   if (welcome_code) {

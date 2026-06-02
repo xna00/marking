@@ -1,16 +1,27 @@
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
+import type { Context, Next } from "hono";
 import { writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import type { IncomingMessage } from "node:http";
 import { handleCallback } from "./wechat/callback.ts";
-import { initDb } from "./db.ts";
+import { initDb, findUserByToken } from "./db.ts";
+import type { User } from "./db.ts";
+import { createLoginSession, getLoginSession } from "./wechat/login.ts";
+import { getKfServiceUrl } from "./wechat/contact.ts";
 
 const API_KEY = process.env.DOUBAO_API_KEY;
 if (!API_KEY) {
   log("DOUBAO_API_KEY 环境变量未设置");
   process.exit(1);
 }
+
+const LOGIN_KF_ID = process.env.LOGIN_KF_ID;
+if (!LOGIN_KF_ID) {
+  log("LOGIN_KF_ID 环境变量未设置");
+  process.exit(1);
+}
+
 
 const DOUBAO_URL = "https://ark.cn-beijing.volces.com/api/v3/chat/completions";
 
@@ -55,12 +66,46 @@ async function logRequestBody(id: string, bodyText: string, headers: Headers, cl
   }
 }
 
-const app = new Hono<{ Bindings: { incoming: IncomingMessage } }>();
+type Variables = {
+  user: User;
+};
+
+const app = new Hono<{ Bindings: { incoming: IncomingMessage }; Variables: Variables }>();
 
 app.use("*", async (c, next) => {
   log(`${c.req.method} ${c.req.url}`);
   await next();
 });
+
+async function authMiddleware(c: Context<{ Variables: Variables }>, next: Next) {
+  const auth = c.req.header("Authorization");
+  if (!auth?.startsWith("Bearer ")) return c.text("Unauthorized", 401);
+  const token = auth.slice(7);
+  const user = findUserByToken(token);
+  if (!user) return c.text("Unauthorized", 401);
+  c.set("user", user);
+  await next();
+}
+
+// ── login ──
+
+app.get("/api/wechat/qr", async (c) => {
+  const sceneParam = c.req.query("sceneParam");
+  if (!sceneParam) return c.json({ error: "缺少 sceneParam" }, 400);
+
+  createLoginSession(sceneParam);
+  const { url } = await getKfServiceUrl(LOGIN_KF_ID, "login", sceneParam);
+  return c.json({ url });
+});
+
+app.get("/api/wechat/session/:uuid", async (c) => {
+  const session = getLoginSession(c.req.param("uuid"));
+  if (!session) return c.json({ status: "expired" });
+  if (session.status === "pending") return c.json({ status: "pending" });
+  return c.json({ status: "completed", token: session.token, username: session.externalUserId });
+});
+
+// ── wechat callback ──
 
 app.all("/api/wechat/callback", async (c) => {
   const res = await handleCallback(c.req.raw);
@@ -106,6 +151,12 @@ app.post("/api/v1/chat/completions", async (c) => {
 
   return c.newResponse(res.body, { status: res.status as any, statusText: res.statusText, headers: outHeaders });
 });
+
+// ── protected routes (示例) ──
+// app.get("/api/user/me", authMiddleware, (c) => {
+//   const user = c.get("user");
+//   return c.json({ username: user.username });
+// });
 
 const port = Number(process.env.PORT) || 3000;
 log(`server running on http://localhost:${port}`);

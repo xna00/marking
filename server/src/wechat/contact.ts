@@ -24,7 +24,7 @@ export async function getKfServiceUrl(
   }
 
   let url = data.url;
-  if (scene && sceneParam) {
+  if (sceneParam) {
     url += `&scene_param=${encodeURIComponent(sceneParam)}`;
   }
 

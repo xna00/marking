@@ -28,6 +28,7 @@ export function initDb(): void {
     passwordHash   TEXT NOT NULL,
     email          TEXT,
     phone          TEXT,
+    token          TEXT,
     createdAt      TEXT NOT NULL,
     updatedAt      TEXT NOT NULL
   )`);
@@ -52,6 +53,7 @@ export type User = {
   passwordHash: string;
   email: string | null;
   phone: string | null;
+  token: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -74,20 +76,22 @@ export function createUser(
   password: string,
   email?: string,
   phone?: string,
-): User {
+): User & { token: string } {
   const now = new Date().toISOString();
   const passwordHash = hashPassword(password);
+  const token = randomBytes(32).toString("hex");
   const stmt = getDb().prepare(
-    `INSERT INTO user (externalUserId, username, passwordHash, email, phone, createdAt, updatedAt)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO user (externalUserId, username, passwordHash, email, phone, token, createdAt, updatedAt)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   );
-  stmt.run(externalUserId, username, passwordHash, email ?? null, phone ?? null, now, now);
+  stmt.run(externalUserId, username, passwordHash, email ?? null, phone ?? null, token, now, now);
   return {
     externalUserId,
     username,
     passwordHash,
     email: email ?? null,
     phone: phone ?? null,
+    token,
     createdAt: now,
     updatedAt: now,
   };
@@ -101,4 +105,14 @@ export function findUserByExternalUserId(externalUserId: string): User | undefin
 export function findUserByUsername(username: string): User | undefined {
   const stmt = getDb().prepare("SELECT * FROM user WHERE username = ?");
   return stmt.get(username) as User | undefined;
+}
+
+export function updateUserToken(externalUserId: string, token: string | null): void {
+  const stmt = getDb().prepare("UPDATE user SET token = ?, updatedAt = ? WHERE externalUserId = ?");
+  stmt.run(token, new Date().toISOString(), externalUserId);
+}
+
+export function findUserByToken(token: string): User | undefined {
+  const stmt = getDb().prepare("SELECT * FROM user WHERE token = ?");
+  return stmt.get(token) as User | undefined;
 }
