@@ -1,5 +1,5 @@
 import { getAccessToken } from "./token.ts";
-import { loadCursor, saveCursor } from "../db.ts";
+import { loadCursor, saveCursor } from "../../db.ts";
 
 export type EventMessage = {
   event_type: string;

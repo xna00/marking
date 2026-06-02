@@ -1,4 +1,4 @@
-import { getLoginSession } from "../../wechat/login.ts";
+import { getLoginSession } from "./login.ts";
 
 export function poll(data: { uuid: string }) {
   const session = getLoginSession(data.uuid);

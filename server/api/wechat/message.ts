@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { sendEventResponseMessage, sendTextMessage } from "./send.ts";
-import { createUser, findUserByExternalUserId } from "../db.ts";
+import { createUser, findUserByExternalUserId } from "../../db.ts";
 import { completeLoginSession } from "./login.ts";
 import type { KfEventMessage, KfTextMessage, KfMessage } from "./sync.ts";
 

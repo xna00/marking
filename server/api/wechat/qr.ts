@@ -1,5 +1,5 @@
-import { createLoginSession } from "../../wechat/login.ts";
-import { getKfServiceUrl } from "../../wechat/contact.ts";
+import { createLoginSession } from "./login.ts";
+import { getKfServiceUrl } from "./contact.ts";
 import { LOGIN_KF_ID } from "../constants.ts";
 
 export async function qr(data: { sceneParam: string }) {

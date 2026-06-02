@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { createUser, findUserByExternalUserId, updateUserToken } from "../db.ts";
+import { createUser, findUserByExternalUserId, updateUserToken } from "../../db.ts";
 
 type LoginSession = {
   status: "pending" | "completed";
