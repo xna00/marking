@@ -1,4 +1,6 @@
+import { jsonrepair } from "jsonrepair";
 import { DOUBAO_URL, API_KEY } from "./constants.ts";
+import { ApiError } from "./utils.ts";
 
 type ConfigItem = {
   position: string;
@@ -11,6 +13,8 @@ type ChatBody = {
   config: ConfigItem[];
   imageUrl: string;
 };
+
+type AIResultItem = [string, number, string];
 
 function log(...args: unknown[]) {
   console.log(`[${new Date().toLocaleString()}]`, ...args);
@@ -32,8 +36,7 @@ function constructPrompt(config: ConfigItem[]): string {
   return SYSTEM_PROMPT.replace("{{评分标准}}", mdTable);
 }
 
-export async function chat(body: ChatBody): Promise<unknown> {
-  const id = Math.random().toString(36).slice(2, 8);
+export async function chat(body: ChatBody): Promise<AIResultItem[]> {
   const prompt = constructPrompt(body.config);
 
   const fetchBody = {
@@ -52,32 +55,45 @@ export async function chat(body: ChatBody): Promise<unknown> {
     max_completion_tokens: 200,
   };
 
-  const start = Date.now();
-  const fetchPromise = fetch(DOUBAO_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${API_KEY}`,
-    },
-    body: JSON.stringify(fetchBody),
-    duplex: "half",
-  });
+  const errors: unknown[] = [];
 
-  const res = await fetchPromise;
-  const ms = Date.now() - start;
-  log(`[${id}] <= ${res.status} (${ms}ms)`);
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const id = Math.random().toString(36).slice(2, 8);
+    try {
+      const start = Date.now();
+      const res = await fetch(DOUBAO_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${API_KEY}`,
+        },
+        body: JSON.stringify(fetchBody),
+        duplex: "half",
+      });
+      const ms = Date.now() - start;
+      log(`[${id}] <= ${res.status} (${ms}ms)`);
 
-  res.clone().text()
-    .then(body => log(`[${id}] body: ${body}`))
-    .catch(err => log(`[${id}] body error: ${err}`));
+      if (!res.ok) {
+        const errorBody = await res.json().catch(() => ({}));
+        throw new Error(`AI API error ${res.status}: ${JSON.stringify(errorBody)}`);
+      }
 
-  const outHeaders = new Headers(res.headers);
-  outHeaders.delete("content-encoding");
-  outHeaders.delete("content-length");
+      const data = await res.json() as any;
+      const content = data.choices?.[0]?.message?.content;
 
-  return new Response(res.body, {
-    status: res.status,
-    statusText: res.statusText,
-    headers: outHeaders,
-  });
+      log(`[${id}] body: ${content}`);
+
+      if (!content) {
+        throw new Error(`Unexpected AI response: ${JSON.stringify(data)}`);
+      }
+
+      const repaired = jsonrepair(content);
+      return JSON.parse(repaired);
+    } catch (e) {
+      log(`[${id}] attempt ${attempt + 1} failed:`, e);
+      errors.push(e);
+    }
+  }
+
+  throw new ApiError(502, {}, `3 次重试均失败: ${errors.map(e => String(e)).join("; ")}`);
 }

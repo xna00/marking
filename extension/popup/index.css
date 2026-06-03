@@ -51,6 +51,14 @@ th {
   overflow: auto;
 }
 
+#criteriaTable textarea {
+  field-sizing: content;
+  max-height: 120px;
+  overflow-y: auto;
+  resize: none;
+  margin-bottom: 0;
+}
+
 .add-btn {
   position: relative;
   display: inline-flex;

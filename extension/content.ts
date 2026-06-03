@@ -1,5 +1,4 @@
 import { storageKeys } from "./constants";
-import { parseAIResult } from "./ai";
 
 console.log("content.ts loaded");
 
@@ -195,9 +194,9 @@ chrome.storage.local.get(storageKeys.CRITERIA_CONFIG).then((res) => {
   }
 });
 
-const showAiResult = (result: string) => {
+const showAiResult = (result: [string, number, string][]) => {
   try {
-    const res = JSON.parse(result) as [string, number, string][];
+    const res = result;
     console.log(res);
     document.body.appendChild(overlay);
 
@@ -262,7 +261,7 @@ const h = async () => {
     const result = res?.result;
     if (result) {
       showedResult = true;
-      const aiResult = parseAIResult(result);
+      const aiResult = result;
       const { [storageKeys.AI_DELAY]: delayRange = [0, 0] } = await chrome.storage.local.get(storageKeys.AI_DELAY);
       const [min, max] = delayRange as [number, number];
       const delay = Math.random() * (max - min) + min;

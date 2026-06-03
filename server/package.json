@@ -10,7 +10,8 @@
     "gen-types": "tsc && node scripts/strip-types.js"
   },
   "dependencies": {
-    "@wecom/crypto": "^1.0.1"
+    "@wecom/crypto": "^1.0.1",
+    "jsonrepair": "^3.14.0"
   },
   "devDependencies": {
     "@types/node": "^25.9.1"

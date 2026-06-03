@@ -1,6 +1,5 @@
 import {
   recognizeImage,
-  parseAIResult,
   defaultModel,
   type ConfigItem,
 } from "../ai.js";
@@ -266,7 +265,7 @@ const Main = () => {
             />
           </div>
         </div>
-        <div className={result.tag === "succeed" ? "" : "text-red-500"}>
+        <div className={result.tag === "succeed" ? "" : "text-red-500"} style={{ whiteSpace: 'pre-wrap' }}>
           {result.msg}
         </div>
         <button
@@ -276,7 +275,7 @@ const Main = () => {
               (res) => {
                 setResult({
                   tag: "succeed",
-                  msg: parseAIResult(res),
+                  msg: res.map(([text, score, reason], i) => `${i + 1}. ${text}（${score}分，${reason}）`).join("\n"),
                 });
               },
               (err) => {
