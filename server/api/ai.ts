@@ -39,7 +39,7 @@ async function logRequestBody(id: string, bodyText: string, headers: Headers, cl
   log(`[${id}]   body: ${JSON.stringify(logBody)}`);
 }
 
-export async function chat(body: ChatBody): Promise<Response> {
+export async function chat(body: ChatBody): Promise<unknown> {
   const id = Math.random().toString(36).slice(2, 8);
 
   const fetchBody = {

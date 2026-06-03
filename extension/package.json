@@ -3,14 +3,16 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
     "@marking/api": "^1.0.0",
-    "qrcode": "^1.5.4"
+    "lean-qr": "^2.7.1"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.18",
     "@types/chrome": "^0.1.32",
-    "@types/qrcode": "^1.5.6",
     "@types/react-dom": "^19.2.3",
     "@types/uzip": "^0.20201231.2",
     "@types/wicg-file-system-access": "^2023.10.7",

@@ -90,7 +90,7 @@ export async function markByAI2(
   }
 ) {
   const fn = async () => {
-    const data = await api.ai.chat({
+    const data: { choices: Array<{ message: { content: string } }> } = await api.ai.chat({
       model: aiSettings.model,
       messages: [
         {
@@ -114,7 +114,7 @@ export async function markByAI2(
           ],
         },
       ],
-    });
+    }) as any;
     if (!data.choices) {
       throw new Error(`AI识别错误: ${JSON.stringify(data)}`);
     }

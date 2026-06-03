@@ -28,7 +28,11 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "workspaces": ["server", "api", "extension"],
+  "workspaces": [
+    "server",
+    "api",
+    "extension"
+  ],
   "devDependencies": {
     "esbuild": "^0.27.2",
     "npm-watch": "^0.13.0",

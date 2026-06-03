@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import QRCode from "qrcode";
+import { generate } from "lean-qr";
 import { BACKEND_URL } from "../constants";
 import { api } from "../api";
 import { callWithFetchOption } from "@marking/api";
@@ -23,7 +23,7 @@ export function Login({ onLogin }: Props) {
     callWithFetchOption(api.wechat.qr, [{ sceneParam: uuid }], { signal: controller.signal })
       .then((data) => {
         if (data.url && canvasRef.current) {
-          QRCode.toCanvas(canvasRef.current, data.url, { width: 200 });
+          generate(data.url).toCanvas(canvasRef.current);
         }
       })
       .catch(() => { });
@@ -57,7 +57,7 @@ export function Login({ onLogin }: Props) {
         <p className="text-green-600">登录成功</p>
       ) : (
         <>
-          <canvas ref={canvasRef} />
+          <canvas ref={canvasRef} style={{ width: 200, imageRendering: 'pixelated' }} />
           <p className="text-sm text-gray-500">请使用微信扫描二维码</p>
         </>
       )}
