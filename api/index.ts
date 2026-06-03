@@ -1,5 +1,15 @@
 import type { Api } from "@marking/server";
 
+export class ApiError extends Error {
+  status: number;
+  errorCode?: string;
+  constructor(status: number, body?: { errorCode?: string; message?: string }) {
+    super(body?.message ?? `Request failed with status ${status}`);
+    this.status = status;
+    this.errorCode = body?.errorCode;
+  }
+}
+
 const COMPRESS_THRESHOLD = 1024;
 
 const isGetMethod = (path: string) =>
@@ -50,18 +60,24 @@ export const createHandler = (base: string, options?: {
       );
       if (options?.beforeRequest) req = await options.beforeRequest(req);
       if (target.isMakeRequest) return req;
-      return fetch(req).then(async (res) => {
-        if (options?.beforeResponse) res = await options.beforeResponse(res);
-        if (res.status === 401) {
-          // location.href = "/login";
-        }
-        if (
-          res.headers.get("content-type")?.toLowerCase().startsWith("application/json")
-        ) {
-          return res.json();
-        }
-        return res;
-      });
+      const res = await fetch(req);
+      let r = options?.beforeResponse ? await options.beforeResponse(res) : res;
+      if (r.status === 401) {
+        // location.href = "/login";
+      }
+      if (!r.ok) {
+        const isJson = r.headers.get("content-type")?.toLowerCase().startsWith("application/json");
+        const body = isJson
+          ? await r.json().catch(() => undefined)
+          : { message: await r.text().catch(() => undefined) };
+        throw new ApiError(r.status, body);
+      }
+      if (
+        r.headers.get("content-type")?.toLowerCase().startsWith("application/json")
+      ) {
+        return r.json();
+      }
+      return r;
     },
   }) as any;
 };
@@ -76,9 +92,22 @@ type Promisify<T> = {
 };
 
 
-export const callWithFetchOption =
-  <const F extends ((...args: any) => any) & { makeRequest: (...args: Parameters<F>) => Promise<Request> }>
-    (fn: F, params: Parameters<F>, options: { signal?: AbortSignal }): ReturnType<F> => {
-    return fn.makeRequest(...params).then(req => fetch(req, options)).then(res => res.json()) as ReturnType<F>
+export const callWithFetchOption = async <
+  const F extends ((...args: any) => any) & { makeRequest: (...args: Parameters<F>) => Promise<Request> }
+>(
+  fn: F,
+  params: Parameters<F>,
+  options: { signal?: AbortSignal }
+): Promise<Awaited<ReturnType<F>>> => {
+  const req = await fn.makeRequest(...params);
+  const res = await fetch(req, options);
+  if (!res.ok) {
+    const isJson = res.headers.get("content-type")?.toLowerCase().startsWith("application/json");
+    const body = isJson
+      ? await res.json().catch(() => undefined)
+      : { message: await res.text().catch(() => undefined) };
+    throw new ApiError(res.status, body);
   }
+  return res.json();
+}
 
