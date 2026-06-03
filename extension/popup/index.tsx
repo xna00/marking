@@ -85,6 +85,7 @@ const Main = () => {
     tag: "succeed",
     msg: "",
   });
+  const [grading, setGrading] = useState(false);
 
   const inputRef = useRef<InputRef>(null);
 
@@ -269,8 +270,10 @@ const Main = () => {
           {result.msg}
         </div>
         <button
-          className="w-full py-2"
+          className="w-full py-2 disabled:opacity-60 disabled:cursor-not-allowed"
+          disabled={grading}
           onClick={() => {
+            setGrading(true);
             recognizeImage(imageUrl).then(
               (res) => {
                 setResult({
@@ -284,10 +287,10 @@ const Main = () => {
                   msg: err.message,
                 });
               }
-            );
+            ).finally(() => setGrading(false));
           }}
         >
-          评分
+          {grading ? "评分中..." : "评分"}
         </button>
       </div>
     </>
