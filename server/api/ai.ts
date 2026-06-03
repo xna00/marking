@@ -1,5 +1,21 @@
 import { DOUBAO_URL, API_KEY } from "./constants.ts";
 
+type ContentPart = {
+  type: "text";
+  text: string;
+} | {
+  type: "image_url";
+  image_url: { url: string };
+};
+
+type ChatBody = {
+  model: string;
+  messages: Array<{
+    role: "system" | "user" | "assistant";
+    content: ContentPart[];
+  }>;
+};
+
 function log(...args: unknown[]) {
   console.log(`[${new Date().toLocaleString()}]`, ...args);
 }
@@ -23,16 +39,14 @@ async function logRequestBody(id: string, bodyText: string, headers: Headers, cl
   log(`[${id}]   body: ${JSON.stringify(logBody)}`);
 }
 
-export async function _outChat(req: Request) {
+export async function chat(body: ChatBody): Promise<Response> {
   const id = Math.random().toString(36).slice(2, 8);
 
-  if (!req.body) {
-    return new Response("request body is required", { status: 400 });
-  }
-
-  const clientIp = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "";
-  const savePromise = req.clone().text().then(bodyText =>
-    logRequestBody(id, bodyText, req.headers, clientIp));
+  const fetchBody = {
+    ...body,
+    thinking: { type: "disabled" },
+    max_completion_tokens: 200,
+  };
 
   const start = Date.now();
   const fetchPromise = fetch(DOUBAO_URL, {
@@ -41,7 +55,7 @@ export async function _outChat(req: Request) {
       "Content-Type": "application/json",
       Authorization: `Bearer ${API_KEY}`,
     },
-    body: req.body,
+    body: JSON.stringify(fetchBody),
     duplex: "half",
   });
 
@@ -52,7 +66,6 @@ export async function _outChat(req: Request) {
   res.clone().text()
     .then(body => log(`[${id}] body: ${body}`))
     .catch(err => log(`[${id}] body error: ${err}`));
-  savePromise.catch(e => log(`[${id}] save error:`, e));
 
   const outHeaders = new Headers(res.headers);
   outHeaders.delete("content-encoding");

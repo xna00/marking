@@ -1,5 +1,7 @@
 import type { Api } from "@marking/server";
 
+const COMPRESS_THRESHOLD = 1024;
+
 const isGetMethod = (path: string) =>
   !!path.split("/").pop()?.startsWith("get");
 
@@ -19,16 +21,31 @@ export const createHandler = (base: string, options?: {
     },
     apply: async (target: any, _thisArg, argArray) => {
       const isGet = isGetMethod(base);
+
+      const bodyStr = isGet ? undefined : JSON.stringify(argArray);
+      const headers = new Headers({ "content-type": "application/json" });
+
+      let finalBody: BodyInit | undefined;
+      if (bodyStr) {
+        const encoded = new TextEncoder().encode(bodyStr);
+        if (encoded.byteLength >= COMPRESS_THRESHOLD) {
+          finalBody = await new Response(
+            new Blob([encoded]).stream().pipeThrough(new CompressionStream("gzip"))
+          ).arrayBuffer();
+          headers.set("content-encoding", "gzip");
+        } else {
+          finalBody = bodyStr;
+        }
+      }
+
       let req: any = new Request(
         isGet
           ? `${base}?data=${encodeURIComponent(JSON.stringify(argArray) ?? '')}`
           : base,
         {
           method: isGet ? "GET" : "POST",
-          headers: {
-            "content-type": "application/json",
-          },
-          body: isGet ? undefined : JSON.stringify(argArray),
+          headers,
+          body: finalBody,
         }
       );
       if (options?.beforeRequest) req = await options.beforeRequest(req);
@@ -39,7 +56,7 @@ export const createHandler = (base: string, options?: {
           // location.href = "/login";
         }
         if (
-          res.headers.get("content-type")?.toLowerCase() === "application/json"
+          res.headers.get("content-type")?.toLowerCase().startsWith("application/json")
         ) {
           return res.json();
         }

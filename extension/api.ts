@@ -8,6 +8,7 @@ export const api = createHandler(`${BACKEND_URL}/api`, {
     if (token) {
       req.headers.set("Authorization", `Bearer ${token}`);
     }
+    req.headers.set("Version", chrome.runtime.getManifest().version);
     return req;
   },
 });

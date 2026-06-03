@@ -1,7 +1,7 @@
 import { repairJson } from "./lib.js";
 import type { ModelName } from "./models.js";
-import { storageKeys, BACKEND_URL } from "./constants.js";
-import { getAuthToken } from "./auth.js";
+import { storageKeys } from "./constants.js";
+import { api } from "./api.js";
 
 export type AISettings = {
   model: ModelName;
@@ -90,51 +90,34 @@ export async function markByAI2(
   }
 ) {
   const fn = async () => {
-    const response = await fetch(`${BACKEND_URL}/api/ai/_outChat`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Version": chrome.runtime.getManifest().version,
-        ...(getAuthToken() ? { "Authorization": `Bearer ${getAuthToken()}` } : {}),
-      },
-      body: JSON.stringify({
-        model: aiSettings.model,
-        thinking: { type: "disabled" },
-        max_completion_tokens: 200,
-        messages: [
-          {
-            role: "system",
-            content: [
-              {
-                type: "text",
-                text: aiSettings.prompt,
+    const data = await api.ai.chat({
+      model: aiSettings.model,
+      messages: [
+        {
+          role: "system",
+          content: [
+            {
+              type: "text",
+              text: aiSettings.prompt,
+            },
+          ],
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "image_url",
+              image_url: {
+                url: dataUrl,
               },
-            ],
-          },
-          {
-            role: "user",
-            content: [
-              {
-                type: "image_url",
-                image_url: {
-                  url: dataUrl,
-                  detail: aiSettings.model === "doubao-seed-2-0-pro-260215" ? "low" : "high",
-                },
-              },
-            ],
-          },
-        ],
-        // response_format: {
-        //   type: "json_object",
-        // },
-      }),
+            },
+          ],
+        },
+      ],
     });
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("AI识别错误:", errorText);
-      throw new Error(`AI识别错误: ${errorText}`);
+    if (!data.choices) {
+      throw new Error(`AI识别错误: ${JSON.stringify(data)}`);
     }
-    const data = await response.json();
     try {
       // TODO: use jsonrepair or dirty-json to repair the broken json
       JSON.parse(repairJson(parseAIResult(data)));
@@ -146,6 +129,7 @@ export async function markByAI2(
     }
     return data;
   };
+  console.log(fn)
   const data = await tryManyTimes(fn);
   console.log("AI识别结果:", data);
   return data;
