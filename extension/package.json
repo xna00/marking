@@ -8,7 +8,8 @@
   },
   "dependencies": {
     "@marking/api": "^1.0.0",
-    "lean-qr": "^2.7.1"
+    "lean-qr": "^2.7.1",
+    "wouter": "3.10.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.18",

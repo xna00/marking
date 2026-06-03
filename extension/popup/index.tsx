@@ -17,6 +17,10 @@ import { Banner } from "./Banner.js";
 import { specialChars } from "./specialChars.js";
 import { Login } from "./Login.js";
 import { setAuthToken } from "../auth.js";
+import { Router, Route, Switch } from "wouter";
+import { memoryLocation } from "wouter/memory-location";
+
+const { hook, navigate } = memoryLocation({ path: "/" });
 
 export type InputRef = {
   e: HTMLTextAreaElement | HTMLInputElement;
@@ -51,21 +55,8 @@ const pasteImageFromClipboard = async () => {
     }
   }
 };
-const App = () => {
-  const [token, setToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    chrome.storage.local.get(storageKeys.AUTH_TOKEN).then((result) => {
-      const t = result[storageKeys.AUTH_TOKEN] as string | undefined;
-      if (t) {
-        setAuthToken(t);
-        setToken(t);
-      }
-      setLoading(false);
-    });
-  }, []);
-
+const Main = () => {
   const [modelName, setModelName] = useStateWithChromeStorage(
     storageKeys.AI_MODEL,
     defaultAISettings.model
@@ -132,16 +123,10 @@ const App = () => {
       control.abort();
     };
   }, []);
-  if (loading) return <div className="p-5 text-center text-gray-500">加载中...</div>;
-  if (!token) return <Login onLogin={(t) => {
-    chrome.storage.local.set({ [storageKeys.AUTH_TOKEN]: t });
-    setAuthToken(t);
-    setToken(t);
-  }} />;
 
   return (
     <>
-      <Banner></Banner>
+      <Banner />
       <div className="p-2.5">
         <label>选择模型</label>
         <select
@@ -199,7 +184,7 @@ const App = () => {
             setPrompt(e.target.value);
           }}
           style={{ display: 'none' }}
-        ></textarea>
+        />
         <label>AI 结果延迟 (秒)</label>
         <div className="flex gap-x-2 items-center">
           <label className="flex items-center gap-x-1">
@@ -235,7 +220,7 @@ const App = () => {
           criteriaRules={criteriaRules}
           setCriteriaRules={setCriteriaRules}
           setInputRef={setInputRef}
-        ></CriteriaTable>
+        />
         <div className="fixed right-0 top-2/3">
           <button
             popoverTarget="specialKeyboard"
@@ -290,7 +275,7 @@ const App = () => {
           </div>
         </div>
         <div>
-          <label></label>
+          <label />
           <div className="inline-block">
             答题卡图片
             <span>
@@ -367,7 +352,45 @@ const App = () => {
     </>
   );
 };
+
+const App = () => {
+  const [token, setToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    chrome.storage.local.get(storageKeys.AUTH_TOKEN).then((result) => {
+      const t = result[storageKeys.AUTH_TOKEN] as string | undefined;
+      if (t) {
+        setAuthToken(t);
+        setToken(t);
+      } else {
+        navigate("/login");
+      }
+      setLoading(false);
+    });
+  }, []);
+
+  if (loading) return <div className="p-5 text-center text-gray-500">加载中...</div>;
+
+  return (
+    <Router hook={hook}>
+      <Switch>
+        <Route path="/login">
+          <Login onLogin={(t) => {
+            chrome.storage.local.set({ [storageKeys.AUTH_TOKEN]: t });
+            setAuthToken(t);
+            setToken(t);
+            navigate("/");
+          }} />
+        </Route>
+        <Route path="/">
+          <Main />
+        </Route>
+      </Switch>
+    </Router>
+  );
+};
 const root = createRoot(document.getElementById("app")!);
-root.render(<App></App>);
+root.render(<App />);
 
 console.log("Marking extension popup loaded");
