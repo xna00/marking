@@ -20,8 +20,8 @@ function CriteriaRow({
 }) {
   return (
     <tr>
-      <td className="text-center align-top">{index + 1}</td>
-      <td className="align-top">
+      <td className="text-center align-middle">{index + 1}</td>
+      <td className="align-middle">
         <textarea
           className="w-full border-none! outline-none rounded-none"
           value={item.position}
@@ -29,7 +29,7 @@ function CriteriaRow({
           onFocus={e => setInputRef({ e: e.target, setValue: v => onUpdate("position", v) })}
         />
       </td>
-      <td className="align-top">
+      <td className="align-middle">
         <input
           className="w-full"
           type="number"
@@ -40,7 +40,7 @@ function CriteriaRow({
           onFocus={e => setInputRef({ e: e.target, setValue: v => onUpdate("points", Number(v)) })}
         />
       </td>
-      <td className="align-top">
+      <td className="align-middle">
         <textarea
           className="w-full border-none! outline-none rounded-none"
           value={item.markingCriteria}
@@ -48,7 +48,7 @@ function CriteriaRow({
           onFocus={e => setInputRef({ e: e.target, setValue: v => onUpdate("markingCriteria", v) })}
         />
       </td>
-      <td className="align-top text-center whitespace-nowrap" style={{ overflow: 'visible' }}>
+      <td className="align-middle text-center whitespace-nowrap" style={{ overflow: 'visible' }}>
         <span className="add-btn">
           <span className="border rounded-full w-4 h-4 inline-flex items-center justify-center cursor-pointer text-sm leading-none">+</span>
           <span className="add-dropdown">
