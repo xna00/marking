@@ -8,6 +8,7 @@ export enum storageKeys {
   IMAGE_SRC = "imageSrc",
 
   // 评分标准和规则
+  CRITERIA_CONFIG = "criteriaConfig",
   CRITERIA_RULES = "criteriaRules_v1",
   DEFAULT_CRITERIA = "defaultCriteria",
   CRITERIA_HEADER = "criteriaHeader",

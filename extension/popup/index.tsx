@@ -1,9 +1,8 @@
 import {
   recognizeImage,
   parseAIResult,
-  defaultAISettings,
-  fillCriteriaPlaceholder,
-  makeCriteriaMDTable,
+  defaultModel,
+  type ConfigItem,
 } from "../ai.js";
 import { blobToDataUrl, scaleImage } from "../image.js";
 import { modelNames } from "../models.js";
@@ -59,28 +58,16 @@ const pasteImageFromClipboard = async () => {
 const Main = () => {
   const [modelName, setModelName] = useStateWithChromeStorage(
     storageKeys.AI_MODEL,
-    defaultAISettings.model
+    defaultModel
   );
-  const [prompt, setPrompt] = useStateWithChromeStorage(
-    storageKeys.AI_PROMPT,
-    defaultAISettings.prompt
-  );
-  const [criteriaHeader] = useStateWithChromeStorage(
-    storageKeys.CRITERIA_HEADER,
-    ["位置", "分值", "评分标准"]
-  );
-  const [criteriaRules, setCriteriaRules] = useStateWithChromeStorage(
-    storageKeys.CRITERIA_RULES,
+  const [criteriaConfig, setCriteriaConfig] = useStateWithChromeStorage<ConfigItem[]>(
+    storageKeys.CRITERIA_CONFIG,
     [
-      ["①左", "1", "500mL容量瓶(不写“500mL”0分，“容量瓶”写成“溶量瓶”0分)"],
-      ["①右", "2", "13.6"],
-      ["②", "1", "25"],
-      [
-        "③",
-        "2",
-        "将浓硫酸沿烧杯内壁缓慢注入水中(给分点一),并用玻璃棒不断搅拌(给分点二)",
-      ],
-      ["④", "2", "C"],
+      { position: "①左", points: 1, markingCriteria: "500mL容量瓶(不写“500mL”0分，“容量瓶”写成“溶量瓶”0分)" },
+      { position: "①右", points: 2, markingCriteria: "13.6" },
+      { position: "②", points: 1, markingCriteria: "25" },
+      { position: "③", points: 2, markingCriteria: "将浓硫酸沿烧杯内壁缓慢注入水中(给分点一),并用玻璃棒不断搅拌(给分点二)" },
+      { position: "④", points: 2, markingCriteria: "C" },
     ]
   );
   const [imageUrl, setImageUrl] = useStateWithChromeStorage(
@@ -141,50 +128,6 @@ const Main = () => {
           ))}
         </select>
 
-        <div style={{ display: 'none' }}>
-          系统提示词
-          <div className="inline-flex gap-x-2">
-            <button popoverTarget="previewPopover" className="small-btn">
-              预览
-            </button>
-            <div
-              popover="auto"
-              id="previewPopover"
-              className="m-auto p-4 border-2 whitespace-pre-wrap"
-            >
-              {fillCriteriaPlaceholder(
-                prompt,
-                makeCriteriaMDTable({
-                  criteriaHeader,
-                  criteriaRules,
-                })
-              )}
-            </div>
-            <button
-              id="resetPrompt"
-              className="small-btn"
-              onClick={() => setPrompt(defaultAISettings.prompt)}
-            >
-              重置
-            </button>
-          </div>
-        </div>
-        <textarea
-          id="promptTextarea"
-          value={prompt}
-          onFocus={(e) => {
-            setInputRef({
-              e: e.target,
-              setValue: (value) => {
-                setPrompt(value);
-              },
-            });
-          }}
-          onChange={(e) => {
-            setPrompt(e.target.value);
-          }}
-          style={{ display: 'none' }}
-        />
         <label>AI 结果延迟 (秒)</label>
         <div className="flex gap-x-2 items-center">
           <label className="flex items-center gap-x-1">
@@ -216,9 +159,8 @@ const Main = () => {
         </div>
         <label>评分标准</label>
         <CriteriaTable
-          criteriaHeader={criteriaHeader}
-          criteriaRules={criteriaRules}
-          setCriteriaRules={setCriteriaRules}
+          config={criteriaConfig}
+          onChange={setCriteriaConfig}
           setInputRef={setInputRef}
         />
         <div className="fixed right-0 top-2/3">

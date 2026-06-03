@@ -187,10 +187,10 @@ document.addEventListener("mouseup", () => {
 });
 
 let scores: string[] = [];
-chrome.storage.local.get(storageKeys.CRITERIA_RULES).then((res) => {
-  const rules = res[storageKeys.CRITERIA_RULES] as [string, string][];
+chrome.storage.local.get(storageKeys.CRITERIA_CONFIG).then((res) => {
+  const rules = res[storageKeys.CRITERIA_CONFIG] as { points: number }[] | undefined;
   if (rules) {
-    scores = rules.map(([_, score]) => score);
+    scores = rules.map(r => r.points.toString());
     console.log(scores);
   }
 });

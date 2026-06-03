@@ -1,198 +1,106 @@
-import { useEffect } from "react";
-import { storageKeys } from "../constants";
+import { useLayoutEffect } from "react";
 import type { InputRef } from ".";
+import type { ConfigItem } from "../ai";
 
-type CriteriaTableCellSize = {
-  colsWidth: {
-    [key: string]: number | string | undefined;
-  };
-  rowsHeight: {
-    [key: string]: number | string | undefined;
-  };
-};
-
-export let cellSize: CriteriaTableCellSize = ((
-  await chrome.storage.local.get(storageKeys.CRITERIA_TABLE_CELL_SIZE)
-)[storageKeys.CRITERIA_TABLE_CELL_SIZE] as CriteriaTableCellSize) ?? {
-  colsWidth: {
-    0: 60,
-    1: 100,
-    2: 60,
-    3: "auto",
-  },
-  rowsHeight: {
-    0: 40,
-  },
-};
-
-export const debounce = (func: Function, delay: number = 200) => {
-  let timer: number;
-  return function (this: any, ...args: any[]) {
-    clearTimeout(timer);
-    timer = setTimeout(() => {
-      func.apply(this, args);
-    }, delay);
-  };
-};
 export const CriteriaTable = ({
-  criteriaHeader,
-  criteriaRules,
-  setCriteriaRules,
+  config,
+  onChange,
   setInputRef,
 }: {
-  criteriaHeader: string[];
-  criteriaRules: string[][];
-  setCriteriaRules: (rules: string[][]) => void;
+  config: ConfigItem[];
+  onChange: (config: ConfigItem[]) => void;
   setInputRef: (ref: InputRef) => void;
 }) => {
-  const resizeObserver = new ResizeObserver(
-    debounce((entries: ResizeObserverEntry[]) => {
-      console.log(entries);
-
-      const newCellSize = {
-        colsWidth: { ...cellSize.colsWidth },
-        rowsHeight: { ...cellSize.rowsHeight },
-      };
-      for (const entry of entries) {
-        const target = entry.target as HTMLElement;
-        const dataset = target.dataset;
-
-        if (dataset.row) {
-          newCellSize.rowsHeight[dataset.row] =
-            entry.borderBoxSize[0].blockSize;
-          console.log(dataset.row, entry.borderBoxSize[0].blockSize);
-        }
-        if (dataset.col && dataset.col !== criteriaHeader.length.toString()) {
-          newCellSize.colsWidth[dataset.col] =
-            entry.borderBoxSize[0].inlineSize;
-          console.log(dataset.col, entry.borderBoxSize[0].inlineSize);
-        }
-      }
-
-      cellSize = newCellSize;
-
-      chrome.storage.local.set({
-        [storageKeys.CRITERIA_TABLE_CELL_SIZE]: newCellSize,
-      });
-    })
-  );
-
-  const observe = (e: HTMLElement | null) => {
-    if (e) {
-      resizeObserver.observe(e);
-    }
-  };
-
-  useEffect(() => {
-    return () => {
-      resizeObserver.disconnect();
-    };
+  useLayoutEffect(() => {
+    const MAX_HEIGHT = 120;
+    document.querySelectorAll("#criteriaTable textarea").forEach(el => {
+      const ta = el as HTMLTextAreaElement;
+      ta.style.height = "auto";
+      const h = ta.scrollHeight;
+      ta.style.height = Math.min(h, MAX_HEIGHT) + "px";
+      ta.style.overflowY = h > MAX_HEIGHT ? "auto" : "hidden";
+    });
   });
+
+  const insertAbove = (i: number) => {
+    const next = [...config];
+    next.splice(i, 0, { position: "", points: 0, markingCriteria: "" });
+    onChange(next);
+  };
+  const insertBelow = (i: number) => {
+    const next = [...config];
+    next.splice(i + 1, 0, { position: "", points: 0, markingCriteria: "" });
+    onChange(next);
+  };
+  const deleteRow = (i: number) => {
+    const next = [...config];
+    next.splice(i, 1);
+    onChange(next);
+  };
+  const update = (i: number, field: keyof ConfigItem, value: string | number) => {
+    const next = [...config];
+    next[i] = { ...next[i], [field]: value };
+    onChange(next);
+  };
 
   return (
     <div>
       <table id="criteriaTable">
         <thead>
           <tr id="tableHeadRow">
-            <th
-              ref={observe}
-              data-row={"0"}
-              data-col={"0"}
-              style={{
-                width: cellSize.colsWidth[0],
-                height: cellSize.rowsHeight[0],
-              }}
-            >
-              序号
-              <div
-                className="border rounded-full w-4 h-4 m-auto flex items-center justify-center cursor-pointer"
-                onClick={() => {
-                  const newRules = [...criteriaRules];
-                  newRules.splice(
-                    0,
-                    0,
-                    new Array(criteriaHeader.length).fill("")
-                  );
-                  setCriteriaRules(newRules);
-                }}
-              >
-                +
-              </div>
-            </th>
-            {criteriaHeader.map((head, index) => (
-              <th
-                key={head}
-                ref={observe}
-                data-col={index + 1}
-                style={{
-                  width: cellSize.colsWidth[index + 1],
-                }}
-              >
-                {head}
-              </th>
-            ))}
+            <th style={{ width: 36, height: 40 }}>序号</th>
+            <th style={{ width: 80 }}>位置</th>
+            <th style={{ width: 60 }}>分值</th>
+            <th style={{ width: "auto" }}>评分标准</th>
+            <th style={{ width: 50, height: 40 }}>操作</th>
           </tr>
         </thead>
         <tbody id="tableBody">
-          {criteriaRules.map((rule, i) => (
+          {config.map((item, i) => (
             <tr key={i}>
-              <td
-                className="text-center"
-                ref={observe}
-                data-row={i + 1}
-                style={{
-                  height: cellSize.rowsHeight[i + 1] ?? cellSize.rowsHeight[0],
-                }}
-              >
-                <div
-                  className="border rounded-full w-4 h-4 m-auto flex items-center justify-center cursor-pointer"
-                  onClick={() => {
-                    const newRules = [...criteriaRules];
-                    newRules.splice(i, 1);
-                    setCriteriaRules(newRules);
-                  }}
-                >
-                  -
-                </div>
-                {i + 1}
-                <div
-                  className="border rounded-full w-4 h-4 m-auto flex items-center justify-center cursor-pointer"
-                  onClick={() => {
-                    const newRules = [...criteriaRules];
-                    newRules.splice(
-                      i + 1,
-                      0,
-                      new Array(criteriaHeader.length).fill("")
-                    );
-                    setCriteriaRules(newRules);
-                  }}
-                >
-                  +
-                </div>
+              <td className="text-center align-top">{i + 1}</td>
+              <td className="align-top">
+                <textarea
+                  className="w-full border-none! outline-none rounded-none resize-none overflow-hidden"
+                  rows={1}
+                  value={item.position}
+                  onChange={e => update(i, "position", e.target.value)}
+                  onFocus={e => setInputRef({ e: e.target, setValue: v => update(i, "position", v) })}
+                />
               </td>
-              {rule.map((item, j) => (
-                <td key={j} className="relative">
-                  <textarea
-                    className="absolute inset-0 border-none! outline-none rounded-none"
-                    value={item}
-                    onChange={(e) => {
-                      const newRules = [...criteriaRules];
-                      newRules[i][j] = e.target.value;
-                      setCriteriaRules(newRules);
-                    }}
-                    onFocus={(e) => {
-                      setInputRef({
-                        e: e.target,
-                        setValue: (value) => {
-                          const newRules = [...criteriaRules];
-                          newRules[i][j] = value;
-                          setCriteriaRules(newRules);
-                        },
-                      });
-                    }}
-                  ></textarea>
-                </td>
-              ))}
+              <td className="align-top">
+                <input
+                  className="w-full"
+                  type="number"
+                  step="any"
+                  min={0}
+                  value={item.points}
+                  onChange={e => update(i, "points", Math.max(0, Number(e.target.value)))}
+                  onFocus={e => setInputRef({ e: e.target, setValue: v => update(i, "points", Number(v)) })}
+                />
+              </td>
+              <td className="align-top">
+                <textarea
+                  className="w-full border-none! outline-none rounded-none resize-none overflow-hidden"
+                  rows={1}
+                  value={item.markingCriteria}
+                  onChange={e => update(i, "markingCriteria", e.target.value)}
+                  onFocus={e => setInputRef({ e: e.target, setValue: v => update(i, "markingCriteria", v) })}
+                />
+              </td>
+              <td className="align-top text-center whitespace-nowrap" style={{ overflow: 'visible' }}>
+                <span className="add-btn">
+                  <span className="border rounded-full w-4 h-4 inline-flex items-center justify-center cursor-pointer text-sm leading-none">+</span>
+                  <span className="add-dropdown">
+                    <span className="add-dropdown-item" onClick={() => insertAbove(i)}>在上方插入1行</span>
+                    <span className="add-dropdown-item" onClick={() => insertBelow(i)}>在下方插入1行</span>
+                  </span>
+                </span>
+                <span
+                  className="border rounded-full w-4 h-4 inline-flex items-center justify-center cursor-pointer ml-1 text-red-500 leading-none text-sm"
+                  onClick={() => deleteRow(i)}
+                >×</span>
+              </td>
             </tr>
           ))}
         </tbody>

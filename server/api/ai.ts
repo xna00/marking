@@ -1,49 +1,53 @@
 import { DOUBAO_URL, API_KEY } from "./constants.ts";
 
-type ContentPart = {
-  type: "text";
-  text: string;
-} | {
-  type: "image_url";
-  image_url: { url: string };
+type ConfigItem = {
+  position: string;
+  points: number;
+  markingCriteria: string;
 };
 
 type ChatBody = {
   model: string;
-  messages: Array<{
-    role: "system" | "user" | "assistant";
-    content: ContentPart[];
-  }>;
+  config: ConfigItem[];
+  imageUrl: string;
 };
 
 function log(...args: unknown[]) {
   console.log(`[${new Date().toLocaleString()}]`, ...args);
 }
 
-async function logRequestBody(id: string, bodyText: string, headers: Headers, clientIp: string) {
-  const body = JSON.parse(bodyText);
-  const model = body.model || "unknown";
-  log(`[${id}] => model=${model}, ip=${clientIp}`);
-  for (const key of ["user-agent", "host", "origin", "version"]) {
-    const v = headers.get(key);
-    if (v) log(`[${id}]   ${key}: ${v}`);
-  }
-  const logBody = structuredClone(body);
-  for (const msg of logBody.messages || []) {
-    for (const part of msg.content || []) {
-      if (part.image_url?.url?.length > 200) {
-        part.image_url.url = part.image_url.url.slice(0, 80) + `... (${part.image_url.url.length} chars)`;
-      }
-    }
-  }
-  log(`[${id}]   body: ${JSON.stringify(logBody)}`);
+const SYSTEM_PROMPT = `你是一名老师，正在批改试卷，你要批改的题有多个空。这是评分标准：
+{{评分标准}}
+
+给你发答题卡的图片，你需要做：
+1.识别出图片中每个空的内容
+2.根据评分标准，判断每个空的得分
+3.以[["1中识别出的内容",0(得分),"原因(尽量短)"],...]格式返回结果`;
+
+function constructPrompt(config: ConfigItem[]): string {
+  const header = "序号|位置|分值|评分标准";
+  const separator = "-|-|-|-";
+  const rows = config.map((item, i) => `${i + 1}|${item.position}|${item.points}|${item.markingCriteria}`).join("\n");
+  const mdTable = [header, separator, rows].join("\n");
+  return SYSTEM_PROMPT.replace("{{评分标准}}", mdTable);
 }
 
 export async function chat(body: ChatBody): Promise<unknown> {
   const id = Math.random().toString(36).slice(2, 8);
+  const prompt = constructPrompt(body.config);
 
   const fetchBody = {
-    ...body,
+    model: body.model,
+    messages: [
+      {
+        role: "system",
+        content: [{ type: "text", text: prompt }],
+      },
+      {
+        role: "user",
+        content: [{ type: "image_url", image_url: { url: body.imageUrl } }],
+      },
+    ],
     thinking: { type: "disabled" },
     max_completion_tokens: 200,
   };

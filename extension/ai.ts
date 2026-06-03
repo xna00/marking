@@ -3,71 +3,13 @@ import type { ModelName } from "./models.js";
 import { storageKeys } from "./constants.js";
 import { api } from "./api.js";
 
-export type AISettings = {
-  model: ModelName;
-  prompt: string;
+export type ConfigItem = {
+  position: string;
+  points: number;
+  markingCriteria: string;
 };
 
-export const defaultAISettings: AISettings = {
-  model: "doubao-seed-1-8-251228",
-  prompt: `
-你是一名老师，正在批改试卷，你要批改的题有多个空。这是评分标准：
-{{评分标准}}
-
-给你发答题卡的图片，你需要做：
-1.识别出图片中每个空填写的内容(排除被划掉的内容)
-2.根据评分标准，判断每个空的得分
-3.以[["1中识别出的内容",0(得分),"原因"],...]格式返回结果，其中原因不超过15字;识别出的内容完整返回
-`.trim(),
-};
-
-export const makeCriteriaMDTable = ({
-  criteriaHeader,
-  criteriaRules,
-}: {
-  criteriaHeader: string[];
-  criteriaRules: string[][];
-}) => {
-  const mdTable = `
-${["序号", ...criteriaHeader].join("|")}
--|${criteriaHeader.map(() => "-").join("|")}
-${criteriaRules.map((row, index) => `${index + 1}|${row.join("|")}`).join("\n")}
-`.trim();
-
-  return mdTable;
-};
-
-export const fillCriteriaPlaceholder = (
-  prompt: string,
-  criteriaMDTable: string
-) => {
-  return prompt.replace("{{评分标准}}", criteriaMDTable);
-};
-
-const getCurrentSettings = async (): Promise<AISettings> => {
-  const result = await chrome.storage.local.get([
-    storageKeys.AI_MODEL as string,
-    storageKeys.AI_PROMPT as string,
-    storageKeys.CRITERIA_RULES as string,
-    storageKeys.CRITERIA_HEADER as string,
-  ]);
-  const model =
-    (result[storageKeys.AI_MODEL] as ModelName) || defaultAISettings.model;
-  const prompt =
-    (result[storageKeys.AI_PROMPT] as string) || defaultAISettings.prompt;
-  const criteria = result[storageKeys.CRITERIA_RULES] as string[][];
-  const criteriaHeader = result[storageKeys.CRITERIA_HEADER] as string[];
-  const mdTable = makeCriteriaMDTable({
-    criteriaHeader,
-    criteriaRules: criteria,
-  });
-  const ret = {
-    model,
-    prompt: fillCriteriaPlaceholder(prompt, mdTable),
-  };
-  console.log(ret);
-  return ret;
-};
+export const defaultModel: ModelName = "doubao-seed-1-8-251228";
 
 const tryManyTimes = async <T>(fn: () => Promise<T>, times = 3) => {
   const errors = [];
@@ -82,44 +24,28 @@ const tryManyTimes = async <T>(fn: () => Promise<T>, times = 3) => {
   throw new Error(`尝试${times}次后失败: ${errors.join(", ")}`);
 };
 
-export async function markByAI2(
-  dataUrl: string,
-  aiSettings: {
-    model: ModelName;
-    prompt: string;
-  }
-) {
+export function parseAIResult(aiResult: any): string {
+  return aiResult.choices[0].message.content;
+}
+
+export async function recognizeImage(imageUrl: string) {
+  const result = await chrome.storage.local.get([
+    storageKeys.AI_MODEL as string,
+    storageKeys.CRITERIA_CONFIG as string,
+  ]);
+  const model = (result[storageKeys.AI_MODEL] as ModelName) || defaultModel;
+  const config = (result[storageKeys.CRITERIA_CONFIG] as ConfigItem[]) || [];
+
   const fn = async () => {
     const data: { choices: Array<{ message: { content: string } }> } = await api.ai.chat({
-      model: aiSettings.model,
-      messages: [
-        {
-          role: "system",
-          content: [
-            {
-              type: "text",
-              text: aiSettings.prompt,
-            },
-          ],
-        },
-        {
-          role: "user",
-          content: [
-            {
-              type: "image_url",
-              image_url: {
-                url: dataUrl,
-              },
-            },
-          ],
-        },
-      ],
+      model,
+      config,
+      imageUrl,
     }) as any;
     if (!data.choices) {
       throw new Error(`AI识别错误: ${JSON.stringify(data)}`);
     }
     try {
-      // TODO: use jsonrepair or dirty-json to repair the broken json
       JSON.parse(repairJson(parseAIResult(data)));
       data.choices[0].message.content = repairJson(parseAIResult(data));
     } catch (error) {
@@ -129,19 +55,8 @@ export async function markByAI2(
     }
     return data;
   };
-  console.log(fn)
+
   const data = await tryManyTimes(fn);
   console.log("AI识别结果:", data);
   return data;
-}
-
-export function parseAIResult(aiResult: any): string {
-  return aiResult.choices[0].message.content;
-}
-export async function recognizeImage(imageUrl: string) {
-  const settings = await getCurrentSettings();
-  return markByAI2(imageUrl, {
-    model: settings.model,
-    prompt: settings.prompt,
-  });
 }
