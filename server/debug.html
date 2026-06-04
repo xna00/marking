@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prompt Debugger</title>
+<style>
+  body { font-family: sans-serif; max-width: 800px; margin: 20px auto; padding: 0 16px; }
+  label { display: block; margin-top: 12px; font-weight: bold; font-size: 14px; }
+  input, textarea, select { width: 100%; padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 14px; }
+  textarea { font-family: monospace; resize: vertical; }
+  .img-section { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
+  .img-section input { flex: 1; }
+  .img-section button { white-space: nowrap; padding: 6px 12px; cursor: pointer; }
+  #imagePreview { max-width: 100%; max-height: 300px; margin-top: 8px; display: none; border: 1px solid #ddd; border-radius: 4px; }
+  #imageInfo { font-size: 12px; color: #666; margin-top: 4px; display: none; }
+  #sendBtn { margin-top: 16px; width: 100%; padding: 10px; font-size: 16px; cursor: pointer; background: #4caf50; color: white; border: none; border-radius: 4px; }
+  #sendBtn:disabled { opacity: .6; cursor: not-allowed; }
+  #result { margin-top: 12px; display: none; }
+  #result pre { background: #f5f5f5; padding: 12px; border-radius: 4px; overflow: auto; max-height: 500px; font-size: 13px; white-space: pre-wrap; word-break: break-all; }
+  #error { color: #d32f2f; margin-top: 8px; display: none; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .row input { flex: 1; }
+</style>
+</head>
+<body>
+  <h2>Prompt Debugger</h2>
+
+  <label>API Key</label>
+  <input id="apiKey" placeholder="输入 API Key">
+
+  <label>模型</label>
+  <input id="model" list="modelList" placeholder="选择或输入模型">
+  <datalist id="modelList">
+    <option value="doubao-seed-1-8-251228">
+    <option value="doubao-seed-2-0-pro-260215">
+    <option value="doubao-seed-2-0-lite-260428">
+    <option value="doubao-seed-2-0-mini-260428">
+    <option value="doubao-seed-1-6-lite-251015">
+    <option value="doubao-seed-1-6-flash-250828">
+  </datalist>
+
+  <label>图片</label>
+  <div class="row">
+    <input id="imageUrl" type="url" placeholder="图片 URL 或 data URL">
+    <button id="pasteBtn">粘贴</button>
+  </div>
+  <div class="row" style="margin-top:4px">
+    <input id="fileInput" type="file" accept="image/*" style="flex:1">
+    <select id="detail" style="width:auto;white-space:nowrap">
+      <option value="low">detail: low</option>
+      <option value="high">detail: high</option>
+      <option value="xhigh">detail: xhigh</option>
+    </select>
+  </div>
+  <img id="imagePreview">
+  <div id="imageInfo"></div>
+
+  <label>System Prompt</label>
+  <textarea id="systemPrompt" rows="12" placeholder="在此编写 system prompt…"></textarea>
+
+  <label>额外参数 (JSON)</label>
+  <textarea id="extraParams" rows="3" placeholder='{"thinking":{"type":"disabled"},"max_completion_tokens":200}'></textarea>
+
+  <button id="sendBtn">发送</button>
+  <div id="error"></div>
+  <div id="result">
+    <label>原始 JSON 响应</label>
+    <pre id="resultBody"></pre>
+  </div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+const LS_PREFIX = 'pd_';
+
+function saveState() {
+  try {
+    localStorage.setItem(LS_PREFIX + 'apiKey', $('apiKey').value);
+    localStorage.setItem(LS_PREFIX + 'model', $('model').value);
+    localStorage.setItem(LS_PREFIX + 'imageUrl', $('imageUrl').value);
+    localStorage.setItem(LS_PREFIX + 'systemPrompt', $('systemPrompt').value);
+    localStorage.setItem(LS_PREFIX + 'extraParams', $('extraParams').value);
+    localStorage.setItem(LS_PREFIX + 'detail', $('detail').value);
+  } catch { /* localStorage full or unavailable */ }
+}
+
+function loadState() {
+  $('apiKey').value = localStorage.getItem(LS_PREFIX + 'apiKey') || '';
+  $('model').value = localStorage.getItem(LS_PREFIX + 'model') || '';
+  const imageUrl = localStorage.getItem(LS_PREFIX + 'imageUrl') || '';
+  $('imageUrl').value = imageUrl;
+  if (imageUrl) {
+    $('imagePreview').src = imageUrl;
+    $('imagePreview').style.display = 'block';
+  }
+  $('systemPrompt').value = localStorage.getItem(LS_PREFIX + 'systemPrompt') || '';
+  $('extraParams').value = localStorage.getItem(LS_PREFIX + 'extraParams') || '';
+  $('detail').value = localStorage.getItem(LS_PREFIX + 'detail') || 'low';
+}
+
+async function scaleImage(dataUrl, width = 700) {
+  const img = await new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = (width / img.naturalWidth) * img.naturalHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight, 0, 0, canvas.width, canvas.height);
+  return {
+    dataUrl: canvas.toDataURL('image/webp'),
+    originalWidth: img.naturalWidth,
+    originalHeight: img.naturalHeight,
+    width: canvas.width,
+    height: canvas.height,
+  };
+}
+
+function setImage(dataUrl, info) {
+  $('imageUrl').value = dataUrl;
+  $('imagePreview').src = dataUrl;
+  $('imagePreview').style.display = 'block';
+  if (info) {
+    $('imageInfo').textContent = `${info.originalWidth}×${info.originalHeight} → ${info.width}×${info.height}`;
+    $('imageInfo').style.display = 'block';
+  }
+  saveState();
+}
+
+async function handleBlob(blob) {
+  const reader = new FileReader();
+  reader.readAsDataURL(blob);
+  const dataUrl = await new Promise((resolve, reject) => {
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+  });
+  const scaled = await scaleImage(dataUrl);
+  setImage(scaled.dataUrl, scaled);
+}
+
+document.addEventListener('paste', (e) => {
+  for (const item of e.clipboardData.items) {
+    if (item.type.startsWith('image/')) {
+      e.preventDefault();
+      const blob = item.getAsFile();
+      if (blob) handleBlob(blob);
+      return;
+    }
+  }
+});
+
+$('pasteBtn').onclick = async () => {
+  try {
+    const items = await navigator.clipboard.read();
+    for (const item of items) {
+      const imgType = item.types.find(t => t.startsWith('image/'));
+      if (imgType) {
+        const blob = await item.getType(imgType);
+        handleBlob(blob);
+        return;
+      }
+    }
+  } catch { }
+};
+
+$('fileInput').onchange = () => {
+  const file = $('fileInput').files[0];
+  if (!file) return;
+  handleBlob(file);
+};
+
+$('imageUrl').oninput = () => {
+  const url = $('imageUrl').value.trim();
+  if (url) {
+    $('imagePreview').src = url;
+    $('imagePreview').style.display = 'block';
+  } else {
+    $('imagePreview').style.display = 'none';
+  }
+  saveState();
+};
+
+$('sendBtn').onclick = async () => {
+  const apiKey = $('apiKey').value.trim();
+  const model = $('model').value.trim();
+  const imageUrl = $('imageUrl').value.trim();
+  const detail = $('detail').value;
+  const prompt = $('systemPrompt').value.trim();
+
+  if (!apiKey) { $('error').textContent = '请输入 API Key'; $('error').style.display = 'block'; return; }
+  if (!model) { $('error').textContent = '请输入模型'; $('error').style.display = 'block'; return; }
+  if (!imageUrl) { $('error').textContent = '请输入图片 URL 或上传图片'; $('error').style.display = 'block'; return; }
+  if (!prompt) { $('error').textContent = '请输入 System Prompt'; $('error').style.display = 'block'; return; }
+
+  let extra = {};
+  const extraText = $('extraParams').value.trim();
+  if (extraText) {
+    try {
+      extra = JSON.parse(extraText);
+    } catch {
+      $('error').textContent = '额外参数不是合法 JSON';
+      $('error').style.display = 'block';
+      return;
+    }
+  }
+
+  $('error').style.display = 'none';
+  $('sendBtn').disabled = true;
+  $('sendBtn').textContent = '发送中…';
+  $('result').style.display = 'none';
+
+  const body = {
+    model,
+    messages: [
+      {
+        role: 'system',
+        content: [{ type: 'text', text: prompt }],
+      },
+      {
+        role: 'user',
+        content: [{ type: 'image_url', image_url: { url: imageUrl, detail } }],
+      },
+    ],
+    thinking: { type: 'disabled' },
+    max_completion_tokens: 200,
+    ...extra,
+  };
+
+  try {
+    const res = await fetch('https://ark.cn-beijing.volces.com/api/v3/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    $('resultBody').textContent = JSON.stringify(data, null, 2);
+    $('result').style.display = 'block';
+  } catch (e) {
+    $('error').textContent = `请求失败: ${e.message}`;
+    $('error').style.display = 'block';
+  } finally {
+    $('sendBtn').disabled = false;
+    $('sendBtn').textContent = '发送';
+  }
+};
+['apiKey','model','systemPrompt','extraParams'].forEach(id => {
+  $(id).addEventListener('input', saveState);
+});
+loadState();
+</script>
+</body>
+</html>
