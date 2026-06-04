@@ -32,6 +32,29 @@ export function initDb(): void {
     createdAt      TEXT NOT NULL,
     updatedAt      TEXT NOT NULL
   )`);
+  d.exec(`CREATE TABLE IF NOT EXISTS markRecord (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    userId          TEXT NOT NULL REFERENCES user(externalUserId),
+    createdAt       TEXT NOT NULL,
+    confirmedAt     TEXT
+  )`);
+}
+
+export function insertMarkRecord(userId: string): number {
+  const stmt = getDb().prepare("INSERT INTO markRecord (userId, createdAt) VALUES (?, ?)");
+  const result = stmt.run(userId, new Date().toISOString()) as { lastInsertRowid: number };
+  return Number(result.lastInsertRowid);
+}
+
+export function countConfirmedRecords(userId: string): number {
+  const stmt = getDb().prepare("SELECT COUNT(*) as count FROM markRecord WHERE userId = ? AND confirmedAt IS NOT NULL");
+  return (stmt.get(userId) as { count: number }).count;
+}
+
+export function confirmMarkRecord(id: number, userId: string): boolean {
+  const stmt = getDb().prepare("UPDATE markRecord SET confirmedAt = ? WHERE id = ? AND userId = ?");
+  const result = stmt.run(new Date().toISOString(), id, userId) as { changes: number };
+  return result.changes > 0;
 }
 
 export function loadCursor(openKfId: string): string | null {

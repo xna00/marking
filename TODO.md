@@ -5,3 +5,4 @@
 - [ ] server/api/wechat/qr.ts: 把微信客服 URL 通过我们自己的服务器重定向，防止过期二维码被保存后扫描
 - [x] server/nodeAdapter.ts: 不支持 Content-Encoding (gzip)，压缩请求体会导致 parse 失败
 - [ ] 支持自动模型选择：根据图片内容自动匹配最适合的模型并设置 image detail
+- [ ] 风控：检测大量未 confirm 的 markRecord，自动封禁异常账号

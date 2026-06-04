@@ -28,15 +28,14 @@ export const getAIResultHandler = (
   sender: chrome.runtime.MessageSender,
   sendResponse: (response: any) => void
 ) => {
-  // check if need delay
   setTimeout(() => {
     const pendingResult = urlResultMap.get(request.url);
     console.log("getAIResult", request.url, pendingResult);
     if (pendingResult) {
       console.log("getAIResult found");
       pendingResult.then(
-        (result) => {
-          sendResponse({ result });
+        (data) => {
+          sendResponse({ result: data.result, markRecordId: data.markRecordId });
         },
         (error) => {
           console.error("Error fetching AI result:", error);

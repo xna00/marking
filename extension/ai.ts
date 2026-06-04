@@ -12,15 +12,15 @@ export const defaultModel: ModelName = "auto";
 
 type AIResultItem = [string, number, string];
 
-export async function recognizeImage(imageUrl: string): Promise<AIResultItem[]> {
-  const result = await chrome.storage.local.get([
+export async function recognizeImage(imageUrl: string): Promise<{ result: AIResultItem[]; markRecordId: number }> {
+  const storage = await chrome.storage.local.get([
     storageKeys.AI_MODEL as string,
     storageKeys.CRITERIA_CONFIG as string,
   ]);
-  const model = (result[storageKeys.AI_MODEL] as ModelName) || defaultModel;
-  const config = (result[storageKeys.CRITERIA_CONFIG] as ConfigItem[]) || [];
+  const model = (storage[storageKeys.AI_MODEL] as ModelName) || defaultModel;
+  const config = (storage[storageKeys.CRITERIA_CONFIG] as ConfigItem[]) || [];
 
-  const data = await api.ai.markImage({ model, config, imageUrl }) as AIResultItem[];
-  console.log("AI识别结果:", data);
-  return data;
+  const data = await api.ai.markImage({ model, config, imageUrl });
+  console.log("AI识别结果:", data.result);
+  return { result: data.result, markRecordId: data.markRecordId };
 }

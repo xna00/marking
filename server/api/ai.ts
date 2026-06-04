@@ -2,6 +2,7 @@ import { jsonrepair } from "jsonrepair";
 import { DOUBAO_URL, API_KEY } from "./constants.ts";
 import { ApiError } from "./utils.ts";
 import { getCurrentUser, getUserIfLoggedIn } from "./auth.ts";
+import { insertMarkRecord, confirmMarkRecord, countConfirmedRecords } from "../db.ts";
 
 type ConfigItem = {
   position: string;
@@ -115,9 +116,25 @@ async function doChat(body: ChatBody): Promise<AIResultItem[]> {
   throw new ApiError(502, {}, `3 次重试均失败: ${errors.map(e => String(e)).join("; ")}`);
 }
 
-export async function markImage(body: ChatBody): Promise<AIResultItem[]> {
-  await getCurrentUser();
-  return doChat(body);
+export async function getUsage() {
+  const user = await getCurrentUser();
+  const confirmedCount = countConfirmedRecords(user.externalUserId);
+  return { confirmedCount };
+}
+
+export async function markImage(body: ChatBody): Promise<{ result: AIResultItem[]; markRecordId: number }> {
+  const user = await getCurrentUser();
+  const markRecordId = insertMarkRecord(user.externalUserId);
+  const result = await doChat(body);
+  return { result, markRecordId };
+}
+
+export async function confirmMark(body: { markRecordId: number }) {
+  const user = await getCurrentUser();
+  const ok = confirmMarkRecord(body.markRecordId, user.externalUserId);
+  if (!ok) throw new ApiError(403, {}, "Forbidden");
+  const confirmedCount = countConfirmedRecords(user.externalUserId);
+  return { success: true, usage: { confirmedCount } };
 }
 
 export async function testMarkImage(body: ChatBody): Promise<AIResultItem[]> {

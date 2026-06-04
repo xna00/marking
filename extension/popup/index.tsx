@@ -13,7 +13,6 @@ import { defaultImageUrl } from "./imageUrl.js";
 import { Banner } from "./Banner.js";
 import { specialChars } from "./specialChars.js";
 import { Login } from "./Login.js";
-import { setAuthToken } from "../auth.js";
 import { api } from "../api.js";
 import { Router, Route, Switch } from "wouter";
 import { navigate, useHashLocation } from "wouter/use-hash-location";
@@ -85,15 +84,32 @@ const Main = () => {
   });
   const [grading, setGrading] = useState(false);
   const [username, setUsername] = useState<string | null | undefined>(undefined);
+  const [confirmedCount, setConfirmedCount] = useState<number | null>(null);
 
   useEffect(() => {
     api.currentUser().then(
-      user => setUsername(user.username),
+      user => {
+        setUsername(user.username);
+        api.ai.getUsage().then(
+          (u) => setConfirmedCount(u.confirmedCount),
+          () => { }
+        );
+      },
       (e) => {
-        console.log(e)
-        setUsername(null)
+        console.log(e);
+        setUsername(null);
       }
     );
+  }, []);
+
+  useEffect(() => {
+    const handler = (message: { action: string; usage: { confirmedCount: number } }) => {
+      if (message.action === "usageUpdated") {
+        setConfirmedCount(message.usage.confirmedCount);
+      }
+    };
+    chrome.runtime.onMessage.addListener(handler);
+    return () => chrome.runtime.onMessage.removeListener(handler);
   }, []);
 
   const inputRef = useRef<InputRef>(null);
@@ -128,10 +144,12 @@ const Main = () => {
         ) : username ? (
           <div className="flex items-center gap-2">
             <span>当前用户：{username}</span>
+            {confirmedCount !== null && (
+              <span className="text-gray-500 text-xs">已用：{confirmedCount}份</span>
+            )}
             <button
               className="text-red-500 underline text-xs"
               onClick={() => {
-                setAuthToken(null);
                 chrome.storage.local.remove<{
                   [storageKeys.AUTH_TOKEN]: string
                 }>(storageKeys.AUTH_TOKEN);
@@ -342,7 +360,6 @@ const App = () => {
   useEffect(() => {
     chrome.storage.local.get(storageKeys.AUTH_TOKEN).then((result) => {
       const t = result[storageKeys.AUTH_TOKEN] as string | undefined;
-      if (t) setAuthToken(t);
       setLoading(false);
     });
   }, []);
@@ -354,9 +371,9 @@ const App = () => {
       <Switch>
         <Route path="/login">
           <Login onLogin={(t) => {
-            chrome.storage.local.set({ [storageKeys.AUTH_TOKEN]: t });
-            setAuthToken(t);
-            navigate("/");
+            chrome.storage.local.set({ [storageKeys.AUTH_TOKEN]: t }).then(() => {
+              navigate("/");
+            })
           }} />
         </Route>
         <Route path="/">

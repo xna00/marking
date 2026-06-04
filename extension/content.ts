@@ -244,10 +244,18 @@ const showAiResult = (result: [string, number, string][]) => {
 };
 
 let showedResult = false;
+let markRecordId: number | null = null;
 const h = async () => {
   let delay = 500;
   const currentSrc = getImageSrc();
   if (currentSrc && (currentSrc !== previousSrc || !showedResult)) {
+    if (previousSrc && markRecordId !== null) {
+      chrome.runtime.sendMessage({
+        action: "confirmMark",
+        markRecordId: markRecordId,
+      });
+      markRecordId = null;
+    }
     overlay.remove();
     showedResult = false;
     delay = 1000;
@@ -259,6 +267,7 @@ const h = async () => {
     });
     console.log(res);
     const result = res?.result;
+    markRecordId = res?.markRecordId ?? null;
     if (result) {
       showedResult = true;
       const aiResult = result;
