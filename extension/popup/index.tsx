@@ -1,5 +1,4 @@
 import {
-  recognizeImage,
   defaultModel,
   type ConfigItem,
 } from "../ai.js";
@@ -310,7 +309,11 @@ const Main = () => {
           disabled={grading}
           onClick={() => {
             setGrading(true);
-            recognizeImage(imageUrl).then(
+            api.ai.testMarkImage({
+              model: modelName,
+              config: criteriaConfig,
+              imageUrl,
+            }).then(
               (res) => {
                 setResult({
                   tag: "succeed",

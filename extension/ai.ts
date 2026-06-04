@@ -20,7 +20,7 @@ export async function recognizeImage(imageUrl: string): Promise<AIResultItem[]> 
   const model = (result[storageKeys.AI_MODEL] as ModelName) || defaultModel;
   const config = (result[storageKeys.CRITERIA_CONFIG] as ConfigItem[]) || [];
 
-  const data = await api.ai.chat({ model, config, imageUrl }) as AIResultItem[];
+  const data = await api.ai.markImage({ model, config, imageUrl }) as AIResultItem[];
   console.log("AI识别结果:", data);
   return data;
 }
