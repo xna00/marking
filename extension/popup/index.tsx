@@ -1,3 +1,4 @@
+import { sendTabMessage, addEventListener } from "../message.js";
 import {
   defaultModel,
   type ConfigItem,
@@ -24,7 +25,7 @@ export type InputRef = {
 const syncImageSrc = async () => {
   const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
   if (tabs[0]) {
-    const res = await chrome.tabs.sendMessage(tabs[0].id!, {
+    const res = await sendTabMessage(tabs[0].id!, {
       action: "syncCurrentImage",
     });
     if (res?.dataUrl) {
@@ -103,13 +104,10 @@ const Main = () => {
   }, []);
 
   useEffect(() => {
-    const handler = (message: { action: string; usage: { confirmedCount: number } }) => {
-      if (message.action === "usageUpdated") {
-        setConfirmedCount(message.usage.confirmedCount);
-      }
-    };
-    chrome.runtime.onMessage.addListener(handler);
-    return () => chrome.runtime.onMessage.removeListener(handler);
+    return addEventListener("usageUpdated", async (data) => {
+      setConfirmedCount(data!.usage.confirmedCount);
+      return undefined;
+    });
   }, []);
 
   const inputRef = useRef<InputRef>(null);

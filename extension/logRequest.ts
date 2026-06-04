@@ -1,3 +1,4 @@
+import { addEventListener } from "./message.js";
 import { aiHook } from "./aiHook.js";
 import { mergeImagesVertically } from "./merge.js";
 
@@ -189,9 +190,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   detachDebugger(tabId);
 });
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === "getResponse") {
-    const dataUrl = imageMap.get(request.url) ?? urlResponseMap.get(request.url);
-    sendResponse({ dataUrl });
-  }
+addEventListener("getResponse", async (data) => {
+  const dataUrl = imageMap.get(data.url) ?? urlResponseMap.get(data.url);
+  return { dataUrl };
 });

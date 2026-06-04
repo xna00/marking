@@ -1,21 +1,22 @@
+import { addEventListener, sendMessage } from "./message.js";
 import { getAIResultHandler } from "./aiHook.js";
 import { api } from "./api.js";
 import "./logRequest.js";
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action === "getAIResult") {
-    getAIResultHandler(message, sender, sendResponse);
-  } else if (message.action === "confirmMark") {
-    api.ai.confirmMark({ markRecordId: message.markRecordId })
-      .then((res) => {
-        sendResponse({ success: true, usage: res.usage });
-        chrome.runtime.sendMessage({ action: "usageUpdated", usage: res.usage });
-      })
-      .catch(e => sendResponse({ error: String(e) }));
-  } else if (message.action === "hello") {
-    sendResponse(`Hello ${sender.url}, I'm background script`);
+addEventListener("getAIResult", getAIResultHandler);
+
+addEventListener("confirmMark", async (data) => {
+  try {
+    const res = await api.ai.confirmMark({ markRecordId: data!.markRecordId });
+    sendMessage({ action: "usageUpdated", data: { usage: res.usage } });
+    return { success: true as const, usage: res.usage };
+  } catch (e) {
+    return { error: String(e) };
   }
-  return true;
+});
+
+addEventListener("hello", async (_data, sender) => {
+  return `Hello ${sender.url}, I'm background script`;
 });
 
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });

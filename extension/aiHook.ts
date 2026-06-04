@@ -23,28 +23,24 @@ async function runAiRecognition(dataUrl: string) {
   return recognizeImage(scaledDataUrl);
 }
 
-export const getAIResultHandler = (
-  request: any,
-  sender: chrome.runtime.MessageSender,
-  sendResponse: (response: any) => void
-) => {
-  setTimeout(() => {
-    const pendingResult = urlResultMap.get(request.url);
-    console.log("getAIResult", request.url, pendingResult);
-    if (pendingResult) {
+export const getAIResultHandler = async (
+  data: { url: string },
+  sender: chrome.runtime.MessageSender
+): Promise<{ result: [string, number, string][]; markRecordId: number } | { error: string }> => {
+  await new Promise(r => setTimeout(r, 0));
+  const pendingResult = urlResultMap.get(data.url);
+  console.log("getAIResult", data.url, pendingResult);
+  if (pendingResult) {
+    try {
+      const result = await pendingResult;
       console.log("getAIResult found");
-      pendingResult.then(
-        (data) => {
-          sendResponse({ result: data.result, markRecordId: data.markRecordId });
-        },
-        (error) => {
-          console.error("Error fetching AI result:", error);
-          sendResponse({ error: String(error) });
-        }
-      );
-    } else {
-      console.log("getAIResult not found");
-      sendResponse({ error: "No result found" });
+      return { result: result.result, markRecordId: result.markRecordId };
+    } catch (error) {
+      console.error("Error fetching AI result:", error);
+      return { error: String(error) };
     }
-  });
+  } else {
+    console.log("getAIResult not found");
+    return { error: "No result found" };
+  }
 };

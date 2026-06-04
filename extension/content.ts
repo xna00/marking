@@ -1,3 +1,4 @@
+import { sendMessage, addEventListener } from "./message";
 import { storageKeys } from "./constants";
 
 console.log("content.ts loaded");
@@ -250,9 +251,9 @@ const h = async () => {
   const currentSrc = getImageSrc();
   if (currentSrc && (currentSrc !== previousSrc || !showedResult)) {
     if (previousSrc && markRecordId !== null) {
-      chrome.runtime.sendMessage({
+      sendMessage({
         action: "confirmMark",
-        markRecordId: markRecordId,
+        data: { markRecordId: markRecordId },
       });
       markRecordId = null;
     }
@@ -261,13 +262,13 @@ const h = async () => {
     delay = 1000;
     console.log("Image src changed:", currentSrc);
     previousSrc = currentSrc;
-    const res = await chrome.runtime.sendMessage({
+    const res = await sendMessage({
       action: "getAIResult",
-      url: currentSrc,
+      data: { url: currentSrc },
     });
     console.log(res);
-    const result = res?.result;
-    markRecordId = res?.markRecordId ?? null;
+    const result = "result" in res ? res.result : undefined;
+    markRecordId = "markRecordId" in res ? res.markRecordId : null;
     if (result) {
       showedResult = true;
       const aiResult = result;
@@ -286,25 +287,11 @@ const h = async () => {
 
 h();
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === "syncCurrentImage") {
-    const currentSrc = getImageSrc();
-    chrome.runtime
-      .sendMessage({
-        action: "getResponse",
-        url: currentSrc,
-      })
-      .then((res) => {
-        if (res?.dataUrl) {
-          sendResponse({
-            dataUrl: res.dataUrl,
-          });
-        } else {
-          sendResponse({
-            dataUrl: "",
-          });
-        }
-      });
-  }
-  return true;
+addEventListener("syncCurrentImage", async () => {
+  const currentSrc = getImageSrc();
+  const res = await sendMessage({
+    action: "getResponse",
+    data: { url: currentSrc },
+  });
+  return { dataUrl: res.dataUrl };
 });
