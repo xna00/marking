@@ -1,8 +1,5 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import type { OutgoingHttpHeaders } from "node:http";
-
-export const state = {
-  id: 0,
-};
 
 export type Info = {
   request: Request;
@@ -10,11 +7,9 @@ export type Info = {
   headers: ResponseInit["headers"];
 };
 
-export const idMap: {
-  [K in number]: Info;
-} = {};
+export const als = new AsyncLocalStorage<Info>();
 
-export const getInfo = () => idMap[state.id];
+export const getInfo = () => als.getStore()!;
 
 export const normalizeHeaders = (headers: OutgoingHttpHeaders): Record<string, string> => {
   return Object.fromEntries(

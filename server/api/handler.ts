@@ -1,5 +1,5 @@
 import assert from "node:assert";
-import { idMap, state } from "./global.ts";
+import { als, type Info } from "./global.ts";
 import * as api from "./index.ts";
 import { ApiError, makeJsonResponse } from "./utils.ts";
 import { logger } from "../logger.ts";
@@ -45,31 +45,23 @@ export const apiHandler = async (req: Request): Promise<Response> => {
     }
   }
 
-  const id = state.id;
-  idMap[id] = {
-    request: req,
-    status: 200,
-    headers: {},
-  };
-  try {
-    const tmp = fn(...params);
-    state.id++;
-    const ret = await tmp;
-    if (ret instanceof Response) res = ret;
-    else res = makeJsonResponse(idMap[id].status, idMap[id].headers, ret);
-  } catch (e) {
-    logger.error(e);
-    let status = 500;
-    let headers: ResponseInit["headers"] = {};
-    let obj: object = { message: e };
-    if (e instanceof ApiError) {
-      status = e.status;
-      headers = e.headers;
-      obj = { errorCode: e.errorCode || "ERROR", message: e.message };
+  const info: Info = { request: req, status: 200, headers: {} };
+  return als.run(info, async () => {
+    try {
+      const ret = await fn(...params);
+      if (ret instanceof Response) return ret;
+      return makeJsonResponse(info.status, info.headers, ret);
+    } catch (e) {
+      logger.error(e);
+      let status = 500;
+      let headers: ResponseInit["headers"] = {};
+      let obj: object = { message: e };
+      if (e instanceof ApiError) {
+        status = e.status;
+        headers = e.headers;
+        obj = { errorCode: e.errorCode || "ERROR", message: e.message };
+      }
+      return makeJsonResponse(status, headers, obj);
     }
-    res = makeJsonResponse(status, headers, obj);
-  }
-
-  delete idMap[id];
-  return res;
+  });
 };
