@@ -15,6 +15,7 @@ import { Banner } from "./Banner.js";
 import { specialChars } from "./specialChars.js";
 import { Login } from "./Login.js";
 import { setAuthToken } from "../auth.js";
+import { api } from "../api.js";
 import { Router, Route, Switch } from "wouter";
 import { memoryLocation } from "wouter/memory-location";
 
@@ -86,6 +87,17 @@ const Main = () => {
     msg: "",
   });
   const [grading, setGrading] = useState(false);
+  const [username, setUsername] = useState<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    api.currentUser().then(
+      user => setUsername(user.username),
+      (e) => {
+        console.log(e)
+        setUsername(null)
+      }
+    );
+  }, []);
 
   const inputRef = useRef<InputRef>(null);
 
@@ -113,6 +125,18 @@ const Main = () => {
 
   return (
     <>
+      <div className="flex items-center justify-between px-2.5 py-1 border-b text-sm">
+        {username === undefined ? (
+          <span className="text-gray-500">检查登录状态...</span>
+        ) : username ? (
+          <span>当前用户：{username}</span>
+        ) : (
+          <>
+            <span className="text-red-500">未登录</span>
+            <button className="text-blue-500 underline" onClick={() => navigate("/login")}>去登录</button>
+          </>
+        )}
+      </div>
       <Banner />
       <div className="p-2.5">
         <label>选择模型</label>
@@ -298,18 +322,12 @@ const Main = () => {
 };
 
 const App = () => {
-  const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     chrome.storage.local.get(storageKeys.AUTH_TOKEN).then((result) => {
       const t = result[storageKeys.AUTH_TOKEN] as string | undefined;
-      if (t) {
-        setAuthToken(t);
-        setToken(t);
-      } else {
-        navigate("/login");
-      }
+      if (t) setAuthToken(t);
       setLoading(false);
     });
   }, []);
@@ -323,7 +341,6 @@ const App = () => {
           <Login onLogin={(t) => {
             chrome.storage.local.set({ [storageKeys.AUTH_TOKEN]: t });
             setAuthToken(t);
-            setToken(t);
             navigate("/");
           }} />
         </Route>
