@@ -7,7 +7,7 @@ addEventListener("getAIResult", getAIResultHandler);
 
 addEventListener("confirmMark", async (data) => {
   try {
-    const res = await api.ai.confirmMark({ markRecordId: data!.markRecordId });
+    const res = await api.ai.confirmMark({ markRecordId: data.markRecordId });
     sendMessage({ action: "usageUpdated", data: { usage: res.usage } });
     return { success: true as const, usage: res.usage };
   } catch (e) {

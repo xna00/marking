@@ -105,7 +105,7 @@ const Main = () => {
 
   useEffect(() => {
     return addEventListener("usageUpdated", async (data) => {
-      setConfirmedCount(data!.usage.confirmedCount);
+      setConfirmedCount(data.usage.confirmedCount);
       return undefined;
     });
   }, []);
