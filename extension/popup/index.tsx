@@ -17,9 +17,7 @@ import { Login } from "./Login.js";
 import { setAuthToken } from "../auth.js";
 import { api } from "../api.js";
 import { Router, Route, Switch } from "wouter";
-import { memoryLocation } from "wouter/memory-location";
-
-const { hook, navigate } = memoryLocation({ path: "/" });
+import { navigate, useHashLocation } from "wouter/use-hash-location";
 
 export type InputRef = {
   e: HTMLTextAreaElement | HTMLInputElement;
@@ -335,7 +333,7 @@ const App = () => {
   if (loading) return <div className="p-5 text-center text-gray-500">加载中...</div>;
 
   return (
-    <Router hook={hook}>
+      <Router hook={useHashLocation}>
       <Switch>
         <Route path="/login">
           <Login onLogin={(t) => {
