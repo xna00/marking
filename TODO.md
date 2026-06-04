@@ -1,3 +1,7 @@
+- [ ] extension/message.ts: addEventListener wrapper 增加统一错误处理，.then(sendResponse) 改为
+      .then(res => sendResponse({ succeed: true, data: res }))
+      .catch(e => sendResponse({ succeed: false, data: String(e) }))
+      sendMessage/sendTabMessage 同步解包，失败时 throw
 - [ ] server/api/handler.ts: 用 AsyncLocalStorage 替代全局 idMap + 递增 counter 传 request context
 - [x] server/api/global.ts: Info.headers 未被任何代码读取/写入，可清理
 - [ ] server/api/handler.ts: parseFn 不限制路径嵌套深度，过深路径返回 404 而非明确错误

@@ -23,9 +23,13 @@ export const sendTabMessage = <const M extends Message>(tabId: number, msg: M) =
 }
 
 export const addEventListener = <const A extends keyof MessageActionDataRet>(action: A, handler: (data: (Message & { action: A })['data'], sender: chrome.runtime.MessageSender) => Promise<MessageActionDataRet[A][1]>) => {
-    const wrapper = (msg: any, sender: chrome.runtime.MessageSender) => {
+    const wrapper = (msg: any, sender: chrome.runtime.MessageSender, sendResponse: (response: any) => void) => {
         if (msg.action === action) {
-            return handler(msg.data, sender)
+            // 不直接 return Promise：Chrome 148 （144+）以下版本不支持将 Promise 作为
+            // onMessage 返回值进行异步响应，改用 return true + sendResponse 兼容所有版本
+            // https://www.reddit.com/r/chrome_extensions/comments/1qenrki/psa_chrome_144_semibreaking_change_for/
+            handler(msg.data, sender).then(sendResponse).catch(console.error)
+            return true
         }
     }
     chrome.runtime.onMessage.addListener(wrapper)
