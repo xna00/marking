@@ -127,7 +127,21 @@ const Main = () => {
         {username === undefined ? (
           <span className="text-gray-500">检查登录状态...</span>
         ) : username ? (
-          <span>当前用户：{username}</span>
+          <div className="flex items-center gap-2">
+            <span>当前用户：{username}</span>
+            <button
+              className="text-red-500 underline text-xs"
+              onClick={() => {
+                setAuthToken(null);
+                chrome.storage.local.remove<{
+                  [storageKeys.AUTH_TOKEN]: string
+                }>(storageKeys.AUTH_TOKEN);
+                setUsername(null);
+              }}
+            >
+              退出登录
+            </button>
+          </div>
         ) : (
           <>
             <span className="text-red-500">未登录</span>
@@ -333,7 +347,7 @@ const App = () => {
   if (loading) return <div className="p-5 text-center text-gray-500">加载中...</div>;
 
   return (
-      <Router hook={useHashLocation}>
+    <Router hook={useHashLocation}>
       <Switch>
         <Route path="/login">
           <Login onLogin={(t) => {
