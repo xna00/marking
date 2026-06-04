@@ -10,6 +10,7 @@ const doubaoModels = [
 ] as const;
 
 export const modelNames = [
+  "auto",
   ...doubaoModels,
 ] as const;
 

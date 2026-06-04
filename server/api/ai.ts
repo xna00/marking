@@ -37,11 +37,21 @@ function constructPrompt(config: ConfigItem[]): string {
   return SYSTEM_PROMPT.replace("{{评分标准}}", mdTable);
 }
 
+function resolveModel(model: string): string {
+  return model === "auto" ? "doubao-seed-2-0-lite-260428" : model;
+}
+
+function resolveDetail(model: string): "low" | "high" {
+  const resolved = resolveModel(model);
+  return resolved === "doubao-seed-2-0-pro-260215" ? "low" : "high";
+}
+
 async function doChat(body: ChatBody): Promise<AIResultItem[]> {
   const prompt = constructPrompt(body.config);
+  const resolvedModel = resolveModel(body.model);
 
   const fetchBody = {
-    model: body.model,
+    model: resolvedModel,
     messages: [
       {
         role: "system",
@@ -53,7 +63,7 @@ async function doChat(body: ChatBody): Promise<AIResultItem[]> {
           type: "image_url",
           image_url: {
             url: body.imageUrl,
-            detail: body.model === "doubao-seed-2-0-pro-260215" ? "low" : "high",
+            detail: resolveDetail(body.model),
           },
         }],
       },

@@ -8,7 +8,7 @@ export type ConfigItem = {
   markingCriteria: string;
 };
 
-export const defaultModel: ModelName = "doubao-seed-1-8-251228";
+export const defaultModel: ModelName = "auto";
 
 type AIResultItem = [string, number, string];
 

@@ -150,7 +150,7 @@ const Main = () => {
       </div>
       <Banner />
       <div className="p-2.5">
-        <label>选择模型</label>
+        <label>模型</label>
         <select
           id="modelSelect"
           value={modelName}
@@ -158,7 +158,7 @@ const Main = () => {
         >
           {modelNames.map((name) => (
             <option key={name} value={name}>
-              {name}
+              {name === "auto" ? "自动选择" : name}
             </option>
           ))}
         </select>
