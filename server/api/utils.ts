@@ -5,12 +5,12 @@ export const succeed = {
 export class ApiError extends Error {
   public status: number;
   public headers: ResponseInit["headers"];
-  public errorCode?: string;
+  public errorCode: string;
   constructor(
     status: number,
     headers: ResponseInit["headers"],
     message: string,
-    errorCode?: string,
+    errorCode: string = "API_ERROR",
   ) {
     super(message);
     this.status = status;

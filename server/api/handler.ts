@@ -59,7 +59,7 @@ export const apiHandler = async (req: Request): Promise<Response> => {
       if (e instanceof ApiError) {
         status = e.status;
         headers = e.headers;
-        obj = { errorCode: e.errorCode || "ERROR", message: e.message };
+        obj = { errorCode: e.errorCode, message: e.message };
       }
       return makeJsonResponse(status, headers, obj);
     }
