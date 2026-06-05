@@ -1,7 +1,7 @@
 import assert from "node:assert";
 import { als, type Info } from "./global.ts";
 import * as api from "./index.ts";
-import { ApiError, makeJsonResponse } from "./utils.ts";
+import { ApiError, makeJsonResponse, makeJsonResponseApiError } from "./utils.ts";
 import { logger } from "../logger.ts";
 
 const parseFn = (req: Request): [fn: any, fnName: string] => {
@@ -26,7 +26,7 @@ export const apiHandler = async (req: Request): Promise<Response> => {
 
   const [fn, fnName] = parseFn(req);
   if (!fn) {
-    res = makeJsonResponse(404, {}, { errorCode: "API_NOT_FOUND", url: req.url });
+    res = makeJsonResponseApiError(404, {}, { errorCode: "API_NOT_FOUND", message: "Not Found", url: req.url });
     return res;
   }
   let params: any = null;
@@ -40,7 +40,7 @@ export const apiHandler = async (req: Request): Promise<Response> => {
     } catch (e) {
       assert(e instanceof Error);
       logger.error(e);
-      res = makeJsonResponse(400, {}, { message: e.message });
+      res = makeJsonResponseApiError(400, {}, { errorCode: "BAD_REQUEST", message: e.message });
       return res;
     }
   }
@@ -53,15 +53,10 @@ export const apiHandler = async (req: Request): Promise<Response> => {
       return makeJsonResponse(info.status, info.headers, ret);
     } catch (e) {
       logger.error(e);
-      let status = 500;
-      let headers: ResponseInit["headers"] = {};
-      let obj: object = { message: e };
       if (e instanceof ApiError) {
-        status = e.status;
-        headers = e.headers;
-        obj = { errorCode: e.errorCode, message: e.message };
+        return makeJsonResponseApiError(e.status, e.headers, { errorCode: e.errorCode, message: e.message });
       }
-      return makeJsonResponse(status, headers, obj);
+      return makeJsonResponseApiError(500, {}, { errorCode: "API_ERROR", message: String(e) });
     }
   });
 };

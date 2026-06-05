@@ -36,6 +36,16 @@ export const makeJsonResponse = (
 
 export const makeJsonResponse200 = makeJsonResponse.bind(null, 200);
 
+type ErrorBody = { errorCode: string; message: string } & Record<string, unknown>;
+
+export const makeJsonResponseApiError = (
+  status: number,
+  headers: ResponseInit["headers"],
+  obj: ErrorBody,
+): Response => {
+  return makeJsonResponse(status, headers, obj);
+};
+
 export function assertApiError<T>(
   v: T,
   msg: string,
