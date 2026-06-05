@@ -6,16 +6,19 @@ export class ApiError extends Error {
   public status: number;
   public headers: ResponseInit["headers"];
   public errorCode: string;
+  public extraData?: Record<string, unknown>;
   constructor(
     status: number,
-    headers: ResponseInit["headers"],
     message: string,
+    headers: ResponseInit["headers"] = {},
     errorCode: string = "API_ERROR",
+    extraData?: Record<string, unknown>,
   ) {
     super(message);
     this.status = status;
     this.headers = headers;
     this.errorCode = errorCode;
+    this.extraData = extraData;
   }
 }
 
@@ -36,14 +39,13 @@ export const makeJsonResponse = (
 
 export const makeJsonResponse200 = makeJsonResponse.bind(null, 200);
 
-type ErrorBody = { errorCode: string; message: string } & Record<string, unknown>;
-
-export const makeJsonResponseApiError = (
-  status: number,
-  headers: ResponseInit["headers"],
-  obj: ErrorBody,
-): Response => {
-  return makeJsonResponse(status, headers, obj);
+export const makeJsonResponseApiError = (err: ApiError): Response => {
+  const obj: { errorCode: string; message: string } & Record<string, unknown> = {
+    errorCode: err.errorCode,
+    message: err.message,
+  };
+  if (err.extraData) Object.assign(obj, err.extraData);
+  return makeJsonResponse(err.status, err.headers, obj);
 };
 
 export function assertApiError<T>(
@@ -52,6 +54,6 @@ export function assertApiError<T>(
   status = 500,
 ): asserts v is Exclude<T, undefined> {
   if (v === undefined) {
-    throw new ApiError(status, {}, msg);
+    throw new ApiError(status, msg);
   }
 }

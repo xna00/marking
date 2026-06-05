@@ -76,6 +76,7 @@ async function doChat(body: ChatBody): Promise<AIResultItem[]> {
   };
 
   const errors: unknown[] = [];
+  let lastContent: string | undefined;
 
   for (let attempt = 0; attempt < 3; attempt++) {
     const id = Math.random().toString(36).slice(2, 8);
@@ -100,6 +101,7 @@ async function doChat(body: ChatBody): Promise<AIResultItem[]> {
 
       const data = await res.json() as any;
       const content = data.choices?.[0]?.message?.content;
+      lastContent = content;
 
       log(`[${id}] body: ${content}`);
 
@@ -108,11 +110,24 @@ async function doChat(body: ChatBody): Promise<AIResultItem[]> {
       }
 
       const repaired = jsonrepair(content);
-      const raw: RawAIResultItem[] = JSON.parse(repaired);
+      const parsed: unknown = JSON.parse(repaired);
+
+      if (!Array.isArray(parsed)) {
+        throw new Error(`AI response is not an array: ${content}`);
+      }
+
+      const raw: RawAIResultItem[] = [];
+      for (const item of parsed) {
+        if (!Array.isArray(item) || item.length < 3) {
+          throw new Error(`AI returned invalid item: ${content}`);
+        }
+        raw.push([String(item[0]), Number(item[1]), String(item[2])]);
+      }
+
       return raw.map(([text, score, reason]) => ({
-        text: String(text),
-        score: Number(score),
-        reason: String(reason),
+        text,
+        score,
+        reason,
       }));
     } catch (e) {
       log(`[${id}] attempt ${attempt + 1} failed:`, e);
@@ -120,7 +135,7 @@ async function doChat(body: ChatBody): Promise<AIResultItem[]> {
     }
   }
 
-  throw new ApiError(502, {}, `3 次重试均失败: ${errors.map(e => String(e)).join("; ")}`);
+  throw new ApiError(502, `3 次重试均失败: ${errors.map(e => String(e)).join("; ")}`, {}, "API_ERROR", { rawContent: lastContent });
 }
 
 export async function getUsage() {
@@ -139,7 +154,7 @@ export async function markImage(body: ChatBody): Promise<{ result: AIResultItem[
 export async function confirmMark(body: { markRecordId: number }) {
   const user = await getCurrentUser();
   const ok = confirmMarkRecord(body.markRecordId, user.externalUserId);
-  if (!ok) throw new ApiError(403, {}, "Forbidden");
+  if (!ok) throw new ApiError(403, "Forbidden");
   const confirmedCount = countConfirmedRecords(user.externalUserId);
   return { success: true, usage: { confirmedCount } };
 }

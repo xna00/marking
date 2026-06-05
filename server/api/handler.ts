@@ -22,12 +22,9 @@ const parseFn = (req: Request): [fn: any, fnName: string] => {
 };
 
 export const apiHandler = async (req: Request): Promise<Response> => {
-  let res: Response;
-
   const [fn, fnName] = parseFn(req);
   if (!fn) {
-    res = makeJsonResponseApiError(404, {}, { errorCode: "API_NOT_FOUND", message: "Not Found", url: req.url });
-    return res;
+    return makeJsonResponseApiError(new ApiError(404, "Not Found", {}, "API_NOT_FOUND", { url: req.url }));
   }
   let params: any = null;
   if (fnName.startsWith("_out")) {
@@ -40,8 +37,7 @@ export const apiHandler = async (req: Request): Promise<Response> => {
     } catch (e) {
       assert(e instanceof Error);
       logger.error(e);
-      res = makeJsonResponseApiError(400, {}, { errorCode: "BAD_REQUEST", message: e.message });
-      return res;
+      return makeJsonResponseApiError(new ApiError(400, e.message, {}, "BAD_REQUEST"));
     }
   }
 
@@ -53,10 +49,8 @@ export const apiHandler = async (req: Request): Promise<Response> => {
       return makeJsonResponse(info.status, info.headers, ret);
     } catch (e) {
       logger.error(e);
-      if (e instanceof ApiError) {
-        return makeJsonResponseApiError(e.status, e.headers, { errorCode: e.errorCode, message: e.message });
-      }
-      return makeJsonResponseApiError(500, {}, { errorCode: "API_ERROR", message: String(e) });
+      if (e instanceof ApiError) return makeJsonResponseApiError(e);
+      return makeJsonResponseApiError(new ApiError(500, String(e)));
     }
   });
 };
