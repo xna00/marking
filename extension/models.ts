@@ -15,3 +15,9 @@ export const modelNames = [
 ] as const;
 
 export type ModelName = (typeof modelNames)[number];
+
+export type ConfigItem = {
+  position: string;
+  points: number;
+  markingCriteria: string;
+};

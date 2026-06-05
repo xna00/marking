@@ -1,3 +1,5 @@
+import type { ModelName, ConfigItem } from "./models";
+
 export enum storageKeys {
   // 用户设置和偏好
   USER_SETTINGS = "userSettings",
@@ -56,3 +58,12 @@ export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost
 
 // 存储键的类型定义
 export type ChromeStorageKey = `${storageKeys}`;
+
+// 存储 schema：key → value 类型映射
+export type StorageSchema = {
+  [storageKeys.AI_MODEL]?: ModelName;
+  [storageKeys.CRITERIA_CONFIG]?: ConfigItem[];
+  [storageKeys.AI_DELAY]?: [number, number];
+  [storageKeys.AUTH_TOKEN]?: string;
+  [storageKeys.IMAGE_SRC]?: string;
+};

@@ -1,13 +1,12 @@
 import { sendTabMessage, addEventListener } from "../message.js";
 import {
   defaultModel,
-  type ConfigItem,
 } from "../ai.js";
+import type { ConfigItem, ModelName } from "../models.js";
 import { blobToDataUrl, scaleImage } from "../image.js";
 import { modelNames } from "../models.js";
 import { storageKeys } from "../constants.js";
 import { createRoot } from "react-dom/client";
-import { useStateWithChromeStorage } from "./hooks/useStateWithStorage.js";
 import { useEffect, useRef, useState } from "react";
 import { CriteriaTable } from "./CriteriaTable.js";
 import { defaultImageUrl } from "./imageUrl.js";
@@ -15,6 +14,7 @@ import { Banner } from "./Banner.js";
 import { specialChars } from "./specialChars.js";
 import { Login } from "./Login.js";
 import { api } from "../api.js";
+import { chromeStorageLocalGet, chromeStorageLocalSet, chromeStorageLocalRemove } from "../storage.js";
 import { Router, Route, Switch } from "wouter";
 import { navigate, useHashLocation } from "wouter/use-hash-location";
 
@@ -52,30 +52,44 @@ const pasteImageFromClipboard = async () => {
   }
 };
 
+type Settings = {
+  [storageKeys.AI_MODEL]: ModelName;
+  [storageKeys.CRITERIA_CONFIG]: ConfigItem[];
+  [storageKeys.IMAGE_SRC]: string;
+  [storageKeys.AI_DELAY]: [number, number];
+};
+
+const defaultSettings: Settings = {
+  [storageKeys.AI_MODEL]: defaultModel,
+  [storageKeys.CRITERIA_CONFIG]: [
+    { position: "①左", points: 1, markingCriteria: "500mL容量瓶(不写“500mL”0分，“容量瓶”写成“溶量瓶”0分)" },
+    { position: "①右", points: 2, markingCriteria: "13.6" },
+    { position: "②", points: 1, markingCriteria: "25" },
+    { position: "③", points: 2, markingCriteria: "将浓硫酸沿烧杯内壁缓慢注入水中(给分点一),并用玻璃棒不断搅拌(给分点二)" },
+    { position: "④", points: 2, markingCriteria: "C" },
+  ],
+  [storageKeys.IMAGE_SRC]: defaultImageUrl,
+  [storageKeys.AI_DELAY]: [0, 0],
+};
+
 const Main = () => {
-  const [modelName, setModelName] = useStateWithChromeStorage(
-    storageKeys.AI_MODEL,
-    defaultModel
-  );
-  const [criteriaConfig, setCriteriaConfig] = useStateWithChromeStorage<ConfigItem[]>(
-    storageKeys.CRITERIA_CONFIG,
-    [
-      { position: "①左", points: 1, markingCriteria: "500mL容量瓶(不写“500mL”0分，“容量瓶”写成“溶量瓶”0分)" },
-      { position: "①右", points: 2, markingCriteria: "13.6" },
-      { position: "②", points: 1, markingCriteria: "25" },
-      { position: "③", points: 2, markingCriteria: "将浓硫酸沿烧杯内壁缓慢注入水中(给分点一),并用玻璃棒不断搅拌(给分点二)" },
-      { position: "④", points: 2, markingCriteria: "C" },
-    ]
-  );
-  const [imageUrl, setImageUrl] = useStateWithChromeStorage(
-    storageKeys.IMAGE_SRC,
-    defaultImageUrl
-  );
+  const [settings, setSettings] = useState(defaultSettings);
   const [imageSize, setImageSize] = useState<{
     width: number;
     height: number;
   } | null>(null);
-  const [aiDelay, setAiDelay] = useStateWithChromeStorage<[number, number]>(storageKeys.AI_DELAY, [0, 0]);
+
+  useEffect(() => {
+    chromeStorageLocalGet(null).then(r => {
+      setSettings({
+        [storageKeys.AI_MODEL]: r[storageKeys.AI_MODEL] ?? defaultSettings[storageKeys.AI_MODEL],
+        [storageKeys.CRITERIA_CONFIG]: r[storageKeys.CRITERIA_CONFIG] ?? defaultSettings[storageKeys.CRITERIA_CONFIG],
+        [storageKeys.IMAGE_SRC]: r[storageKeys.IMAGE_SRC] ?? defaultSettings[storageKeys.IMAGE_SRC],
+        [storageKeys.AI_DELAY]: r[storageKeys.AI_DELAY] ?? defaultSettings[storageKeys.AI_DELAY],
+      });
+    });
+  }, []);
+  useEffect(() => { chromeStorageLocalSet(settings); }, [settings]);
   const [result, setResult] = useState<{
     tag: "succeed" | "error";
     msg: string;
@@ -122,7 +136,7 @@ const Main = () => {
       "paste",
       () => {
         pasteImageFromClipboard().then((dataUrl) => {
-          dataUrl && setImageUrl(dataUrl);
+          dataUrl && setSettings(s => ({ ...s, [storageKeys.IMAGE_SRC]: dataUrl }));
         });
       },
       {
@@ -148,9 +162,7 @@ const Main = () => {
             <button
               className="text-red-500 underline text-xs"
               onClick={() => {
-                chrome.storage.local.remove<{
-                  [storageKeys.AUTH_TOKEN]: string
-                }>(storageKeys.AUTH_TOKEN);
+                chromeStorageLocalRemove(storageKeys.AUTH_TOKEN);
                 setUsername(null);
               }}
             >
@@ -169,8 +181,8 @@ const Main = () => {
         <label>模型</label>
         <select
           id="modelSelect"
-          value={modelName}
-          onChange={(e) => setModelName(e.target.value as any)}
+          value={settings[storageKeys.AI_MODEL]}
+          onChange={(e) => setSettings(s => ({ ...s, [storageKeys.AI_MODEL]: e.target.value as ModelName }))}
         >
           {modelNames.map((name) => (
             <option key={name} value={name}>
@@ -187,10 +199,10 @@ const Main = () => {
               type="number"
               min={0}
               className="!w-28"
-              value={aiDelay[0]}
+              value={settings[storageKeys.AI_DELAY][0]}
               onChange={e => {
                 const val = Math.max(0, Number(e.target.value));
-                setAiDelay([val, Math.max(val, aiDelay[1])]);
+                setSettings(s => ({ ...s, [storageKeys.AI_DELAY]: [val, Math.max(val, s[storageKeys.AI_DELAY][1])] }));
               }}
             />
           </label>
@@ -200,18 +212,18 @@ const Main = () => {
               type="number"
               min={0}
               className="!w-28"
-              value={aiDelay[1]}
+              value={settings[storageKeys.AI_DELAY][1]}
               onChange={e => {
                 const val = Math.max(0, Number(e.target.value));
-                setAiDelay([Math.min(aiDelay[0], val), val]);
+                setSettings(s => ({ ...s, [storageKeys.AI_DELAY]: [Math.min(s[storageKeys.AI_DELAY][0], val), val] }));
               }}
             />
           </label>
         </div>
         <label>评分标准</label>
         <CriteriaTable
-          config={criteriaConfig}
-          onChange={setCriteriaConfig}
+          config={settings[storageKeys.CRITERIA_CONFIG]}
+          onChange={(v) => setSettings(s => ({ ...s, [storageKeys.CRITERIA_CONFIG]: v }))}
           setInputRef={setInputRef}
         />
         <div className="fixed right-0 top-2/3">
@@ -279,7 +291,7 @@ const Main = () => {
                 className="small-btn"
                 onClick={() => {
                   syncImageSrc().then((dataUrl) => {
-                    dataUrl && setImageUrl(dataUrl);
+                    dataUrl && setSettings(s => ({ ...s, [storageKeys.IMAGE_SRC]: dataUrl }));
                   });
                 }}
               >
@@ -289,7 +301,7 @@ const Main = () => {
                 className="small-btn"
                 onClick={() => {
                   pasteImageFromClipboard().then((dataUrl) => {
-                    dataUrl && setImageUrl(dataUrl);
+                    dataUrl && setSettings(s => ({ ...s, [storageKeys.IMAGE_SRC]: dataUrl }));
                   });
                 }}
               >
@@ -297,7 +309,7 @@ const Main = () => {
               </button>
               <button
                 className="small-btn"
-                onClick={() => setImageUrl(defaultImageUrl)}
+                onClick={() => setSettings(s => ({ ...s, [storageKeys.IMAGE_SRC]: defaultImageUrl }))}
               >
                 重置
               </button>
@@ -306,7 +318,7 @@ const Main = () => {
           <div>
             <img
               className="max-h-70"
-              src={imageUrl}
+              src={settings[storageKeys.IMAGE_SRC]}
               onLoad={(e) => {
                 const img = e.target as HTMLImageElement;
                 setImageSize({
@@ -326,9 +338,9 @@ const Main = () => {
           onClick={() => {
             setGrading(true);
             api.ai.testMarkImage({
-              model: modelName,
-              config: criteriaConfig,
-              imageUrl,
+              model: settings[storageKeys.AI_MODEL],
+              config: settings[storageKeys.CRITERIA_CONFIG],
+              imageUrl: settings[storageKeys.IMAGE_SRC],
             }).then(
               (res) => {
                 setResult({
@@ -356,8 +368,8 @@ const App = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    chrome.storage.local.get(storageKeys.AUTH_TOKEN).then((result) => {
-      const t = result[storageKeys.AUTH_TOKEN] as string | undefined;
+    chromeStorageLocalGet(storageKeys.AUTH_TOKEN).then((result) => {
+      const t = result[storageKeys.AUTH_TOKEN];
       setLoading(false);
     });
   }, []);
@@ -369,7 +381,7 @@ const App = () => {
       <Switch>
         <Route path="/login">
           <Login onLogin={(t) => {
-            chrome.storage.local.set({ [storageKeys.AUTH_TOKEN]: t }).then(() => {
+            chromeStorageLocalSet({ [storageKeys.AUTH_TOKEN]: t }).then(() => {
               navigate("/");
             })
           }} />

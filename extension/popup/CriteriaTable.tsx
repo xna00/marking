@@ -1,5 +1,5 @@
 import type { InputRef } from ".";
-import type { ConfigItem } from "../ai";
+import type { ConfigItem } from "../models";
 
 function CriteriaRow({
   item,
