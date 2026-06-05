@@ -10,7 +10,8 @@ export type ConfigItem = {
 
 export const defaultModel: ModelName = "auto";
 
-type AIResultItem = [string, number, string];
+import type { AIResultItem } from "@marking/server";
+export type { AIResultItem };
 
 export async function recognizeImage(imageUrl: string): Promise<{ result: AIResultItem[]; markRecordId: number }> {
   const storage = await chrome.storage.local.get([

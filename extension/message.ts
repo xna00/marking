@@ -1,5 +1,7 @@
+import type { AIResultItem } from "@marking/server";
+
 type MessageActionDataRet = {
-    getAIResult: [{ url: string }, { result: [string, number, string][], markRecordId: number } | { error: string }],
+    getAIResult: [{ url: string }, { result: AIResultItem[], markRecordId: number } | { error: string }],
     confirmMark: [{ markRecordId: number }, { success: true, usage: { confirmedCount: number } } | { error: string }],
     hello: [undefined, string],
     usageUpdated: [{ usage: { confirmedCount: number } }, undefined],

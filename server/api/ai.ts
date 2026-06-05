@@ -16,7 +16,9 @@ type ChatBody = {
   imageUrl: string;
 };
 
-type AIResultItem = [string, number, string];
+type RawAIResultItem = [string, number, string];
+
+export type AIResultItem = { text: string; score: number; reason: string };
 
 function log(...args: unknown[]) {
   console.log(`[${new Date().toLocaleString()}]`, ...args);
@@ -106,7 +108,12 @@ async function doChat(body: ChatBody): Promise<AIResultItem[]> {
       }
 
       const repaired = jsonrepair(content);
-      return JSON.parse(repaired);
+      const raw: RawAIResultItem[] = JSON.parse(repaired);
+      return raw.map(([text, score, reason]) => ({
+        text: String(text),
+        score: Number(score),
+        reason: String(reason),
+      }));
     } catch (e) {
       log(`[${id}] attempt ${attempt + 1} failed:`, e);
       errors.push(e);

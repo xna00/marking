@@ -1,5 +1,6 @@
 import { sendMessage, addEventListener } from "./message";
 import { storageKeys } from "./constants";
+import type { AIResultItem } from "@marking/server";
 
 console.log("content.ts loaded");
 
@@ -87,8 +88,8 @@ const savePosition = (id: string, left: number, top: number): void => {
 let totalScore = 0;
 
 // 计算总分
-const calculateTotalScore = (res: [string, number, string][]): number => {
-  return res.reduce((sum, [, score]) => sum + Number(score), 0);
+const calculateTotalScore = (res: AIResultItem[]): number => {
+  return res.reduce((sum, r) => sum + r.score, 0);
 };
 
 // 更新总分显示
@@ -195,36 +196,32 @@ chrome.storage.local.get(storageKeys.CRITERIA_CONFIG).then((res) => {
   }
 });
 
-const showAiResult = (result: [string, number, string][]) => {
+const showAiResult = (result: AIResultItem[]) => {
   try {
     const res = result;
     console.log(res);
     document.body.appendChild(overlay);
 
-    // 清空之前的结果（但保留总分div）
     overlay.innerHTML = "";
 
-    // 初始化总分div
-
-    // 计算并显示总分
     totalScore = calculateTotalScore(res);
     setTotalScore(totalScore);
 
-    res.forEach(([text, score, reason], index) => {
+    res.forEach((r, index) => {
       const div = document.createElement("div");
       div.style.position = "absolute";
-      div.style.left = `${50 + index * 20}px`; // 设置初始位置，避免堆叠
+      div.style.left = `${50 + index * 20}px`;
       div.style.top = `${150 + index * 40}px`;
-      div.innerText = `${text}(${score}分,${reason})`;
-      div.style.padding = "5px 10px"; // 添加内边距
-      div.style.border = "1px solid #ccc"; // 添加边框
-      div.style.borderRadius = "4px"; // 添加圆角
+      div.innerText = `${r.text}(${r.score}分,${r.reason})`;
+      div.style.padding = "5px 10px";
+      div.style.border = "1px solid #ccc";
+      div.style.borderRadius = "4px";
       div.style.fontSize = "14px";
       let color = "";
 
-      if (score.toString() === "0") {
+      if (r.score === 0) {
         color = "red";
-      } else if (!scores[index] || score.toString() === scores[index]) {
+      } else if (!scores[index] || r.score === Number(scores[index])) {
         color = "green";
       } else {
         color = "blue";
@@ -233,10 +230,8 @@ const showAiResult = (result: [string, number, string][]) => {
 
       overlay.appendChild(div);
 
-      // 创建唯一id，包含文本和索引以确保唯一性
       const uniqueId = `result-div-${index}`;
 
-      // 添加拖动功能和本地存储
       makeDraggable(div, uniqueId);
     });
   } catch (e) {

@@ -333,7 +333,7 @@ const Main = () => {
               (res) => {
                 setResult({
                   tag: "succeed",
-                  msg: res.map(([text, score, reason], i) => `${i + 1}. ${text}（${score}分，${reason}）`).join("\n"),
+                  msg: res.map((r, i) => `${i + 1}. ${r.text}（${r.score}分，${r.reason}）`).join("\n"),
                 });
               },
               (err) => {

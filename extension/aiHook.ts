@@ -1,8 +1,8 @@
-import { recognizeImage } from "./ai.js";
+import { recognizeImage, type AIResultItem } from "./ai.js";
 import { scaleImage, getImageBitmap } from "./image.js";
 import { printImageInConsole } from "./printImage.js";
 
-let urlResultMap = new Map<string, Promise<any>>();
+let urlResultMap = new Map<string, Promise<{ result: AIResultItem[]; markRecordId: number }>>();
 
 export async function aiHook(url: string, dataUrl: string) {
   if (urlResultMap.has(url)) {
@@ -26,7 +26,7 @@ async function runAiRecognition(dataUrl: string) {
 export const getAIResultHandler = async (
   data: { url: string },
   sender: chrome.runtime.MessageSender
-): Promise<{ result: [string, number, string][]; markRecordId: number } | { error: string }> => {
+): Promise<{ result: AIResultItem[]; markRecordId: number } | { error: string }> => {
   await new Promise(r => setTimeout(r, 0));
   const pendingResult = urlResultMap.get(data.url);
   console.log("getAIResult", data.url, pendingResult);
