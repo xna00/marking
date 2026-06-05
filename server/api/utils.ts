@@ -2,17 +2,31 @@ export const succeed = {
   succeed: true,
 };
 
-export class ApiError extends Error {
+
+type ErrorCodeExtraDataMap = {
+  "API_AI_FAILED": { rawContent?: string },
+  "API_NOT_FOUND": { url: string },
+  "API_INTERNAL_ERROR": {},
+  "API_BAD_REQUEST": {},
+  "API_FORBIDDEN": {},
+  "API_UNAUTHORIZED": {},
+}
+
+type ApiErrorC<K> = K extends keyof ErrorCodeExtraDataMap ? { errorCode: K, message: string } & ErrorCodeExtraDataMap[K] : never
+
+export type ApiErrorType = ApiErrorC<keyof ErrorCodeExtraDataMap>
+
+export class ApiError<const E extends keyof ErrorCodeExtraDataMap> extends Error {
   public status: number;
   public headers: ResponseInit["headers"];
-  public errorCode: string;
-  public extraData?: Record<string, unknown>;
+  public errorCode: E;
+  public extraData: ErrorCodeExtraDataMap[E];
   constructor(
     status: number,
     message: string,
     headers: ResponseInit["headers"] = {},
-    errorCode: string = "API_ERROR",
-    extraData?: Record<string, unknown>,
+    errorCode: E,
+    extraData: ErrorCodeExtraDataMap[E],
   ) {
     super(message);
     this.status = status;
@@ -39,7 +53,7 @@ export const makeJsonResponse = (
 
 export const makeJsonResponse200 = makeJsonResponse.bind(null, 200);
 
-export const makeJsonResponseApiError = (err: ApiError): Response => {
+export const makeJsonResponseApiError = (err: ApiError<any>): Response => {
   const obj: { errorCode: string; message: string } & Record<string, unknown> = {
     errorCode: err.errorCode,
     message: err.message,
@@ -54,6 +68,6 @@ export function assertApiError<T>(
   status = 500,
 ): asserts v is Exclude<T, undefined> {
   if (v === undefined) {
-    throw new ApiError(status, msg);
+    throw new ApiError(status, msg, {}, "API_INTERNAL_ERROR", {});
   }
 }

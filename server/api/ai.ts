@@ -135,7 +135,7 @@ async function doChat(body: ChatBody): Promise<AIResultItem[]> {
     }
   }
 
-  throw new ApiError(502, `3 次重试均失败: ${errors.map(e => String(e)).join("; ")}`, {}, "API_ERROR", { rawContent: lastContent });
+  throw new ApiError(502, `3 次重试均失败: ${errors.map(e => String(e)).join("; ")}`, {}, "API_AI_FAILED", { rawContent: lastContent });
 }
 
 export async function getUsage() {
@@ -154,7 +154,7 @@ export async function markImage(body: ChatBody): Promise<{ result: AIResultItem[
 export async function confirmMark(body: { markRecordId: number }) {
   const user = await getCurrentUser();
   const ok = confirmMarkRecord(body.markRecordId, user.externalUserId);
-  if (!ok) throw new ApiError(403, "Forbidden");
+  if (!ok) throw new ApiError(403, "Forbidden", {}, "API_FORBIDDEN", {});
   const confirmedCount = countConfirmedRecords(user.externalUserId);
   return { success: true, usage: { confirmedCount } };
 }

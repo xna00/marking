@@ -3,3 +3,4 @@ export * as ai from "./ai.ts";
 export type { AIResultItem } from "./ai.ts";
 export { currentUser } from "./auth.ts";
 export { getDebug } from "./debug.ts";
+export type { ApiErrorType } from './utils.ts'

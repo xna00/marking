@@ -12,7 +12,7 @@ export async function getUserIfLoggedIn(): Promise<User | null> {
 
 export async function getCurrentUser() {
   const user = await getUserIfLoggedIn();
-  if (!user) throw new ApiError(401, "Unauthorized");
+  if (!user) throw new ApiError(401, "Unauthorized", {}, "API_UNAUTHORIZED", {});
   return user;
 }
 

@@ -37,7 +37,7 @@ export const apiHandler = async (req: Request): Promise<Response> => {
     } catch (e) {
       assert(e instanceof Error);
       logger.error(e);
-      return makeJsonResponseApiError(new ApiError(400, e.message, {}, "BAD_REQUEST"));
+      return makeJsonResponseApiError(new ApiError(400, e.message, {}, "API_BAD_REQUEST", {}));
     }
   }
 
@@ -50,7 +50,7 @@ export const apiHandler = async (req: Request): Promise<Response> => {
     } catch (e) {
       logger.error(e);
       if (e instanceof ApiError) return makeJsonResponseApiError(e);
-      return makeJsonResponseApiError(new ApiError(500, String(e)));
+      return makeJsonResponseApiError(new ApiError(500, String(e), {}, "API_INTERNAL_ERROR", {}));
     }
   });
 };
