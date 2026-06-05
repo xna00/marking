@@ -11,7 +11,6 @@ export async function aiHook(url: string, dataUrl: string) {
   const promise = runAiRecognition(dataUrl);
   urlResultMap.set(url, promise);
   urlResultMap = new Map([...urlResultMap.entries()].slice(-20));
-  promise.catch(() => urlResultMap.delete(url));
 }
 
 async function runAiRecognition(dataUrl: string) {
@@ -37,6 +36,7 @@ export const getAIResultHandler = async (
       return { result: result.result, markRecordId: result.markRecordId };
     } catch (error) {
       console.error("Error fetching AI result:", error);
+      urlResultMap.delete(data.url);
       return { error: String(error) };
     }
   } else {

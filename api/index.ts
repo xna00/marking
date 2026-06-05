@@ -1,12 +1,14 @@
 import type { Api } from "@marking/server";
+import type { ApiErrorType } from "@marking/server";
 
 export class ApiError extends Error {
   status: number;
-  errorCode?: string;
-  constructor(status: number, body?: { errorCode?: string; message?: string }) {
-    super(body?.message ?? `Request failed with status ${status}`);
+  body?: ApiErrorType;
+
+  constructor(status: number, body?: object) {
+    super((body as { message?: string })?.message ?? `Request failed with status ${status}`);
     this.status = status;
-    this.errorCode = body?.errorCode;
+    this.body = body as ApiErrorType | undefined;
   }
 }
 
