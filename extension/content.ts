@@ -45,21 +45,16 @@ const { submit, getImageSrc, setTotalScore } = location.host.includes("wylkyj.co
 
 let previousSrc = "";
 
-// 拖动功能相关变量
 let isDragging = false;
 let currentElement: HTMLElement | null = null;
 let startX = 0;
 let startY = 0;
 let initialX = 0;
-
 let initialY = 0;
 
-// 存储div位置的键名
 const POSITION_STORAGE_KEY = storageKeys.DIV_POSITIONS as string;
-// 总分存储键名
 const TOTAL_SCORE_KEY = storageKeys.TOTAL_SCORE as string;
 
-// 获取存储的位置数据
 const getStoredPositions = (): Record<
   string,
   { left: number; top: number }
@@ -73,7 +68,6 @@ const getStoredPositions = (): Record<
   }
 };
 
-// 保存位置数据到localStorage
 const savePosition = (id: string, left: number, top: number): void => {
   try {
     const positions = getStoredPositions();
@@ -84,17 +78,12 @@ const savePosition = (id: string, left: number, top: number): void => {
   }
 };
 
-// 总分相关变量
 let totalScore = 0;
 
-// 计算总分
 const calculateTotalScore = (res: AIResultItem[]): number => {
   return res.reduce((sum, r) => sum + r.score, 0);
 };
 
-// 更新总分显示
-
-// 保存总分到localStorage
 const saveTotalScore = (score: number): void => {
   try {
     localStorage.setItem(TOTAL_SCORE_KEY, score.toString());
@@ -103,7 +92,6 @@ const saveTotalScore = (score: number): void => {
   }
 };
 
-// 键盘事件监听
 const setupKeyboardListeners = (): void => {
   document.addEventListener("keydown", (e) => {
     switch (e.key) {
@@ -133,15 +121,12 @@ const setupKeyboardListeners = (): void => {
   });
 };
 
-// 初始化键盘事件监听
 setupKeyboardListeners();
 
-// 拖动功能实现函数
 const makeDraggable = (element: HTMLElement, id: string) => {
   element.style.cursor = "move";
   element.style.userSelect = "none";
 
-  // 从localStorage加载位置
   const positions = getStoredPositions();
   if (positions[id]) {
     element.style.left = `${positions[id].left}px`;
@@ -156,11 +141,9 @@ const makeDraggable = (element: HTMLElement, id: string) => {
     initialX = parseInt(element.style.left || "0", 10);
     initialY = parseInt(element.style.top || "0", 10);
 
-    // 防止文本选择
     e.preventDefault();
   });
 
-  // 添加唯一id标识
   element.id = id;
 };
 
@@ -177,7 +160,6 @@ document.addEventListener("mousemove", (e) => {
 
 document.addEventListener("mouseup", () => {
   if (isDragging && currentElement && currentElement.id) {
-    // 保存位置到localStorage
     const left = parseInt(currentElement.style.left || "0", 10);
     const top = parseInt(currentElement.style.top || "0", 10);
     savePosition(currentElement.id, left, top);
@@ -187,27 +169,25 @@ document.addEventListener("mouseup", () => {
   currentElement = null;
 });
 
-let scores: string[] = [];
+let scores: number[] = [];
 chrome.storage.local.get(storageKeys.CRITERIA_CONFIG).then((res) => {
   const rules = res[storageKeys.CRITERIA_CONFIG] as { points: number }[] | undefined;
   if (rules) {
-    scores = rules.map(r => r.points.toString());
-    console.log(scores);
+    scores = rules.map(r => r.points);
   }
 });
 
 const showAiResult = (result: AIResultItem[]) => {
   try {
-    const res = result;
-    console.log(res);
-    document.body.appendChild(overlay);
+    console.log(result);
+    if (!overlay.parentNode) document.body.appendChild(overlay);
 
     overlay.innerHTML = "";
 
-    totalScore = calculateTotalScore(res);
+    totalScore = calculateTotalScore(result);
     setTotalScore(totalScore);
 
-    res.forEach((r, index) => {
+    result.forEach((r, index) => {
       const div = document.createElement("div");
       div.style.position = "absolute";
       div.style.left = `${50 + index * 20}px`;
@@ -221,7 +201,7 @@ const showAiResult = (result: AIResultItem[]) => {
 
       if (r.score === 0) {
         color = "red";
-      } else if (!scores[index] || r.score === Number(scores[index])) {
+      } else if (!scores[index] || r.score === scores[index]) {
         color = "green";
       } else {
         color = "blue";
@@ -241,7 +221,7 @@ const showAiResult = (result: AIResultItem[]) => {
 
 let showedResult = false;
 let markRecordId: number | null = null;
-const h = async () => {
+const pollForImageChange = async () => {
   let delay = 500;
   const currentSrc = getImageSrc();
   if (currentSrc && (currentSrc !== previousSrc || !showedResult)) {
@@ -262,25 +242,24 @@ const h = async () => {
       data: { url: currentSrc },
     });
     console.log(res);
-    const result = "result" in res ? res.result : undefined;
-    markRecordId = "markRecordId" in res ? res.markRecordId : null;
-    if (result) {
+    if ("error" in res) {
+      console.error("AI result error:", res.error);
+    } else {
       showedResult = true;
-      const aiResult = result;
+      const result = res.result;
+      markRecordId = res.markRecordId;
       const { [storageKeys.AI_DELAY]: delayRange = [0, 0] } = await chrome.storage.local.get(storageKeys.AI_DELAY);
       const [min, max] = delayRange as [number, number];
-      const delay = Math.random() * (max - min) + min;
-      console.log(`Delaying AI result by ${delay.toFixed(2)} seconds`);
-      await new Promise(r => setTimeout(r, delay * 1000));
-      showAiResult(aiResult);
-    } else {
-      console.error("No result from AI");
+      const waitSeconds = Math.random() * (max - min) + min;
+      console.log(`Delaying AI result by ${waitSeconds.toFixed(2)} seconds`);
+      await new Promise(r => setTimeout(r, waitSeconds * 1000));
+      showAiResult(result);
     }
   }
-  setTimeout(h, delay);
+  setTimeout(pollForImageChange, delay);
 };
 
-h();
+pollForImageChange();
 
 addEventListener("syncCurrentImage", async () => {
   const currentSrc = getImageSrc();
