@@ -1,6 +1,7 @@
 import { recognizeImage, type AIResultItem } from "./ai.js";
 import { scaleImage, getImageBitmap } from "./image.js";
 import { printImageInConsole } from "./printImage.js";
+import { ApiError } from "@marking/api";
 
 let urlResultMap = new Map<string, Promise<{ result: AIResultItem[]; markRecordId: number }>>();
 
@@ -37,7 +38,19 @@ export const getAIResultHandler = async (
     } catch (error) {
       console.error("Error fetching AI result:", error);
       urlResultMap.delete(data.url);
-      return { error: String(error) };
+      if (error instanceof ApiError) {
+        const code = error.body?.errorCode;
+        if (code === "API_UNAUTHORIZED") {
+          chrome.action.setBadgeText({ text: "登录" });
+          chrome.action.setBadgeTextColor({ color: "#C00" });
+          chrome.action.setBadgeBackgroundColor({ color: "#FFF" });
+          return { error: "请先登录" };
+        }
+        if (code === "API_AI_FAILED")
+          return { error: error.body?.rawContent ?? error.message };
+        return { error: error.message };
+      }
+      return { error: "评分失败: 未知错误" };
     }
   } else {
     console.log("getAIResult not found");

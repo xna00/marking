@@ -381,6 +381,7 @@ const App = () => {
       <Switch>
         <Route path="/login">
           <Login onLogin={(t) => {
+            chrome.action.setBadgeText({ text: "" });
             chromeStorageLocalSet({ [storageKeys.AUTH_TOKEN]: t }).then(() => {
               navigate("/");
             })
