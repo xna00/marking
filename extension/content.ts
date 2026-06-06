@@ -237,7 +237,8 @@ const pollForImageChange = async () => {
     });
     console.log(res);
     if ("error" in res) {
-      overlay.innerHTML = `<div style="color:red;padding:10px">AI 评分失败：${res.error}</div>`;
+      overlay.innerHTML = `<div style="color:red;padding:10px 20px;position:fixed;top:30vh;left:50%;transform:translateX(-50%);background:#fff;border:1px solid #ccc;border-radius:4px;z-index:10000;text-align:center">AI 评分失败：${res.error}</div>`;
+      showedResult = true;
       console.error("AI result error:", res.error);
     } else {
       showedResult = true;
