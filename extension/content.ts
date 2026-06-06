@@ -20,10 +20,11 @@ const overlay = document.createElement("div");
 overlay.style.top = "0";
 overlay.style.left = "0";
 overlay.style.zIndex = "9999";
+document.body.appendChild(overlay);
 
 const wyPageHandlers = {
   submit: () => {
-    overlay.remove();
+    overlay.innerHTML = "";
   },
   getImageSrc: () => {
     const targetElement = document.querySelector(
@@ -175,8 +176,6 @@ let scores: number[] = [];
 const showAiResult = (result: AIResultItem[]) => {
   try {
     console.log(result);
-    if (!overlay.parentNode) document.body.appendChild(overlay);
-
     overlay.innerHTML = "";
 
     totalScore = calculateTotalScore(result);
@@ -227,7 +226,7 @@ const pollForImageChange = async () => {
       });
       markRecordId = null;
     }
-    overlay.remove();
+    overlay.innerHTML = "";
     showedResult = false;
     delay = 1000;
     console.log("Image src changed:", currentSrc);
@@ -238,6 +237,7 @@ const pollForImageChange = async () => {
     });
     console.log(res);
     if ("error" in res) {
+      overlay.innerHTML = `<div style="color:red;padding:10px">AI 评分失败：${res.error}</div>`;
       console.error("AI result error:", res.error);
     } else {
       showedResult = true;
