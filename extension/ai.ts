@@ -116,6 +116,7 @@ export async function markByAI2(
                 type: "image_url",
                 image_url: {
                   url: dataUrl,
+                  detail: aiSettings.model === "doubao-seed-2-0-pro-260215" ? "low" : "high",
                 },
               },
             ],
