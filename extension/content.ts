@@ -45,8 +45,6 @@ const { submit, getImageSrc, setTotalScore } = location.host.includes("wylkyj.co
   ? wyPageHandlers
   : testPageHandlers;
 
-let previousSrc = "";
-
 let isDragging = false;
 let currentElement: HTMLElement | null = null;
 let startX = 0;
@@ -213,50 +211,55 @@ const showAiResult = (result: AIResultItem[]) => {
   }
 };
 
-let showedResult = false;
 let markRecordId: number | null = null;
-const pollForImageChange = async () => {
-  let delay = 500;
-  const currentSrc = getImageSrc();
-  if (currentSrc && (currentSrc !== previousSrc || !showedResult)) {
-    if (previousSrc && markRecordId !== null) {
-      sendMessage({
-        action: "confirmMark",
-        data: { markRecordId: markRecordId },
-      });
-      markRecordId = null;
+
+const startPolling = () => {
+  let previousSrc = "";
+
+  const poll = async () => {
+    const currentSrc = getImageSrc();
+    if (currentSrc && currentSrc !== previousSrc) {
+      previousSrc = currentSrc;
+      await handleImageSrcChange(currentSrc);
     }
-    overlay.innerHTML = "";
-    showedResult = false;
-    delay = 1000;
-    console.log("Image src changed:", currentSrc);
-    previousSrc = currentSrc;
-    const res = await sendMessage({
-      action: "getAIResult",
-      data: { url: currentSrc },
-    });
-    console.log(res);
-    if ("error" in res) {
-      overlay.innerHTML = `<div style="color:red;padding:10px 20px;position:fixed;top:30vh;left:50%;transform:translateX(-50%);background:#fff;border:1px solid #ccc;border-radius:4px;z-index:10000;text-align:center">AI 评分失败：${res.error}</div>`;
-      showedResult = true;
-      console.error("AI result error:", res.error);
-    } else {
-      showedResult = true;
-      const result = res.result;
-      markRecordId = res.markRecordId;
-      const { [storageKeys.CRITERIA_CONFIG]: rules, [storageKeys.AI_DELAY]: delayRange = [0, 0] as const } = await chromeStorageLocalGet([storageKeys.CRITERIA_CONFIG, storageKeys.AI_DELAY]);
-      scores = rules?.map(r => r.points) ?? [];
-      const [min, max] = delayRange;
-      const waitSeconds = Math.random() * (max - min) + min;
-      console.log(`Delaying AI result by ${waitSeconds.toFixed(2)} seconds`);
-      await new Promise(r => setTimeout(r, waitSeconds * 1000));
-      showAiResult(result);
-    }
-  }
-  setTimeout(pollForImageChange, delay);
+    setTimeout(poll, 500);
+  };
+
+  poll();
 };
 
-pollForImageChange();
+const handleImageSrcChange = async (currentSrc: string) => {
+  if (markRecordId !== null) {
+    sendMessage({
+      action: "confirmMark",
+      data: { markRecordId: markRecordId },
+    });
+    markRecordId = null;
+  }
+  overlay.innerHTML = "";
+  console.log("Image src changed:", currentSrc);
+  const res = await sendMessage({
+    action: "getAIResult",
+    data: { url: currentSrc },
+  });
+  console.log(res);
+  if ("error" in res) {
+    overlay.innerHTML = `<div style="color:red;padding:10px 20px;position:fixed;top:30vh;left:50%;transform:translateX(-50%);background:#fff;border:1px solid #ccc;border-radius:4px;z-index:10000;text-align:center">AI 评分失败：${res.error}</div>`;
+    console.error("AI result error:", res.error);
+  } else {
+    const result = res.result;
+    markRecordId = res.markRecordId;
+    const { [storageKeys.CRITERIA_CONFIG]: rules, [storageKeys.AI_DELAY]: delayRange = [0, 0] as const } = await chromeStorageLocalGet([storageKeys.CRITERIA_CONFIG, storageKeys.AI_DELAY]);
+    scores = rules?.map(r => r.points) ?? [];
+    const [min, max] = delayRange;
+    const waitSeconds = Math.random() * (max - min) + min;
+    console.log(`Delaying AI result by ${waitSeconds.toFixed(2)} seconds`);
+    await new Promise(r => setTimeout(r, waitSeconds * 1000));
+    showAiResult(result);
+  }
+};
+
+startPolling();
 
 addEventListener("syncCurrentImage", async () => {
   const currentSrc = getImageSrc();

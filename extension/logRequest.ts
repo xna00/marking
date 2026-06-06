@@ -190,7 +190,11 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   detachDebugger(tabId);
 });
 
+export function getCachedDataUrl(url: string): string | undefined {
+  return imageMap.get(url) ?? urlResponseMap.get(url);
+}
+
 addEventListener("getResponse", async (data) => {
-  const dataUrl = imageMap.get(data.url) ?? urlResponseMap.get(data.url);
+  const dataUrl = getCachedDataUrl(data.url);
   return { dataUrl };
 });
