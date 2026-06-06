@@ -171,12 +171,6 @@ document.addEventListener("mouseup", () => {
 });
 
 let scores: number[] = [];
-chromeStorageLocalGet(storageKeys.CRITERIA_CONFIG).then((res) => {
-  const rules = res[storageKeys.CRITERIA_CONFIG];
-  if (rules) {
-    scores = rules.map(r => r.points);
-  }
-});
 
 const showAiResult = (result: AIResultItem[]) => {
   try {
@@ -249,7 +243,8 @@ const pollForImageChange = async () => {
       showedResult = true;
       const result = res.result;
       markRecordId = res.markRecordId;
-      const { [storageKeys.AI_DELAY]: delayRange = [0, 0] } = await chromeStorageLocalGet(storageKeys.AI_DELAY);
+      const { [storageKeys.CRITERIA_CONFIG]: rules, [storageKeys.AI_DELAY]: delayRange = [0, 0] as const } = await chromeStorageLocalGet([storageKeys.CRITERIA_CONFIG, storageKeys.AI_DELAY]);
+      scores = rules?.map(r => r.points) ?? [];
       const [min, max] = delayRange;
       const waitSeconds = Math.random() * (max - min) + min;
       console.log(`Delaying AI result by ${waitSeconds.toFixed(2)} seconds`);
