@@ -32,7 +32,7 @@ async function handleEnterSession(msg: KfEventMessage) {
     let username: string;
     do {
       username = String(Math.floor(Math.random() * 10000)).padStart(4, "0");
-    } while (findUserByUsername(username));
+    } while (username.includes("4") || findUserByUsername(username));
     const password = randomBytes(6).toString("base64url");
     createUser(external_userid, username, password);
     insertCreditTransaction(external_userid, 0, 400, "新用户赠送");
