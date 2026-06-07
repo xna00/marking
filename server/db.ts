@@ -11,7 +11,6 @@ function getDb(): DatabaseSync {
   if (!db) {
     mkdirSync(join(process.cwd(), "data"), { recursive: true });
     db = new DatabaseSync(DB_PATH);
-    db.exec("PRAGMA journal_mode=WAL");
   }
   return db;
 }

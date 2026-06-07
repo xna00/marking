@@ -11,3 +11,4 @@
 - [ ] 支持自动模型选择：根据图片内容自动匹配最适合的模型并设置 image detail
 - [ ] 风控：检测大量未 confirm 的 markRecord，自动封禁异常账号
 - [ ] urlResponseMap 改成  `Map<string, {promise: Promise<string>, resolve, reject}>`, imageMap `Map<string, {promise: Promise<string>, resolve, reject}`
+- [ ] 研究 WAL 对并发性能的影响，考虑是否重新开启 `PRAGMA journal_mode=WAL`
