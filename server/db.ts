@@ -38,6 +38,14 @@ export function initDb(): void {
     createdAt       TEXT NOT NULL,
     confirmedAt     TEXT
   )`);
+  d.exec(`CREATE TABLE IF NOT EXISTS creditTransaction (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    userId          TEXT NOT NULL REFERENCES user(externalUserId),
+    amountMoney     INTEGER NOT NULL,
+    amountCredits   INTEGER NOT NULL,
+    description     TEXT,
+    createdAt       TEXT NOT NULL
+  )`);
 }
 
 export function insertMarkRecord(userId: string): number {
@@ -49,6 +57,13 @@ export function insertMarkRecord(userId: string): number {
 export function countConfirmedRecords(userId: string): number {
   const stmt = getDb().prepare("SELECT COUNT(*) as count FROM markRecord WHERE userId = ? AND confirmedAt IS NOT NULL");
   return (stmt.get(userId) as { count: number }).count;
+}
+
+export function sumCredits(userId: string): number {
+  const stmt = getDb().prepare(
+    "SELECT COALESCE(SUM(amountCredits), 0) as total FROM creditTransaction WHERE userId = ?"
+  );
+  return (stmt.get(userId) as { total: number }).total;
 }
 
 export function confirmMarkRecord(id: number, userId: string): boolean {

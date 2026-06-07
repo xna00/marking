@@ -108,14 +108,18 @@ const Main = () => {
   const [grading, setGrading] = useState(false);
   const [username, setUsername] = useState<string | null | undefined>(undefined);
   const [confirmedCount, setConfirmedCount] = useState<number | null>(null);
+  const [remainingCredits, setRemainingCredits] = useState<number | null>(null);
 
   useEffect(() => {
     api.currentUser().then(
       user => {
         setUsername(user.username);
-        api.ai.getUsage().then(
-          (u) => setConfirmedCount(u.confirmedCount),
-          () => { }
+        api.ai.getBalance().then(
+          (b) => {
+            setConfirmedCount(b.confirmedCount);
+            setRemainingCredits(b.remainingCredits);
+          },
+          () => {}
         );
       },
       (e) => {
@@ -128,6 +132,7 @@ const Main = () => {
   useEffect(() => {
     return addEventListener("usageUpdated", async (data) => {
       setConfirmedCount(data.usage.confirmedCount);
+      setRemainingCredits(data.usage.remainingCredits);
       return undefined;
     });
   }, []);
@@ -164,8 +169,8 @@ const Main = () => {
         ) : username ? (
           <div className="flex items-center gap-2">
             <span>当前用户：{username}</span>
-            {confirmedCount !== null && (
-              <span className="text-gray-500 text-xs">已用：{confirmedCount}份</span>
+            {confirmedCount !== null && remainingCredits !== null && (
+              <span className="text-gray-500 text-xs">已用 {confirmedCount} 份 / 剩余 {remainingCredits} 份</span>
             )}
             <button
               className="text-red-500 underline text-xs"
