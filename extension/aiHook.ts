@@ -2,7 +2,7 @@ import { recognizeImage, type AIResultItem } from "./ai.js";
 import { scaleImage, getImageBitmap } from "./image.js";
 import { printImageInConsole } from "./printImage.js";
 import { ApiError } from "@marking/api";
-import { getCachedDataUrl } from "./logRequest.js";
+import { getCachedDataUrl, isPendingUrl } from "./logRequest.js";
 
 let urlResultMap = new Map<string, Promise<{ result: AIResultItem[]; markRecordId: number }>>();
 
@@ -59,9 +59,17 @@ export const getAIResultHandler = async (
   console.log("getAIResult", data.url, pendingResult);
   if (!pendingResult) {
     const dataUrl = getCachedDataUrl(data.url);
-    if (!dataUrl) return { error: "没有图片记录" };
+    if (!dataUrl) {
+      if (isPendingUrl(data.url)) {
+        return { error: 'pending' }
+      }
+      return { error: "没有图片记录，请刷新页面重试" }
+    };
     aiHook(data.url, dataUrl);
     pendingResult = urlResultMap.get(data.url)!;
   }
   return awaitResult(data.url, pendingResult)
 };
+
+
+(globalThis as any).getUrlMap = () => urlResultMap

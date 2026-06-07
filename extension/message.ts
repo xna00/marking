@@ -7,6 +7,7 @@ type MessageActionDataRet = {
     usageUpdated: [{ usage: { confirmedCount: number } }, undefined],
     syncCurrentImage: [undefined, { dataUrl: string | undefined }],
     getResponse: [{ url: string }, { dataUrl: string | undefined }],
+    urlResponseUpdated: [string, undefined]
 }
 
 type MessageT<K> = K extends keyof MessageActionDataRet ? MessageActionDataRet[K][0] extends undefined ? { action: K, data?: MessageActionDataRet[K][0] } : {

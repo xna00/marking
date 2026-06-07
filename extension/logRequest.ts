@@ -1,4 +1,4 @@
-import { addEventListener } from "./message.js";
+import { addEventListener, sendMessage, sendTabMessage } from "./message.js";
 import { aiHook } from "./aiHook.js";
 import { mergeImagesVertically } from "./merge.js";
 
@@ -19,6 +19,9 @@ type NetworkGetResponseBodyResponse = {
   base64Encoded: boolean;
 };
 
+/**
+ * pending response
+ */
 const requestIdResponseMap = new Map<string, NetworkResponseReceivedParams>();
 
 let urlResponseMap = new Map<string, string>();
@@ -139,7 +142,6 @@ chrome.debugger.onEvent.addListener(async (source, method, rawParams) => {
   } else if (method === "Network.loadingFinished") {
     const requestId = params.requestId;
     const responseParams = requestIdResponseMap.get(requestId);
-    requestIdResponseMap.delete(requestId);
     if (responseParams) {
       const response = await chrome.debugger.sendCommand(
         { tabId },
@@ -165,15 +167,21 @@ chrome.debugger.onEvent.addListener(async (source, method, rawParams) => {
           return new URL(k).pathname.startsWith(base)
         })
         .sort(([a], [b]) => new URL(a).pathname.localeCompare(new URL(b).pathname));
+      const keys = matched.map(([k]) => k);
 
       if (matched.length >= count) {
-        const keys = matched.map(([k]) => k);
         const dataUrls = matched.map(([_, v]) => v);
         const merged = await mergeImagesVertically(dataUrls);
         imageMap.set(keys[0], merged);
+        // clear pending
+        requestIdResponseMap.delete(requestId);
         keys.forEach(k => urlResponseMap.delete(k));
         aiHook(keys[0], merged);
         imageMap = new Map([...imageMap.entries()].slice(-20));
+        sendTabMessage(tabId, {
+          action: 'urlResponseUpdated',
+          data: keys[0]
+        })
       }
 
       console.log("Response body:", {
@@ -182,6 +190,7 @@ chrome.debugger.onEvent.addListener(async (source, method, rawParams) => {
         body: responseBody.body,
         dataUrl,
       });
+
     }
   }
 });
@@ -191,7 +200,12 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 });
 
 export function getCachedDataUrl(url: string): string | undefined {
-  return imageMap.get(url) ?? urlResponseMap.get(url);
+  console.log(imageMap, urlResponseMap)
+  return imageMap.get(url);
+}
+
+export function isPendingUrl(url: string) {
+  return requestIdResponseMap.values().some(r => r.response.url === url)
 }
 
 addEventListener("getResponse", async (data) => {

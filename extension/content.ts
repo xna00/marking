@@ -13,7 +13,7 @@ const testPageHandlers = {
     const cardImage = document.getElementById("cardImage") as HTMLImageElement;
     return cardImage.src;
   },
-  setTotalScore: (score: number) => {},
+  setTotalScore: (score: number) => { },
 };
 
 const overlay = document.createElement("div");
@@ -211,7 +211,7 @@ const showAiResult = (result: AIResultItem[]) => {
   }
 };
 
-let markRecordId: number | null = null;
+let lastResult: { result: AIResultItem[]; markRecordId: number } | { error: string } | null = null;
 
 const startPolling = () => {
   let previousSrc = "";
@@ -229,26 +229,25 @@ const startPolling = () => {
 };
 
 const handleImageSrcChange = async (currentSrc: string) => {
-  if (markRecordId !== null) {
+  if (lastResult && "markRecordId" in lastResult) {
     sendMessage({
       action: "confirmMark",
-      data: { markRecordId: markRecordId },
+      data: { markRecordId: lastResult.markRecordId },
     });
-    markRecordId = null;
   }
   overlay.innerHTML = "";
   console.log("Image src changed:", currentSrc);
-  const res = await sendMessage({
+  lastResult = await sendMessage({
     action: "getAIResult",
     data: { url: currentSrc },
   });
-  console.log(res);
-  if ("error" in res) {
-    overlay.innerHTML = `<div style="color:red;padding:10px 20px;position:fixed;top:30vh;left:50%;transform:translateX(-50%);background:#fff;border:1px solid #ccc;border-radius:4px;z-index:10000;text-align:center">AI 评分失败：${res.error}</div>`;
-    console.error("AI result error:", res.error);
+  console.log(lastResult);
+  if ("error" in lastResult) {
+    if (lastResult.error === 'pending') return
+    overlay.innerHTML = `<div style="color:red;padding:10px 20px;position:fixed;top:30vh;left:50%;transform:translateX(-50%);background:#fff;border:1px solid #ccc;border-radius:4px;z-index:10000;text-align:center">AI 评分失败：${lastResult.error}</div>`;
+    console.error("AI result error:", lastResult.error);
   } else {
-    const result = res.result;
-    markRecordId = res.markRecordId;
+    const result = lastResult.result;
     const { [storageKeys.CRITERIA_CONFIG]: rules, [storageKeys.AI_DELAY]: delayRange = [0, 0] as const } = await chromeStorageLocalGet([storageKeys.CRITERIA_CONFIG, storageKeys.AI_DELAY]);
     scores = rules?.map(r => r.points) ?? [];
     const [min, max] = delayRange;
@@ -261,6 +260,23 @@ const handleImageSrcChange = async (currentSrc: string) => {
 
 startPolling();
 
+chrome.storage.local.onChanged.addListener((changes) => {
+  console.log(changes)
+  if (storageKeys.AUTH_TOKEN in changes) {
+    if (lastResult && "error" in lastResult) {
+      const currentSrc = getImageSrc();
+      if (currentSrc) handleImageSrcChange(currentSrc);
+    }
+  }
+});
+
+addEventListener('urlResponseUpdated', async (url) => {
+  const currentSrc = getImageSrc()
+  if (lastResult && 'error' in lastResult && url === currentSrc) {
+    handleImageSrcChange(currentSrc)
+  }
+  return undefined
+})
 addEventListener("syncCurrentImage", async () => {
   const currentSrc = getImageSrc();
   const res = await sendMessage({
