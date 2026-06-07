@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { sendEventResponseMessage, sendTextMessage } from "./send.ts";
 import { createUser, findUserByExternalUserId, findUserByUsername, insertCreditTransaction } from "../../db.ts";
 import { completeLoginSession } from "./login.ts";
@@ -33,10 +32,13 @@ async function handleEnterSession(msg: KfEventMessage) {
     do {
       username = String(Math.floor(Math.random() * 10000)).padStart(4, "0");
     } while (username.includes("4") || findUserByUsername(username));
-    const password = randomBytes(6).toString("base64url");
+    let password: string;
+    do {
+      password = String(Math.floor(Math.random() * 1000000)).padStart(6, "0");
+    } while (password.includes("4"));
     createUser(external_userid, username, password);
     insertCreditTransaction(external_userid, 0, 400, "新用户赠送");
-    reply = `已为您分配账号：${username}，${password}`;
+    reply = `已为您注册账号\n\n用户名：${username}\n密码：${password}`;
     log(`新用户注册: ${username}`);
   }
 
