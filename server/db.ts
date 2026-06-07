@@ -66,6 +66,20 @@ export function sumCredits(userId: string): number {
   return (stmt.get(userId) as { total: number }).total;
 }
 
+export function getTransactions(userId: string): { id: number; amountMoney: number; amountCredits: number; description: string | null; createdAt: string }[] {
+  const stmt = getDb().prepare(
+    "SELECT id, amountMoney, amountCredits, description, createdAt FROM creditTransaction WHERE userId = ? ORDER BY createdAt DESC LIMIT 50"
+  );
+  return stmt.all(userId) as { id: number; amountMoney: number; amountCredits: number; description: string | null; createdAt: string }[];
+}
+
+export function getUsageHistory(userId: string): { id: number; createdAt: string; confirmedAt: string }[] {
+  const stmt = getDb().prepare(
+    "SELECT id, createdAt, confirmedAt FROM markRecord WHERE userId = ? AND confirmedAt IS NOT NULL ORDER BY createdAt DESC LIMIT 50"
+  );
+  return stmt.all(userId) as { id: number; createdAt: string; confirmedAt: string }[];
+}
+
 export function confirmMarkRecord(id: number, userId: string): boolean {
   const stmt = getDb().prepare("UPDATE markRecord SET confirmedAt = ? WHERE id = ? AND userId = ?");
   const result = stmt.run(new Date().toISOString(), id, userId) as { changes: number };

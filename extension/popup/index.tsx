@@ -9,6 +9,7 @@ import { storageKeys } from "../constants.js";
 import { createRoot } from "react-dom/client";
 import { useEffect, useRef, useState } from "react";
 import { CriteriaTable } from "./CriteriaTable.js";
+import { Usage } from "./Usage.js";
 import { defaultImageUrl } from "./imageUrl.js";
 import { Banner } from "./Banner.js";
 import { specialChars } from "./specialChars.js";
@@ -170,7 +171,9 @@ const Main = () => {
           <div className="flex items-center gap-2">
             <span>当前用户：{username}</span>
             {confirmedCount !== null && remainingCredits !== null && (
-              <span className="text-gray-500 text-xs">已用 {confirmedCount} 份 / 剩余 {remainingCredits} 份</span>
+              <a href="popup.html#/usage" target="_blank" rel="noopener noreferrer" className="text-gray-500 text-xs underline">
+                已用 {confirmedCount} 份 / 剩余 {remainingCredits} 份
+              </a>
             )}
             <button
               className="text-red-500 underline text-xs"
@@ -402,6 +405,9 @@ const App = () => {
         </Route>
         <Route path="/">
           <Main />
+        </Route>
+        <Route path="/usage">
+          <Usage />
         </Route>
       </Switch>
     </Router>

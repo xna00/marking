@@ -2,7 +2,7 @@ import { jsonrepair } from "jsonrepair";
 import { DOUBAO_URL, API_KEY } from "./constants.ts";
 import { ApiError } from "./utils.ts";
 import { getCurrentUser, getUserIfLoggedIn } from "./auth.ts";
-import { insertMarkRecord, confirmMarkRecord, countConfirmedRecords, sumCredits } from "../db.ts";
+import { insertMarkRecord, confirmMarkRecord, countConfirmedRecords, sumCredits, getTransactions as getDbTransactions, getUsageHistory as getDbUsageHistory } from "../db.ts";
 
 type ConfigItem = {
   position: string;
@@ -143,6 +143,16 @@ export async function getBalance() {
   const totalCredits = sumCredits(user.externalUserId);
   const confirmedCount = countConfirmedRecords(user.externalUserId);
   return { totalCredits, confirmedCount, remainingCredits: totalCredits - confirmedCount };
+}
+
+export async function getTransactions() {
+  const user = await getCurrentUser();
+  return getDbTransactions(user.externalUserId);
+}
+
+export async function getUsageHistory() {
+  const user = await getCurrentUser();
+  return getDbUsageHistory(user.externalUserId);
 }
 
 export async function markImage(body: ChatBody): Promise<{ result: AIResultItem[]; markRecordId: number }> {
