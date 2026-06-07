@@ -43,7 +43,7 @@ table {
 }
 .small-btn {
   font-size: 12px;
-  padding: 4px;
+  padding: 4px 6px;
   display: inline-block;
 }
 th {

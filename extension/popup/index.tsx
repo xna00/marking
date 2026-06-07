@@ -164,32 +164,40 @@ const Main = () => {
 
   return (
     <>
-      <div className="flex items-center justify-between px-2.5 py-1 border-b text-sm">
+      <div className="px-3 py-2 text-sm bg-blue-50 rounded-lg">
         {username === undefined ? (
           <span className="text-gray-500">检查登录状态...</span>
         ) : username ? (
-          <div className="flex items-center gap-2">
-            <span>当前用户：{username}</span>
-            {confirmedCount !== null && remainingCredits !== null && (
-              <a href="popup.html#/usage" target="_blank" rel="noopener noreferrer" className="text-gray-500 text-xs underline">
-                已用 {confirmedCount} 份 / 剩余 {remainingCredits} 份
-              </a>
-            )}
-            <button
-              className="text-red-500 underline text-xs"
-              onClick={() => {
-                chromeStorageLocalRemove(storageKeys.AUTH_TOKEN);
-                setUsername(null);
-              }}
-            >
-              退出登录
-            </button>
-          </div>
-        ) : (
           <>
-            <span className="text-red-500">未登录</span>
-            <button className="text-blue-500 underline" onClick={() => navigate("/login")}>去登录</button>
+            <div className="flex items-center justify-between">
+              <span>当前用户：{username}</span>
+              <button
+                className="text-gray-400 hover:text-red-500 text-xs px-2 py-0.5 rounded hover:bg-gray-100"
+                onClick={() => {
+                  chromeStorageLocalRemove(storageKeys.AUTH_TOKEN);
+                  setUsername(null);
+                }}
+              >
+                退出
+              </button>
+            </div>
+            {confirmedCount !== null && remainingCredits !== null && (
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-gray-600 text-xs">
+                  已用 {confirmedCount} 份 / 剩余 {remainingCredits} 份
+                </span>
+                <div className="flex gap-3">
+                  <a href="popup.html#/usage" target="_blank" rel="noopener noreferrer" className="text-blue-500 text-xs underline">详情</a>
+                  <a href="popup.html#/recharge" target="_blank" rel="noopener noreferrer" className="text-blue-500 text-xs underline">充值(0.5元/100份)</a>
+                </div>
+              </div>
+            )}
           </>
+        ) : (
+          <div className="flex items-center justify-between">
+            <span className="text-red-500">未登录</span>
+            <button className="text-white bg-blue-500 hover:bg-blue-600 px-3 py-1 rounded text-xs" onClick={() => navigate("/login")}>去登录</button>
+          </div>
         )}
       </div>
       <Banner />
@@ -236,7 +244,15 @@ const Main = () => {
             />
           </label>
         </div>
-        <label>评分标准</label>
+        <div className="flex items-center gap-2">
+          <label className="!inline !mb-0">评分标准</label>
+          <button
+            className="small-btn"
+            onClick={() => setSettings(s => ({ ...s, [storageKeys.CRITERIA_CONFIG]: defaultSettings[storageKeys.CRITERIA_CONFIG] }))}
+          >
+            重置
+          </button>
+        </div>
         <CriteriaTable
           config={settings[storageKeys.CRITERIA_CONFIG]}
           onChange={(v) => setSettings(s => ({ ...s, [storageKeys.CRITERIA_CONFIG]: v }))}
@@ -245,7 +261,7 @@ const Main = () => {
         <div className="fixed right-0 top-2/3">
           <button
             popoverTarget="specialKeyboard"
-            className="[anchor-name:--specialKeyboard-button] p-1"
+            className="[anchor-name:--specialKeyboard-button] px-[8.6px] py-1"
           >
             特殊
             <br />
@@ -259,7 +275,7 @@ const Main = () => {
             <div
               className="grid p-2 gap-2"
               style={{
-                gridTemplateColumns: "1fr ".repeat(specialChars[0].length),
+                gridTemplateColumns: "1fr ".repeat(specialChars[0].length - 2),
               }}
             >
               {specialChars.flat().map((c) => (
@@ -295,14 +311,15 @@ const Main = () => {
             <a href="https://symboltown.com/zh/" target="_blank" className="text-blue-500 underline ml-2">更多符号</a>
           </div>
         </div>
-        <div>
-          <label />
-          <div className="inline-block">
-            答题卡图片
-            <span>
-              {imageSize ? `(${imageSize.width}x${imageSize.height})` : ""}
-            </span>
-            <div className="inline-flex gap-x-2">
+        <div className="mt-2">
+          <div className="flex items-center gap-2">
+            <label className="!inline !mb-0">
+              答题卡图片
+              <span>
+                {imageSize ? `(${imageSize.width}x${imageSize.height})` : ""}
+              </span>
+            </label>
+            <div className="inline-flex gap-x-3">
               <button
                 className="small-btn"
                 onClick={() => {
