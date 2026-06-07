@@ -159,6 +159,18 @@ export function findUserByUsername(username: string): User | undefined {
   return stmt.get(username) as User | undefined;
 }
 
+export function insertCreditTransaction(
+  userId: string,
+  amountMoney: number,
+  amountCredits: number,
+  description?: string,
+): void {
+  const stmt = getDb().prepare(
+    "INSERT INTO creditTransaction (userId, amountMoney, amountCredits, description, createdAt) VALUES (?, ?, ?, ?, ?)"
+  );
+  stmt.run(userId, amountMoney, amountCredits, description ?? null, new Date().toISOString());
+}
+
 export function updateUserToken(externalUserId: string, token: string | null): void {
   const stmt = getDb().prepare("UPDATE user SET token = ?, updatedAt = ? WHERE externalUserId = ?");
   stmt.run(token, new Date().toISOString(), externalUserId);

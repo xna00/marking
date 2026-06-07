@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { sendEventResponseMessage, sendTextMessage } from "./send.ts";
-import { createUser, findUserByExternalUserId } from "../../db.ts";
+import { createUser, findUserByExternalUserId, findUserByUsername, insertCreditTransaction } from "../../db.ts";
 import { completeLoginSession } from "./login.ts";
 import type { KfEventMessage, KfTextMessage, KfMessage } from "./sync.ts";
 
@@ -29,9 +29,13 @@ async function handleEnterSession(msg: KfEventMessage) {
     reply = `欢迎，${existing.username}`;
     log(`老用户进入会话: ${existing.username}`);
   } else {
-    const username = "u_" + external_userid.slice(-8);
+    let username: string;
+    do {
+      username = String(Math.floor(Math.random() * 10000)).padStart(4, "0");
+    } while (findUserByUsername(username));
     const password = randomBytes(6).toString("base64url");
     createUser(external_userid, username, password);
+    insertCreditTransaction(external_userid, 0, 400, "新用户赠送");
     reply = `已为您分配账号：${username}，${password}`;
     log(`新用户注册: ${username}`);
   }
