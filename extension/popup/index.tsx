@@ -1,4 +1,4 @@
-import { sendTabMessage, addEventListener } from "../message.js";
+import { sendMessage, addEventListener } from "../message.js";
 import {
   defaultModel,
 } from "../ai.js";
@@ -24,14 +24,22 @@ export type InputRef = {
 };
 const syncImageSrc = async () => {
   const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (tabs[0]) {
-    const res = await sendTabMessage(tabs[0].id!, {
-      action: "syncCurrentImage",
+  if (!tabs[0]?.id) return;
+  const [{ result }] = await chrome.scripting.executeScript({
+    target: { tabId: tabs[0].id },
+    func: () => {
+      const img = document.querySelector('.imgSection.clear>img') as HTMLImageElement;
+      return img?.src;
+    },
+    world: "ISOLATED",
+  });
+  if (result) {
+    const res = await sendMessage({
+      action: "getResponse",
+      data: { url: result },
     });
-    if (res?.dataUrl) {
-      const _dataUrl = res.dataUrl;
-      const dataUrl = await scaleImage(_dataUrl, 700);
-      return dataUrl;
+    if (res.dataUrl) {
+      return await scaleImage(res.dataUrl, 700);
     }
   }
 };

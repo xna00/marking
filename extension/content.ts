@@ -243,7 +243,6 @@ const handleImageSrcChange = async (currentSrc: string) => {
   });
   console.log(lastResult);
   if ("error" in lastResult) {
-    if (lastResult.error === 'pending') return
     overlay.innerHTML = `<div style="color:red;padding:10px 20px;position:fixed;top:30vh;left:50%;transform:translateX(-50%);background:#fff;border:1px solid #ccc;border-radius:4px;z-index:10000;text-align:center">AI 评分失败：${lastResult.error}</div>`;
     console.error("AI result error:", lastResult.error);
   } else {
@@ -272,16 +271,9 @@ chrome.storage.local.onChanged.addListener((changes) => {
 
 addEventListener('urlResponseUpdated', async (url) => {
   const currentSrc = getImageSrc()
-  if (lastResult && 'error' in lastResult && url === currentSrc) {
+  if (lastResult && 'error' in lastResult) {
     handleImageSrcChange(currentSrc)
   }
   return undefined
 })
-addEventListener("syncCurrentImage", async () => {
-  const currentSrc = getImageSrc();
-  const res = await sendMessage({
-    action: "getResponse",
-    data: { url: currentSrc },
-  });
-  return { dataUrl: res.dataUrl };
-});
+

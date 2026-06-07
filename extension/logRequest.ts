@@ -1,6 +1,7 @@
-import { addEventListener, sendMessage, sendTabMessage } from "./message.js";
+import { addEventListener, sendTabMessage } from "./message.js";
 import { aiHook } from "./aiHook.js";
 import { mergeImagesVertically } from "./merge.js";
+import { deferred, type Deferred } from "./deferred.js";
 
 type NetworkResponseReceivedParams = {
   requestId: string;
@@ -19,13 +20,10 @@ type NetworkGetResponseBodyResponse = {
   base64Encoded: boolean;
 };
 
-/**
- * pending response
- */
 const requestIdResponseMap = new Map<string, NetworkResponseReceivedParams>();
 
-let urlResponseMap = new Map<string, string>();
-let imageMap = new Map<string, string>(); // key = A图的完整URL, value = 合并后 dataUrl
+let urlResponseMap = new Map<string, Deferred<string>>();
+let imageMap = new Map<string, { deferred: Deferred<string>; lock: boolean }>();
 const attachedTabs = new Map<number, boolean>();
 
 function makeDataUrl(body: string, base64: boolean, mimeType: string): string {
@@ -55,6 +53,13 @@ async function getImageCount(tabId: number): Promise<number> {
 
 function getBasePath(url: string): string {
   return new URL(url).pathname.replace(/[A-Z]\.png$/, '');
+}
+
+export function getGroupKey(url: string): string {
+  const u = new URL(url);
+  if (/[A-Z]\.png$/.test(u.pathname))
+    return `${u.origin}${u.pathname.replace(/[A-Z]\.png$/, '')}A.png`;
+  return url;
 }
 
 const debuggerEnabledUrls = [
@@ -138,6 +143,37 @@ chrome.debugger.onEvent.addListener(async (source, method, rawParams) => {
       logUrls.some((url) => responseParams.response.url.includes(url))
     ) {
       requestIdResponseMap.set(responseParams.requestId, responseParams);
+
+      const d = deferred<string>();
+      urlResponseMap.set(responseParams.response.url, d);
+
+      const groupKey = getGroupKey(responseParams.response.url);
+      let entry = imageMap.get(groupKey);
+      if (!entry) {
+        entry = { deferred: deferred<string>(), lock: false };
+        imageMap.set(groupKey, entry);
+      }
+
+      const base = getBasePath(responseParams.response.url);
+      const count = await getImageCount(tabId);
+
+      const matched = [...urlResponseMap.entries()]
+        .filter(([k]) => new URL(k).pathname.startsWith(base))
+        .sort(([a], [b]) => new URL(a).pathname.localeCompare(new URL(b).pathname));
+
+      if (matched.length >= count && !entry.lock) {
+        entry.lock = true;
+        const dataUrls = await Promise.all(matched.map(([_, d]) => d.promise));
+        const merged = await mergeImagesVertically(dataUrls);
+        entry.deferred.resolve(merged);
+        aiHook(groupKey, entry.deferred.promise);
+        matched.forEach(([k]) => urlResponseMap.delete(k));
+        imageMap = new Map([...imageMap.entries()].slice(-20));
+        sendTabMessage(tabId, {
+          action: 'urlResponseUpdated',
+          data: groupKey,
+        });
+      }
     }
   } else if (method === "Network.loadingFinished") {
     const requestId = params.requestId;
@@ -159,38 +195,8 @@ chrome.debugger.onEvent.addListener(async (source, method, rawParams) => {
       const responseBody = response as NetworkGetResponseBodyResponse;
       const dataUrl = makeDataUrl(responseBody.body, responseBody.base64Encoded, responseParams.response.mimeType);
 
-      const base = getBasePath(responseParams.response.url);
-      const count = await getImageCount(tabId);
-      urlResponseMap.set(responseParams.response.url, dataUrl); // 必须在 await getImageCount 之后才 set，否则多个并发的 loadingFinished handler 在 yield 回来的 matched 检查中都会看到 count 张图，导致重复 merge
-      const matched = [...urlResponseMap.entries()]
-        .filter(([k]) => {
-          return new URL(k).pathname.startsWith(base)
-        })
-        .sort(([a], [b]) => new URL(a).pathname.localeCompare(new URL(b).pathname));
-      const keys = matched.map(([k]) => k);
-
-      if (matched.length >= count) {
-        const dataUrls = matched.map(([_, v]) => v);
-        const merged = await mergeImagesVertically(dataUrls);
-        imageMap.set(keys[0], merged);
-        // clear pending
-        requestIdResponseMap.delete(requestId);
-        keys.forEach(k => urlResponseMap.delete(k));
-        aiHook(keys[0], merged);
-        imageMap = new Map([...imageMap.entries()].slice(-20));
-        sendTabMessage(tabId, {
-          action: 'urlResponseUpdated',
-          data: keys[0]
-        })
-      }
-
-      console.log("Response body:", {
-        requestId: responseParams.requestId,
-        base64Encoded: responseBody.base64Encoded,
-        body: responseBody.body,
-        dataUrl,
-      });
-
+      urlResponseMap.get(responseParams.response.url)?.resolve(dataUrl);
+      requestIdResponseMap.delete(requestId);
     }
   }
 });
@@ -199,16 +205,16 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   detachDebugger(tabId);
 });
 
-export function getCachedDataUrl(url: string): string | undefined {
-  console.log(imageMap, urlResponseMap)
-  return imageMap.get(url);
-}
-
-export function isPendingUrl(url: string) {
-  return requestIdResponseMap.values().some(r => r.response.url === url)
+export function getImagePromise(groupKey: string): Promise<string> | undefined {
+  return imageMap.get(groupKey)?.deferred.promise;
 }
 
 addEventListener("getResponse", async (data) => {
-  const dataUrl = getCachedDataUrl(data.url);
-  return { dataUrl };
+  const groupKey = getGroupKey(data.url);
+  const entry = imageMap.get(groupKey);
+
+  if (entry) return { dataUrl: await entry.deferred.promise };
+  const d = urlResponseMap.get(data.url);
+  if (d) return { dataUrl: await d.promise };
+  return { dataUrl: undefined };
 });

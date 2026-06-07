@@ -2,20 +2,21 @@ import { recognizeImage, type AIResultItem } from "./ai.js";
 import { scaleImage, getImageBitmap } from "./image.js";
 import { printImageInConsole } from "./printImage.js";
 import { ApiError } from "@marking/api";
-import { getCachedDataUrl, isPendingUrl } from "./logRequest.js";
+import { getGroupKey, getImagePromise } from "./logRequest.js";
 
 let urlResultMap = new Map<string, Promise<{ result: AIResultItem[]; markRecordId: number }>>();
 
-export function aiHook(url: string, dataUrl: string) {
+export function aiHook(url: string, dataUrlPromise: Promise<string>) {
   if (urlResultMap.has(url)) {
     return;
   }
-  const promise = runAiRecognition(dataUrl);
+  const promise = runAiRecognition(dataUrlPromise);
   urlResultMap.set(url, promise);
   urlResultMap = new Map([...urlResultMap.entries()].slice(-20));
 }
 
-async function runAiRecognition(dataUrl: string) {
+async function runAiRecognition(dataUrlPromise: Promise<string>) {
+  const dataUrl = await dataUrlPromise;
   const scaledDataUrl = await scaleImage(dataUrl);
   const bitmap = await getImageBitmap(scaledDataUrl);
   console.log("AI hook for URL:", scaledDataUrl, scaledDataUrl.length, "bitmap size:", bitmap.width, bitmap.height);
@@ -55,20 +56,16 @@ export const getAIResultHandler = async (
   data: { url: string },
   sender: chrome.runtime.MessageSender
 ): Promise<{ result: AIResultItem[]; markRecordId: number } | { error: string }> => {
-  let pendingResult = urlResultMap.get(data.url);
-  console.log("getAIResult", data.url, pendingResult);
+  const groupKey = getGroupKey(data.url);
+  let pendingResult = urlResultMap.get(groupKey);
+  console.log("getAIResult", data.url, groupKey, pendingResult);
   if (!pendingResult) {
-    const dataUrl = getCachedDataUrl(data.url);
-    if (!dataUrl) {
-      if (isPendingUrl(data.url)) {
-        return { error: 'pending' }
-      }
-      return { error: "没有图片记录，请刷新页面重试" }
-    };
-    aiHook(data.url, dataUrl);
-    pendingResult = urlResultMap.get(data.url)!;
+    const promise = getImagePromise(groupKey);
+    if (!promise) return { error: "没有图片记录，请刷新页面重试" };
+    aiHook(groupKey, promise);
+    pendingResult = urlResultMap.get(groupKey)!;
   }
-  return awaitResult(data.url, pendingResult)
+  return awaitResult(groupKey, pendingResult)
 };
 
 
