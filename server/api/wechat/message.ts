@@ -37,7 +37,7 @@ async function handleEnterSession(msg: KfEventMessage) {
       password = String(Math.floor(Math.random() * 1000000)).padStart(6, "0");
     } while (password.includes("4"));
     createUser(external_userid, username, password);
-    insertCreditTransaction(external_userid, 0, 400, "新用户赠送");
+    insertCreditTransaction(external_userid, 0, 300, "新用户赠送");
     reply = `已为您注册账号\n\n用户名：${username}\n密码：${password}`;
     log(`新用户注册: ${username}`);
   }
