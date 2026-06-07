@@ -10,8 +10,8 @@ const testPageHandlers = {
     document.dispatchEvent(new CustomEvent("customSubmit"));
   },
   getImageSrc: () => {
-    const cardImage = document.getElementById("cardImage") as HTMLImageElement;
-    return cardImage.src;
+    const img = document.querySelector(".imgSection.clear>img") as HTMLImageElement;
+    return img?.src;
   },
   setTotalScore: (score: number) => { },
 };

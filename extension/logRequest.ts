@@ -64,7 +64,7 @@ const debuggerEnabledUrls = [
   "https://wylkyj.com/",
 ];
 const logUrls = [
-  "http://127.0.0.1:8080/dist/doc/test/images/",
+  "http://127.0.0.1:8080/dist/doc/",
   "https://marking.xna00.top/image",
   "https://data.wylkyj.com/PaperScan/",
   "https://data.wylkyj.com/AnswerSheet/",

@@ -84,6 +84,11 @@ await build({
       input: {
         doc: "index.html",
         test: "test/index.html",
+        multi: "test/multi.html",
+      },
+      output: {
+        assetFileNames: "[name][extname]",
+        entryFileNames: "[name].js",
       },
     },
   },
