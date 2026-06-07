@@ -3,6 +3,7 @@ import { generate } from "lean-qr";
 import { BACKEND_URL } from "../constants";
 import { api } from "../api";
 import { callWithFetchOption } from "@marking/api";
+import { navigate } from "wouter/use-hash-location";
 
 type Props = {
   onLogin: (token: string) => void;
@@ -50,6 +51,12 @@ export function Login({ onLogin }: Props) {
 
   return (
     <div className="flex flex-col items-center gap-4 p-5">
+      <button
+        className="text-blue-500 text-sm px-3 py-1 -ml-1 self-start"
+        onClick={() => navigate("/")}
+      >
+        ← 返回
+      </button>
       <h2 className="text-lg font-bold">扫码登录</h2>
       {error ? (
         <p className="text-red-500">{error}</p>

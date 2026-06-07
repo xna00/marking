@@ -10,6 +10,7 @@ import { createRoot } from "react-dom/client";
 import { useEffect, useRef, useState } from "react";
 import { CriteriaTable } from "./CriteriaTable.js";
 import { Usage } from "./Usage.js";
+import { Recharge } from "./Recharge.js";
 import { defaultImageUrl } from "./imageUrl.js";
 import { Banner } from "./Banner.js";
 import { specialChars } from "./specialChars.js";
@@ -425,6 +426,9 @@ const App = () => {
         </Route>
         <Route path="/usage">
           <Usage />
+        </Route>
+        <Route path="/recharge">
+          <Recharge />
         </Route>
       </Switch>
     </Router>
