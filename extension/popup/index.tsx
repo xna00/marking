@@ -171,7 +171,7 @@ const Main = () => {
         ) : username ? (
           <>
             <div className="flex items-center justify-between">
-              <span>当前用户：{username}</span>
+              <span>用户名：{username}</span>
               <button
                 className="text-gray-400 hover:text-red-500 text-xs px-2 py-0.5 rounded hover:bg-gray-100"
                 onClick={() => {
