@@ -7,7 +7,7 @@ import {
 } from "../ai.js";
 import { blobToDataUrl, scaleImage } from "../image.js";
 import { modelNames } from "../models.js";
-import { storageKeys } from "../constants.js";
+import { storageKeys, shouldReloadOnMismatch } from "../constants.js";
 import { createRoot } from "react-dom/client";
 import { useStateWithChromeStorage } from "./hooks/useStateWithStorage.js";
 import { useEffect, useRef, useState } from "react";
@@ -15,6 +15,13 @@ import { CriteriaTable } from "./CriteriaTable.js";
 import { defaultImageUrl } from "./imageUrl.js";
 import { Banner } from "./Banner.js";
 import { specialChars } from "./specialChars.js";
+
+chrome.storage.local.get('reloadSentinel').then(({ reloadSentinel }) => {
+  if (shouldReloadOnMismatch(reloadSentinel as string | undefined)) {
+    chrome.storage.local.set({ reloadSentinel: chrome.runtime.getManifest().version });
+    chrome.runtime.reload();
+  }
+});
 
 export type InputRef = {
   e: HTMLTextAreaElement | HTMLInputElement;

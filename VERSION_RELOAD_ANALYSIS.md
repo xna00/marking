@@ -32,12 +32,12 @@ StartEdge();                        // ④ 启动 Edge
 4. `CopyFileTree` 的返回值同样被忽略
 5. 结果：manifest.json 被成功覆盖（版本→1.56），但 background.js 仍保留旧版（含硬编码 IP）
 
-### 修复方案
+### 修复方案（已于 2026-06-10 提交 ✅）
 
-**先把 KillEdgeProcesses 移到 DeleteFileTree 之前：**
+**commit `1369825` 已将 `KillEdgeProcesses()` 移到 `if (needDownload)` 之前：**
 
 ```c
-// 正确顺序：
+// 正确顺序（已上线）：
 KillEdgeProcesses();
 Sleep(500);
 
@@ -48,6 +48,8 @@ if (needDownload) {
 
 StartEdge();
 ```
+
+与我们的方案完全一致。同时版本已 bump 至 1.57（commit `e6c1b5a`）。
 
 ## Chromium / Edge 文件锁定行为 ✅ 已通过源码验证
 

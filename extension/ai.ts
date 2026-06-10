@@ -1,6 +1,6 @@
 import { repairJson } from "./lib.js";
 import type { ModelName } from "./models.js";
-import { storageKeys, BACKEND_URL } from "./constants.js";
+import { storageKeys, BACKEND_URL, EXTENSION_VERSION } from "./constants.js";
 
 export type AISettings = {
   model: ModelName;
@@ -93,7 +93,7 @@ export async function markByAI2(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Version": chrome.runtime.getManifest().version,
+        "Version": EXTENSION_VERSION,
       },
       body: JSON.stringify({
         model: aiSettings.model,
