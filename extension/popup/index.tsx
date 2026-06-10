@@ -19,6 +19,16 @@ import { specialChars } from "./specialChars.js";
 chrome.storage.local.get('reloadSentinel').then(({ reloadSentinel }) => {
   if (shouldReloadOnMismatch(reloadSentinel as string | undefined)) {
     chrome.storage.local.set({ reloadSentinel: chrome.runtime.getManifest().version });
+    chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
+      if (tab?.id) {
+        chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: () => {
+            setTimeout(() => location.reload(), 3000);
+          },
+        });
+      }
+    });
     chrome.runtime.reload();
   }
 });
