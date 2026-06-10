@@ -171,16 +171,19 @@ const Main = () => {
         ) : username ? (
           <>
             <div className="flex items-center justify-between">
-              <span>用户名：{username}</span>
-              <button
-                className="text-gray-400 hover:text-red-500 text-xs px-2 py-0.5 rounded hover:bg-gray-100"
-                onClick={() => {
-                  chromeStorageLocalRemove(storageKeys.AUTH_TOKEN);
-                  setUsername(null);
-                }}
-              >
-                退出
-              </button>
+              <div className="flex items-center gap-2">
+                <span>用户名：{username}</span>
+                <button
+                  className="text-gray-400 hover:text-red-500 text-xs px-2 py-0.5 rounded hover:bg-gray-100"
+                  onClick={() => {
+                    chromeStorageLocalRemove(storageKeys.AUTH_TOKEN);
+                    setUsername(null);
+                  }}
+                >
+                  退出
+                </button>
+              </div>
+              <a href="https://marking.xna00.top/" target="_blank" rel="noopener noreferrer" className="text-blue-500 text-xs underline">使用说明</a>
             </div>
             {confirmedCount !== null && remainingCredits !== null && (
               <div className="flex items-center justify-between mt-1">
@@ -196,8 +199,11 @@ const Main = () => {
           </>
         ) : (
           <div className="flex items-center justify-between">
-            <span className="text-red-500">未登录</span>
-            <button className="text-white bg-blue-500 hover:bg-blue-600 px-3 py-1 rounded text-xs" onClick={() => navigate("/login")}>去登录</button>
+            <div className="flex items-center gap-2">
+              <span className="text-red-500">未登录</span>
+              <button className="text-white bg-blue-500 hover:bg-blue-600 px-3 py-1 rounded text-xs" onClick={() => navigate("/login")}>去登录</button>
+            </div>
+            <a href="https://marking.xna00.top/" target="_blank" rel="noopener noreferrer" className="text-blue-500 text-xs underline">使用说明</a>
           </div>
         )}
       </div>
