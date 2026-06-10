@@ -22,6 +22,15 @@ import { navigate, useHashLocation } from "wouter/use-hash-location";
 
 chrome.storage.local.get('reloadSentinel').then(async ({ reloadSentinel }) => {
   if (shouldReloadOnMismatch(reloadSentinel as string | undefined)) {
+    try {
+      const bgVersion = await sendMessage({ action: "getBackgroundVersion" });
+      if (bgVersion === chrome.runtime.getManifest().version) {
+        chrome.storage.local.set({ reloadSentinel: chrome.runtime.getManifest().version });
+        return;
+      }
+    } catch {
+      // background not responding, treat as stale → reload
+    }
     chrome.storage.local.set({ reloadSentinel: chrome.runtime.getManifest().version });
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (tab?.id) {

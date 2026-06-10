@@ -5,6 +5,7 @@ type MessageActionDataRet = {
     confirmMark: [{ markRecordId: number }, { success: true, usage: { confirmedCount: number, totalCredits: number, remainingCredits: number } } | { error: string }],
     hello: [undefined, string],
     usageUpdated: [{ usage: { confirmedCount: number, totalCredits: number, remainingCredits: number } }, undefined],
+    getBackgroundVersion: [undefined, string],
     getResponse: [{ url: string }, { dataUrl: string | undefined }],
     urlResponseUpdated: [string, undefined]
 }

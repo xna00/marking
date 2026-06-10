@@ -1,6 +1,7 @@
 import { addEventListener, sendMessage } from "./message.js";
 import { getAIResultHandler } from "./aiHook.js";
 import { api } from "./api.js";
+import { EXTENSION_VERSION } from "./constants.js";
 import "./logRequest.js";
 
 addEventListener("getAIResult", getAIResultHandler);
@@ -13,6 +14,10 @@ addEventListener("confirmMark", async (data) => {
   } catch (e) {
     return { error: String(e) };
   }
+});
+
+addEventListener("getBackgroundVersion", async () => {
+  return EXTENSION_VERSION;
 });
 
 addEventListener("hello", async (_data, sender) => {
