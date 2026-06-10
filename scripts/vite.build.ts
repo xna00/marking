@@ -13,6 +13,9 @@ const minify = false;
 process.chdir("extension");
 
 await build({
+  define: {
+    'import.meta.env.VITE_EXTENSION_VERSION': JSON.stringify(manifest.version),
+  },
   plugins: [tailwindcss({}), 
   //   react(
   //   {
@@ -46,6 +49,9 @@ await build({
 });
 
 await build({
+  define: {
+    'import.meta.env.VITE_EXTENSION_VERSION': JSON.stringify(manifest.version),
+  },
   build: {
     outDir: "../dist/extension",
     emptyOutDir: false,

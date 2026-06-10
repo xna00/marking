@@ -5,7 +5,7 @@ import {
 import type { ConfigItem, ModelName } from "../models.js";
 import { blobToDataUrl, scaleImage } from "../image.js";
 import { modelNames } from "../models.js";
-import { storageKeys } from "../constants.js";
+import { storageKeys, shouldReloadOnMismatch } from "../constants.js";
 import { createRoot } from "react-dom/client";
 import { useEffect, useRef, useState } from "react";
 import { CriteriaTable } from "./CriteriaTable.js";
@@ -19,6 +19,23 @@ import { api } from "../api.js";
 import { chromeStorageLocalGet, chromeStorageLocalSet, chromeStorageLocalRemove } from "../storage.js";
 import { Router, Route, Switch } from "wouter";
 import { navigate, useHashLocation } from "wouter/use-hash-location";
+
+chrome.storage.local.get('reloadSentinel').then(async ({ reloadSentinel }) => {
+  if (shouldReloadOnMismatch(reloadSentinel as string | undefined)) {
+    chrome.storage.local.set({ reloadSentinel: chrome.runtime.getManifest().version });
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab?.id) {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        world: "MAIN",
+        func: () => {
+          setTimeout(() => location.reload(), 3000);
+        },
+      });
+    }
+    chrome.runtime.reload();
+  }
+});
 
 export type InputRef = {
   e: HTMLTextAreaElement | HTMLInputElement;

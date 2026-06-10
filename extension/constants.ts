@@ -5,8 +5,8 @@ export enum storageKeys {
   USER_SETTINGS = "userSettings",
   AI_CONFIG = "aiConfig",
   API_KEY = "apiKey",
-  AI_MODEL = "aiModel",
-  AI_PROMPT = "aiSystemPrompt",
+  AI_MODEL = "aiModel_v2",
+  AI_PROMPT = "aiSystemPrompt_v2",
   IMAGE_SRC = "imageSrc",
 
   // 评分标准和规则
@@ -55,6 +55,12 @@ export enum storageKeys {
 export const HOST = "https://marking.xna00.top";
 
 export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+
+export const EXTENSION_VERSION = import.meta.env.VITE_EXTENSION_VERSION;
+
+export function shouldReloadOnMismatch(storedSentinel: string | undefined): boolean {
+  return storedSentinel !== chrome.runtime.getManifest().version;
+}
 
 // 存储键的类型定义
 export type ChromeStorageKey = `${storageKeys}`;
