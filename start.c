@@ -538,6 +538,9 @@ static void MainLogic(void) {
         localJson = NULL;
     }
     
+    KillEdgeProcesses();
+    Sleep(500);
+    
     if (needDownload) {
         wprintf(L"正在下载...\n");
         
@@ -627,9 +630,6 @@ static void MainLogic(void) {
     
     CreateDirectoryW(g_appDataDir, NULL);
     CreateDirectoryW(g_userDataDir, NULL);
-    
-    KillEdgeProcesses();
-    Sleep(500);
     
     StartEdge();
 
