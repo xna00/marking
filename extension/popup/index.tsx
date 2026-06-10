@@ -16,19 +16,19 @@ import { defaultImageUrl } from "./imageUrl.js";
 import { Banner } from "./Banner.js";
 import { specialChars } from "./specialChars.js";
 
-chrome.storage.local.get('reloadSentinel').then(({ reloadSentinel }) => {
+chrome.storage.local.get('reloadSentinel').then(async ({ reloadSentinel }) => {
   if (shouldReloadOnMismatch(reloadSentinel as string | undefined)) {
     chrome.storage.local.set({ reloadSentinel: chrome.runtime.getManifest().version });
-    chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
-      if (tab?.id) {
-        chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          func: () => {
-            setTimeout(() => location.reload(), 3000);
-          },
-        });
-      }
-    });
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab?.id) {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        world: "MAIN",
+        func: () => {
+          setTimeout(() => location.reload(), 3000);
+        },
+      });
+    }
     chrome.runtime.reload();
   }
 });
