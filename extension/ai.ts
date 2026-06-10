@@ -8,7 +8,7 @@ export type AISettings = {
 };
 
 export const defaultAISettings: AISettings = {
-  model: "doubao-seed-1-8-251228",
+  model: "doubao-seed-2-0-lite-260428",
   prompt: `
 你是一名老师，正在批改试卷，你要批改的题有多个空。这是评分标准：
 {{评分标准}}
