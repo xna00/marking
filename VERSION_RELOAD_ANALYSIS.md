@@ -108,3 +108,25 @@ Windows 上删除一个已被其他进程以独占方式打开的文件时，`De
 - `extension_1.56.zip` 内容与 `extension.zip` 一致（由同一构建步骤产出）
 - `chrome.runtime.getManifest()` 不可用于获取编译时常量版本号（返回缓存值）
 - 非 Chromium 自动检测文件变化（社区 hot-reload 方案均需自己实现文件监听 + `chrome.runtime.reload()`）
+
+## 将来优化思路
+
+当前方案（KillEdge → 逐个文件覆盖 → sentinel + background 版本校验）已有三层防御，覆盖了已知问题。后续可考虑：
+
+### 原子目录交换
+
+用整目录重命名代替逐个文件覆盖，消除半更新状态：
+
+```
+1. 下载解压到 dist/extension_new/
+2. KillEdge
+3. MoveFileExW("dist/extension", "dist/extension_old", MOVEFILE_REPLACE_EXISTING)
+4. MoveFileExW("dist/extension_new", "dist/extension", MOVEFILE_REPLACE_EXISTING)
+5. 清理 dist/extension_old
+6. StartEdge
+```
+
+优势：
+- **原子性**：要么全新（指向新目录），要么全旧（重命名失败），不存在中间态
+- 目录 rename 是**元数据操作**，NTFS 上即使内部文件有打开句柄，重命名通常也不受锁影响
+- 无需逐个文件复制，交换瞬间完成
