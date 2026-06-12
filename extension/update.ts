@@ -19,7 +19,7 @@ export const checkUpdate = async (): Promise<UpdateInfo | undefined> => {
     })
   ).json();
   console.log(manifest);
-  if (manifest.version !== chrome.runtime.getVersion()) {
+  if (manifest.version !== chrome.runtime.getManifest().version) {
     updateCache = { version: manifest.version };
     return updateCache;
   }
