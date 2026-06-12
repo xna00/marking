@@ -28,6 +28,12 @@ jobs:
       - name: Build project
         run: npm run build
 
+      - name: Gen server types
+        run: cd server && npm run gen-types
+
+      - name: Type check
+        run: npx tsc --noEmit
+
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4.2.2
         with:
