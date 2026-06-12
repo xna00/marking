@@ -40,6 +40,7 @@ const awaitResult = async (url: string, pendingResult: Promise<{
     if (error instanceof ApiError) {
       const code = error.body?.errorCode;
       if (code === "API_UNAUTHORIZED") {
+        urlResultMap.clear();
         chrome.action.setBadgeText({ text: "登录" });
         chrome.action.setBadgeTextColor({ color: "#C00" });
         chrome.action.setBadgeBackgroundColor({ color: "#FFF" });

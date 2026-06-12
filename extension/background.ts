@@ -1,8 +1,14 @@
 import { addEventListener, sendMessage } from "./message.js";
 import { getAIResultHandler } from "./aiHook.js";
 import { api } from "./api.js";
-import { EXTENSION_VERSION } from "./constants.js";
+import { EXTENSION_VERSION, storageKeys } from "./constants.js";
 import "./logRequest.js";
+
+chrome.storage.local.onChanged.addListener((changes) => {
+  if (storageKeys.AUTH_TOKEN in changes && changes[storageKeys.AUTH_TOKEN].newValue) {
+    chrome.action.setBadgeText({ text: "" });
+  }
+});
 
 addEventListener("getAIResult", getAIResultHandler);
 
