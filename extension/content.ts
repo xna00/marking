@@ -260,12 +260,8 @@ const handleImageSrcChange = async (currentSrc: string) => {
 startPolling();
 
 chrome.storage.local.onChanged.addListener((changes) => {
-  console.log(changes)
-  if (storageKeys.AUTH_TOKEN in changes) {
-    if (lastResult && "error" in lastResult) {
-      const currentSrc = getImageSrc();
-      if (currentSrc) handleImageSrcChange(currentSrc);
-    }
+  if (storageKeys.AUTH_TOKEN in changes && changes[storageKeys.AUTH_TOKEN].newValue) {
+    location.reload();
   }
 });
 
