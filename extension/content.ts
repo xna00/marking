@@ -243,7 +243,7 @@ const handleImageSrcChange = async (currentSrc: string) => {
   });
   console.log(lastResult);
   if ("error" in lastResult) {
-    overlay.innerHTML = `<div style="color:red;padding:10px 20px;position:fixed;top:30vh;left:50%;transform:translateX(-50%);background:#fff;border:1px solid #ccc;border-radius:4px;z-index:10000;text-align:center">AI 评分失败：${lastResult.error}</div>`;
+    overlay.innerHTML = `<div style="color:red;font-size:16px;padding:10px 20px;position:fixed;top:30vh;left:50%;transform:translateX(-50%);background:#fff;border:1px solid #ccc;border-radius:4px;z-index:10000;text-align:center">AI 评分失败：${lastResult.error}</div>`;
     console.error("AI result error:", lastResult.error);
   } else {
     const result = lastResult.result;
