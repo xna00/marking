@@ -106,6 +106,7 @@ async function doChat(body: ChatBody): Promise<AIResultItem[]> {
       lastContent = content;
 
       log(`[${id}] body: ${content}`);
+      if (data.usage) log(`[${id}] tokens: 输入${data.usage.prompt_tokens} 输出${data.usage.completion_tokens} 总计${data.usage.total_tokens}`);
 
       if (!content) {
         throw new Error(`Unexpected AI response: ${JSON.stringify(data)}`);
