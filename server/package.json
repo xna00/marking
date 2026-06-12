@@ -7,7 +7,7 @@
     "dev": "node --env-file=.env --watch main.ts",
     "start": "node --env-file=.env main.ts",
     "typecheck": "tsc --noEmit",
-    "gen-types": "tsc && node scripts/strip-types.js"
+    "gen-types": "tsc && node --experimental-strip-types scripts/strip-types.ts"
   },
   "dependencies": {
     "@wecom/crypto": "^1.0.1",
