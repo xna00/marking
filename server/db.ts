@@ -34,6 +34,7 @@ export function initDb(): void {
   d.exec(`CREATE TABLE IF NOT EXISTS markRecord (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     userId          TEXT NOT NULL REFERENCES user(externalUserId),
+    costCredits     REAL NOT NULL DEFAULT 1.0,
     createdAt       TEXT NOT NULL,
     confirmedAt     TEXT
   )`);
@@ -47,15 +48,22 @@ export function initDb(): void {
   )`);
 }
 
-export function insertMarkRecord(userId: string): number {
-  const stmt = getDb().prepare("INSERT INTO markRecord (userId, createdAt) VALUES (?, ?)");
-  const result = stmt.run(userId, new Date().toISOString()) as { lastInsertRowid: number };
+export function insertMarkRecord(userId: string, costCredits: number): number {
+  const stmt = getDb().prepare("INSERT INTO markRecord (userId, createdAt, costCredits) VALUES (?, ?, ?)");
+  const result = stmt.run(userId, new Date().toISOString(), costCredits) as { lastInsertRowid: number };
   return Number(result.lastInsertRowid);
 }
 
 export function countConfirmedRecords(userId: string): number {
   const stmt = getDb().prepare("SELECT COUNT(*) as count FROM markRecord WHERE userId = ? AND confirmedAt IS NOT NULL");
   return (stmt.get(userId) as { count: number }).count;
+}
+
+export function sumConsumedCredits(userId: string): number {
+  const stmt = getDb().prepare(
+    "SELECT COALESCE(SUM(costCredits), 0) as total FROM markRecord WHERE userId = ? AND confirmedAt IS NOT NULL"
+  );
+  return (stmt.get(userId) as { total: number }).total;
 }
 
 export function sumCredits(userId: string): number {
@@ -72,11 +80,11 @@ export function getTransactions(userId: string): { id: number; amountMoney: numb
   return stmt.all(userId) as { id: number; amountMoney: number; amountCredits: number; description: string | null; createdAt: string }[];
 }
 
-export function getUsageHistory(userId: string): { id: number; createdAt: string; confirmedAt: string }[] {
+export function getUsageHistory(userId: string): { id: number; createdAt: string; confirmedAt: string; costCredits: number }[] {
   const stmt = getDb().prepare(
-    "SELECT id, createdAt, confirmedAt FROM markRecord WHERE userId = ? AND confirmedAt IS NOT NULL ORDER BY createdAt DESC LIMIT 50"
+    "SELECT id, createdAt, confirmedAt, costCredits FROM markRecord WHERE userId = ? AND confirmedAt IS NOT NULL ORDER BY createdAt DESC LIMIT 50"
   );
-  return stmt.all(userId) as { id: number; createdAt: string; confirmedAt: string }[];
+  return stmt.all(userId) as { id: number; createdAt: string; confirmedAt: string; costCredits: number }[];
 }
 
 export function confirmMarkRecord(id: number, userId: string): boolean {

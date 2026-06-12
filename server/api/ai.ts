@@ -2,7 +2,7 @@ import { jsonrepair } from "jsonrepair";
 import { DOUBAO_URL, API_KEY } from "./constants.ts";
 import { ApiError } from "./utils.ts";
 import { getCurrentUser, getUserIfLoggedIn } from "./auth.ts";
-import { insertMarkRecord, confirmMarkRecord, countConfirmedRecords, sumCredits, getTransactions as getDbTransactions, getUsageHistory as getDbUsageHistory } from "../db.ts";
+import { insertMarkRecord, confirmMarkRecord, countConfirmedRecords, sumCredits, sumConsumedCredits, getTransactions as getDbTransactions, getUsageHistory as getDbUsageHistory } from "../db.ts";
 
 type ConfigItem = {
   position: string;
@@ -142,7 +142,8 @@ export async function getBalance() {
   const user = await getCurrentUser();
   const totalCredits = sumCredits(user.externalUserId);
   const confirmedCount = countConfirmedRecords(user.externalUserId);
-  return { totalCredits, confirmedCount, remainingCredits: totalCredits - confirmedCount };
+  const consumedCredits = sumConsumedCredits(user.externalUserId);
+  return { totalCredits, confirmedCount, consumedCredits, remainingCredits: totalCredits - consumedCredits };
 }
 
 export async function getTransactions() {
@@ -157,7 +158,7 @@ export async function getUsageHistory() {
 
 export async function markImage(body: ChatBody): Promise<{ result: AIResultItem[]; markRecordId: number }> {
   const user = await getCurrentUser();
-  const markRecordId = insertMarkRecord(user.externalUserId);
+  const markRecordId = insertMarkRecord(user.externalUserId, 0.5);
   const result = await doChat(body);
   return { result, markRecordId };
 }
@@ -167,8 +168,9 @@ export async function confirmMark(body: { markRecordId: number }) {
   const ok = confirmMarkRecord(body.markRecordId, user.externalUserId);
   if (!ok) throw new ApiError(403, "Forbidden", {}, "API_FORBIDDEN", {});
   const confirmedCount = countConfirmedRecords(user.externalUserId);
+  const consumedCredits = sumConsumedCredits(user.externalUserId);
   const totalCredits = sumCredits(user.externalUserId);
-  return { success: true, usage: { confirmedCount, totalCredits, remainingCredits: totalCredits - confirmedCount } };
+  return { success: true, usage: { confirmedCount, consumedCredits, totalCredits, remainingCredits: totalCredits - consumedCredits } };
 }
 
 export async function testMarkImage(body: ChatBody): Promise<AIResultItem[]> {

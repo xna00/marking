@@ -135,7 +135,7 @@ const Main = () => {
   });
   const [grading, setGrading] = useState(false);
   const [username, setUsername] = useState<string | null | undefined>(undefined);
-  const [confirmedCount, setConfirmedCount] = useState<number | null>(null);
+  const [consumedCredits, setConsumedCredits] = useState<number | null>(null);
   const [remainingCredits, setRemainingCredits] = useState<number | null>(null);
 
   useEffect(() => {
@@ -144,7 +144,7 @@ const Main = () => {
         setUsername(user.username);
         api.ai.getBalance().then(
           (b) => {
-            setConfirmedCount(b.confirmedCount);
+            setConsumedCredits(b.consumedCredits);
             setRemainingCredits(b.remainingCredits);
           },
           () => {}
@@ -159,7 +159,7 @@ const Main = () => {
 
   useEffect(() => {
     return addEventListener("usageUpdated", async (data) => {
-      setConfirmedCount(data.usage.confirmedCount);
+      setConsumedCredits(data.usage.consumedCredits);
       setRemainingCredits(data.usage.remainingCredits);
       return undefined;
     });
@@ -211,10 +211,10 @@ const Main = () => {
               </div>
               <a href="https://marking.xna00.top/" target="_blank" rel="noopener noreferrer" className="text-blue-500 text-xs underline">使用说明</a>
             </div>
-            {confirmedCount !== null && remainingCredits !== null && (
+            {consumedCredits !== null && remainingCredits !== null && (
               <div className="flex items-center justify-between mt-1">
                 <span className="text-gray-600 text-xs">
-                  已用 {confirmedCount} 份 / 剩余 {remainingCredits} 份
+                  已用 {consumedCredits} 份 / 剩余 {remainingCredits} 份
                 </span>
                 <div className="flex gap-3">
                   <a href="popup.html#/usage" target="_blank" rel="noopener noreferrer" className="text-blue-500 text-xs underline">详情</a>
