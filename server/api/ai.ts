@@ -158,8 +158,8 @@ export async function getUsageHistory() {
 
 export async function markImage(body: ChatBody): Promise<{ result: AIResultItem[]; markRecordId: number }> {
   const user = await getCurrentUser();
-  const markRecordId = insertMarkRecord(user.externalUserId, 1);
   const result = await doChat(body);
+  const markRecordId = insertMarkRecord(user.externalUserId, 1);
   return { result, markRecordId };
 }
 
