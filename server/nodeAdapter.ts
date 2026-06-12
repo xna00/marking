@@ -1,13 +1,19 @@
 import assert from "node:assert";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { createServer } from "node:http";
+import { createServer as createHttpServer } from "node:http";
+import { createServer as createHttpsServer } from "node:https";
+import { readFileSync, existsSync } from "node:fs";
 import { Readable } from "node:stream";
 import { createGunzip, createInflate, createBrotliDecompress } from "node:zlib";
 import { apiHandler } from "./api/handler.ts";
 import { logger } from "./logger.ts";
 
 const port = Number(process.env.PORT) || 3000;
-const base = `http://localhost:${port}`;
+const sslCertPath = process.env.SSL_CERT;
+const sslKeyPath = process.env.SSL_KEY;
+const hasSsl = sslCertPath && sslKeyPath && existsSync(sslCertPath) && existsSync(sslKeyPath);
+const scheme = hasSsl ? "https" : "http";
+const base = `${scheme}://localhost:${port}`;
 
 export const makeRequest = (req: IncomingMessage): Request => {
   assert(req.url);
@@ -50,7 +56,7 @@ export const respond = (
   }
 };
 
-const server = createServer({}, (req, res) => {
+const handler = (req: IncomingMessage, res: ServerResponse<IncomingMessage> & { req: IncomingMessage }) => {
   logger.log(req.method, req.url);
   assert(req.url);
   if (req.url.startsWith("/api/")) {
@@ -59,7 +65,11 @@ const server = createServer({}, (req, res) => {
     res.writeHead(404);
     res.end();
   }
-});
+};
+
+const server = hasSsl
+  ? createHttpsServer({ cert: readFileSync(sslCertPath!), key: readFileSync(sslKeyPath!) }, handler)
+  : createHttpServer({}, handler);
 
 server.listen(port, "::");
 logger.log(base);
