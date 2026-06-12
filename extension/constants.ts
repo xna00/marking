@@ -5,7 +5,7 @@ export enum storageKeys {
   USER_SETTINGS = "userSettings",
   AI_CONFIG = "aiConfig",
   API_KEY = "apiKey",
-  AI_MODEL = "aiModel_v2",
+  AI_MODEL = "aiModel_v3",
   AI_PROMPT = "aiSystemPrompt_v2",
   IMAGE_SRC = "imageSrc",
 
