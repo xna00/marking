@@ -55,9 +55,9 @@ function getBasePath(url: string): string {
   return new URL(url).pathname.replace(/[A-Z]\.png$/, '');
 }
 
-export function getGroupKey(url: string): string {
+export function getGroupKey(url: string, count: number): string {
   const u = new URL(url);
-  if (/[A-Z]\.png$/.test(u.pathname))
+  if (count > 1 && /[A-Z]\.png$/.test(u.pathname))
     return `${u.origin}${u.pathname.replace(/[A-Z]\.png$/, '')}A.png`;
   return url;
 }
@@ -102,6 +102,8 @@ const detachDebugger = async (tabId: number) => {
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   tabImageCount.delete(tabId);
+  urlResponseMap.clear();
+  imageMap.clear();
   if (
     changeInfo.status === "complete" &&
     tab.url &&
@@ -147,7 +149,9 @@ chrome.debugger.onEvent.addListener(async (source, method, rawParams) => {
       const d = deferred<string>();
       urlResponseMap.set(responseParams.response.url, d);
 
-      const groupKey = getGroupKey(responseParams.response.url);
+      const count = await getImageCount(tabId);
+
+      const groupKey = getGroupKey(responseParams.response.url, count);
       let entry = imageMap.get(groupKey);
       if (!entry) {
         entry = { deferred: deferred<string>(), lock: false };
@@ -155,7 +159,6 @@ chrome.debugger.onEvent.addListener(async (source, method, rawParams) => {
       }
 
       const base = getBasePath(responseParams.response.url);
-      const count = await getImageCount(tabId);
 
       const matched = [...urlResponseMap.entries()]
         .filter(([k]) => new URL(k).pathname.startsWith(base))
@@ -210,7 +213,12 @@ export function getImagePromise(groupKey: string): Promise<string> | undefined {
 }
 
 addEventListener("getResponse", async (data) => {
-  const groupKey = getGroupKey(data.url);
+  const tab = await chrome.tabs.query({ active: true, currentWindow: true })
+  let count = 1
+  if (typeof tab[0]?.id === 'number') {
+    count = await tabImageCount.get(tab[0].id) ?? 1
+  }
+  const groupKey = getGroupKey(data.url, count);
   const entry = imageMap.get(groupKey);
 
   if (entry) return { dataUrl: await entry.deferred.promise };

@@ -13,6 +13,7 @@ const testPageHandlers = {
     const img = document.querySelector(".imgSection.clear>img") as HTMLImageElement;
     return img?.src;
   },
+  getImageCount: () => 1,
   setTotalScore: (score: number) => { },
 };
 
@@ -32,6 +33,9 @@ const wyPageHandlers = {
     ) as HTMLImageElement;
     return targetElement?.src;
   },
+  getImageCount: () => document.querySelectorAll(
+    ".outBox:not(.hideBox) .imgSection>img"
+  ).length,
   setTotalScore: (score: number) => {
     const inputOne = document.getElementById("inputOne") as HTMLInputElement;
     if (inputOne) {
@@ -41,7 +45,7 @@ const wyPageHandlers = {
   },
 };
 
-const { submit, getImageSrc, setTotalScore } = location.host.includes("wylkyj.com")
+const { submit, getImageSrc, setTotalScore, getImageCount } = location.host.includes("wylkyj.com")
   ? wyPageHandlers
   : testPageHandlers;
 
@@ -239,7 +243,7 @@ const handleImageSrcChange = async (currentSrc: string) => {
   console.log("Image src changed:", currentSrc);
   lastResult = await sendMessage({
     action: "getAIResult",
-    data: { url: currentSrc },
+    data: { url: currentSrc, count: getImageCount() },
   });
   console.log(lastResult);
   if ("error" in lastResult) {

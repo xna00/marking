@@ -54,10 +54,10 @@ const awaitResult = async (url: string, pendingResult: Promise<{
   }
 }
 export const getAIResultHandler = async (
-  data: { url: string },
+  data: { url: string, count: number },
   sender: chrome.runtime.MessageSender
 ): Promise<{ result: AIResultItem[]; markRecordId: number } | { error: string }> => {
-  const groupKey = getGroupKey(data.url);
+  const groupKey = getGroupKey(data.url, data.count);
   let pendingResult = urlResultMap.get(groupKey);
   console.log("getAIResult", data.url, groupKey, pendingResult);
   if (!pendingResult) {
