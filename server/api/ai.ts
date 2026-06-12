@@ -82,7 +82,7 @@ async function doChat(body: ChatBody): Promise<AIResultItem[]> {
     const id = Math.random().toString(36).slice(2, 8);
     try {
       log(`[${id}] => model=${resolvedModel}, image=${body.imageUrl.slice(0, 60)}...${body.imageUrl.length}chars`);
-      console.table(body.config);
+      for (const cfg of body.config) log(`[${id}]   ${cfg.position} ${cfg.points}分 ${cfg.markingCriteria}`);
       const start = Date.now();
       const res = await fetch(DOUBAO_URL, {
         method: "POST",
