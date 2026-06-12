@@ -8,7 +8,7 @@ import manifest from "../extension/manifest.json" with { type: "json" };
 import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react";
 
-const minify = false;
+const minify = true;
 
 process.chdir("extension");
 
@@ -80,6 +80,7 @@ process.chdir("../doc");
 
 await build({
   base: "./",
+  plugins: [react()],
   build: {
     outDir: "../dist/doc",
     emptyOutDir: true,
@@ -89,12 +90,13 @@ await build({
     rollupOptions: {
       input: {
         doc: "index.html",
+        app: "app/index.html",
         test: "test/index.html",
         multi: "test/multi.html",
       },
       output: {
         assetFileNames: "[name][extname]",
-        entryFileNames: "[name].js",
+        // entryFileNames: "[name].js",
       },
     },
   },

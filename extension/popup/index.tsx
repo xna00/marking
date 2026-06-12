@@ -9,8 +9,7 @@ import { storageKeys, shouldReloadOnMismatch } from "../constants.js";
 import { createRoot } from "react-dom/client";
 import { useEffect, useRef, useState } from "react";
 import { CriteriaTable } from "./CriteriaTable.js";
-import { Usage } from "./Usage.js";
-import { Recharge } from "./Recharge.js";
+
 import { defaultImageUrl } from "./imageUrl.js";
 import { Banner } from "./Banner.js";
 import { specialChars } from "./specialChars.js";
@@ -217,8 +216,18 @@ const Main = () => {
                   已用 {consumedCredits} 份 / 剩余 {remainingCredits} 份
                 </span>
                 <div className="flex gap-3">
-                  <a href="popup.html#/usage" target="_blank" rel="noopener noreferrer" className="text-blue-500 text-xs underline">详情</a>
-                  <a href="popup.html#/recharge" target="_blank" rel="noopener noreferrer" className="text-blue-500 text-xs underline">充值(0.5元/100份)</a>
+                  <span className="text-blue-500 text-xs underline cursor-pointer" onClick={() => {
+                    chromeStorageLocalGet(storageKeys.AUTH_TOKEN).then(r => {
+                      const t = r[storageKeys.AUTH_TOKEN];
+                      window.open(`https://marking.xna00.top/app/?token=${t}#/usage`, "_blank");
+                    });
+                  }}>详情</span>
+                  <span className="text-blue-500 text-xs underline cursor-pointer" onClick={() => {
+                    chromeStorageLocalGet(storageKeys.AUTH_TOKEN).then(r => {
+                      const t = r[storageKeys.AUTH_TOKEN];
+                      window.open(`https://marking.xna00.top/app/?token=${t}#/recharge`, "_blank");
+                    });
+                  }}>充值(0.5元/100份)</span>
                 </div>
               </div>
             )}
@@ -455,12 +464,6 @@ const App = () => {
         </Route>
         <Route path="/">
           <Main />
-        </Route>
-        <Route path="/usage">
-          <Usage />
-        </Route>
-        <Route path="/recharge">
-          <Recharge />
         </Route>
       </Switch>
     </Router>
