@@ -49,6 +49,13 @@ function resolveDetail(model: string): "low" | "high" {
   return resolved === "doubao-seed-2-0-pro-260215" ? "low" : "high";
 }
 
+const MODEL_PRICES: Record<string, { input: number; output: number }> = {
+  "doubao-seed-1-8-251228":      { input: 0.8, output: 2.0 },
+  "doubao-seed-2-0-pro-260215":  { input: 3.2, output: 16.0 },
+  "doubao-seed-2-0-lite-260428": { input: 0.6, output: 3.6 },
+  "doubao-seed-2-0-mini-260428": { input: 0.2, output: 2.0 },
+};
+
 async function doChat(body: ChatBody): Promise<AIResultItem[]> {
   const prompt = constructPrompt(body.config);
   const resolvedModel = resolveModel(body.model);
@@ -106,7 +113,11 @@ async function doChat(body: ChatBody): Promise<AIResultItem[]> {
       lastContent = content;
 
       log(`[${id}] body: ${content}`);
-      if (data.usage) log(`[${id}] tokens: 输入${data.usage.prompt_tokens} 输出${data.usage.completion_tokens} 总计${data.usage.total_tokens}`);
+      if (data.usage) {
+        const p = MODEL_PRICES[resolvedModel];
+        const cost = p ? (data.usage.prompt_tokens * p.input + data.usage.completion_tokens * p.output) / 1_000_000 : 0;
+        log(`[${id}] tokens: 输入${data.usage.prompt_tokens} 输出${data.usage.completion_tokens} 总计${data.usage.total_tokens} 费用${cost.toFixed(4)}元`);
+      }
 
       if (!content) {
         throw new Error(`Unexpected AI response: ${JSON.stringify(data)}`);
