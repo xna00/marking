@@ -21,6 +21,9 @@ const parseFn = (req: Request): [fn: any, fnName: string] => {
   return [fn, fnName] as const;
 };
 
+/**
+ * This function should not throw error
+ */
 export const apiHandler = async (req: Request): Promise<Response> => {
   const [fn, fnName] = parseFn(req);
   if (!fn) {

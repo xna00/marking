@@ -5,7 +5,7 @@ node_modules
 *.local.*
 key.pem
 .env
-
+opencode.json
 # Database & cache
 server/data/
 server/wechat-token-cache.json

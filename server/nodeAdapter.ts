@@ -56,15 +56,22 @@ export const respond = (
   }
 };
 
-const handler = (req: IncomingMessage, res: ServerResponse<IncomingMessage> & { req: IncomingMessage }) => {
-  logger.log(req.method, req.url);
+const handler = async (req: IncomingMessage, res: ServerResponse<IncomingMessage> & { req: IncomingMessage }) => {
+  const ip = (req.headers["x-forwarded-for"] as string | undefined)
+    ?.split(",").at(0)?.trim()
+    ?? req.socket.remoteAddress
+    ?? "unknown";
+  logger.log(req.method, req.url, ip);
   assert(req.url);
+
+  let response = new Response(null, {
+    status: 404
+  })
   if (req.url.startsWith("/api/")) {
-    apiHandler(makeRequest(req)).then(respond.bind(null, res));
-  } else {
-    res.writeHead(404);
-    res.end();
+    response = await apiHandler(makeRequest(req))
   }
+  logger.log(response.status)
+  respond(res, response);
 };
 
 const server = hasSsl
