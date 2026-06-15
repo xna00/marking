@@ -9,13 +9,6 @@
 //   - SELECT 结果 always T[]（.all() 语义）
 // ═══════════════════════════════════════════
 
-type Trim<S extends string> =
-  S extends ` ${infer R}` ? Trim<R>
-  : S extends `\n${infer R}` ? Trim<R>
-  : S extends `\t${infer R}` ? Trim<R>
-  : S extends `\r${infer R}` ? Trim<R>
-  : S;
-
 type SqlType<T extends string> =
   T extends `INTEGER${string}` ? number
   : T extends `INT${string}` ? number
@@ -36,8 +29,8 @@ type TypeWord<Words extends string[]> =
 
 // Parse "name TYPE constraints..." → { name: "name", type: "TYPE" }
 type ColNameType<S extends string> =
-  Trim<S> extends `${infer Name} ${infer Rest}`
-    ? { name: Trim<Name>; type: TypeWord<Split<Trim<Rest>, ' '>> }
+  S extends `${infer Name} ${infer Rest}`
+    ? { name: Name; type: TypeWord<Split<Rest, ' '>> }
     : never;
 
 type Split<S extends string, Sep extends string, Acc extends string[] = []> =
@@ -46,11 +39,11 @@ type Split<S extends string, Sep extends string, Acc extends string[] = []> =
     : S extends '' ? Acc : [...Acc, S];
 
 type ColNullable<S extends string> =
-  Trim<S> extends `${string}NOT NULL${string}` ? false
-  : Trim<S> extends `${string}TEXT PRIMARY KEY${string}` ? false
-  : Trim<S> extends `${string}INTEGER PRIMARY KEY${string}` ? false
-  : Trim<S> extends `${string}REAL PRIMARY KEY${string}` ? false
-  : Trim<S> extends `${string}PRIMARY KEY${string}` ? false
+  S extends `${string}NOT NULL${string}` ? false
+  : S extends `${string}TEXT PRIMARY KEY${string}` ? false
+  : S extends `${string}INTEGER PRIMARY KEY${string}` ? false
+  : S extends `${string}REAL PRIMARY KEY${string}` ? false
+  : S extends `${string}PRIMARY KEY${string}` ? false
   : true;
 
 type ColToField<S extends string> =
@@ -62,9 +55,12 @@ type ColToField<S extends string> =
       : {}
     : {};
 
-// Split "a, b, c" at commas (no nested parens)
+// Split columns at commas (columns separated by \n,\n)
 type _Chomp<S extends string> =
-  S extends `${infer A},${infer B}` ? [Trim<A>, B] : [Trim<S>, ''];
+  S extends `\n${infer A},\n${infer B}` ? [A, `\n${B}`]
+  : S extends `\n${infer A}\n${string}` ? [A, '']
+  : S extends `\n${infer A}` ? [A, '']
+  : [S, ''];
 
 type ParseCols<S extends string, Acc extends Record<string, unknown> = {}> =
   _Chomp<S> extends [infer Col extends string, infer Rest extends string]
@@ -79,8 +75,8 @@ type ParseCols<S extends string, Acc extends Record<string, unknown> = {}> =
     : Acc;
 
 export type Schema<S extends string> =
-  Trim<S> extends `${string}(${infer Cols})${string}`
-    ? ParseCols<Trim<Cols>>
+  S extends `${string}(${infer Cols})${string}`
+    ? ParseCols<Cols>
     : {};
 
 // ── @name parameter scanner ──
@@ -88,19 +84,19 @@ export type Schema<S extends string> =
 
 // First word of a string (word breaks: space, comma, close-paren, semicolon)
 type FirstWord<S extends string> =
-  Trim<S> extends `${infer W} ${infer _}` ? Trim<W>
-  : Trim<S> extends `${infer W},${infer _}` ? Trim<W>
-  : Trim<S> extends `${infer W})${infer _}` ? Trim<W>
-  : Trim<S> extends `${infer W};${infer _}` ? Trim<W>
-  : Trim<S>;
+  S extends `${infer W} ${infer _}` ? W
+  : S extends `${infer W},${infer _}` ? W
+  : S extends `${infer W})${infer _}` ? W
+  : S extends `${infer W};${infer _}` ? W
+  : S;
 
 // Extract a single parameter name from text after @
 type ParamName<S extends string> =
-  Trim<S> extends `${infer N},${infer _}` ? N
-  : Trim<S> extends `${infer N})${infer _}` ? N
-  : Trim<S> extends `${infer N};${infer _}` ? N
-  : Trim<S> extends `${infer N} ${infer _}` ? N
-  : Trim<S>;
+  S extends `${infer N},${infer _}` ? N
+  : S extends `${infer N})${infer _}` ? N
+  : S extends `${infer N};${infer _}` ? N
+  : S extends `${infer N} ${infer _}` ? N
+  : S;
 
 // Collect all @name references from a SQL string
 type AtParams<S extends string> = _AtParams<Split<S, '@'>>;
@@ -121,29 +117,29 @@ type NamesToRecord<Names extends string, TName extends keyof Tables> = {
 
 // Extract table name from SELECT (handles both SELECT * and SELECT col1, col2)
 export type ParseTableName<S extends string> =
-  Trim<S> extends `SELECT ${infer Rest}`
+  S extends `SELECT ${infer Rest}`
     ? Rest extends `${string} FROM ${infer TName}`
-      ? FirstWord<Trim<TName>>
+      ? FirstWord<TName>
       : never
     : never;
 
 // Check if SELECT uses * (star)
 type ParseIsStar<S extends string> =
-  Trim<S> extends `SELECT ${infer Rest}`
+  S extends `SELECT ${infer Rest}`
     ? Rest extends `*${string}` ? true : false
     : false;
 
 // Parse column list from SELECT (comma-separated identifiers)
 type ParseColNames<S extends string> =
-  Trim<S> extends `SELECT ${infer Rest}`
+  S extends `SELECT ${infer Rest}`
     ? Rest extends `${infer Cols} FROM ${string}`
-      ? _SplitCols<Trim<Cols>>
+      ? _SplitCols<Cols>
       : never
     : never;
 
 type _SplitCols<S extends string> =
-  S extends `${infer C},${infer Rest}` ? Trim<C> | _SplitCols<Trim<Rest>>
-  : Trim<S>;
+  S extends `${infer C},${infer Rest}` ? C | _SplitCols<Rest>
+  : S;
 
 // Result type: SELECT * → Tables[table][], SELECT cols → Pick<Tables[table], cols>[]
 export type SelectResult<S extends string> =
@@ -161,8 +157,8 @@ export type WhereParams<S extends string> =
 // ── INSERT parser ──
 
 type ParseInsertTableName<S extends string> =
-  Trim<S> extends `INSERT OR REPLACE INTO ${infer Rest}` ? FirstWord<Trim<Rest>>
-  : Trim<S> extends `INSERT INTO ${infer Rest}` ? FirstWord<Trim<Rest>>
+  S extends `INSERT OR REPLACE INTO ${infer Rest}` ? FirstWord<Rest>
+  : S extends `INSERT INTO ${infer Rest}` ? FirstWord<Rest>
   : never;
 
 export type InsertParams<S extends string> =
@@ -179,18 +175,16 @@ type AssertFalse<T extends false> = T;
 
 // ── user table ──
 
-type User = Schema<`
-  CREATE TABLE user (
-    externalUserId TEXT PRIMARY KEY,
-    username TEXT NOT NULL UNIQUE,
-    passwordHash TEXT NOT NULL,
-    email TEXT,
-    phone TEXT,
-    token TEXT,
-    createdAt TEXT NOT NULL,
-    updatedAt TEXT NOT NULL
-  )
-`>;
+type User = Schema<`CREATE TABLE user (
+externalUserId TEXT PRIMARY KEY,
+username TEXT NOT NULL UNIQUE,
+passwordHash TEXT NOT NULL,
+email TEXT,
+phone TEXT,
+token TEXT,
+createdAt TEXT NOT NULL,
+updatedAt TEXT NOT NULL
+)`>;
 
 type _Ue = AssertTrue<'externalUserId' extends keyof User ? true : false>;
 type _Un = AssertTrue<'username' extends keyof User ? true : false>;
@@ -207,15 +201,13 @@ type _EmailNullable   = AssertTrue<null extends User['email'] ? true : false>;
 
 // ── markRecord table ──
 
-type MarkRecord = Schema<`
-  CREATE TABLE markRecord (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    userId TEXT NOT NULL,
-    costCredits REAL NOT NULL DEFAULT 1.0,
-    createdAt TEXT NOT NULL,
-    confirmedAt TEXT
-  )
-`>;
+type MarkRecord = Schema<`CREATE TABLE markRecord (
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+userId TEXT NOT NULL,
+costCredits REAL NOT NULL DEFAULT 1.0,
+createdAt TEXT NOT NULL,
+confirmedAt TEXT
+)`>;
 
 type _Mi = AssertTrue<'id' extends keyof MarkRecord ? true : false>;
 type _Mu = AssertTrue<'userId' extends keyof MarkRecord ? true : false>;
@@ -228,16 +220,14 @@ type _MrkCreatedAtNull  = AssertFalse<null extends MarkRecord['createdAt'] ? tru
 
 // ── creditTransaction table ──
 
-type CreditTx = Schema<`
-  CREATE TABLE creditTransaction (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    userId TEXT NOT NULL,
-    amountMoney INTEGER NOT NULL,
-    amountCredits INTEGER NOT NULL,
-    description TEXT,
-    createdAt TEXT NOT NULL
-  )
-`>;
+type CreditTx = Schema<`CREATE TABLE creditTransaction (
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+userId TEXT NOT NULL,
+amountMoney INTEGER NOT NULL,
+amountCredits INTEGER NOT NULL,
+description TEXT,
+createdAt TEXT NOT NULL
+)`>;
 
 type _Cd = AssertTrue<'description' extends keyof CreditTx ? true : false>;
 type _Ca = AssertTrue<'amountMoney' extends keyof CreditTx ? true : false>;
@@ -249,34 +239,34 @@ type _CtDescNull = AssertTrue<null extends CreditTx['description'] ? true : fals
 
 export type Tables = {
   user: Schema<`CREATE TABLE user (
-    externalUserId TEXT PRIMARY KEY,
-    username TEXT NOT NULL UNIQUE,
-    passwordHash TEXT NOT NULL,
-    email TEXT,
-    phone TEXT,
-    token TEXT,
-    createdAt TEXT NOT NULL,
-    updatedAt TEXT NOT NULL
-  )`>;
+externalUserId TEXT PRIMARY KEY,
+username TEXT NOT NULL UNIQUE,
+passwordHash TEXT NOT NULL,
+email TEXT,
+phone TEXT,
+token TEXT,
+createdAt TEXT NOT NULL,
+updatedAt TEXT NOT NULL
+)`>;
   markRecord: Schema<`CREATE TABLE markRecord (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    userId TEXT NOT NULL,
-    costCredits REAL NOT NULL DEFAULT 1.0,
-    createdAt TEXT NOT NULL,
-    confirmedAt TEXT
-  )`>;
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+userId TEXT NOT NULL,
+costCredits REAL NOT NULL DEFAULT 1.0,
+createdAt TEXT NOT NULL,
+confirmedAt TEXT
+)`>;
   creditTransaction: Schema<`CREATE TABLE creditTransaction (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    userId TEXT NOT NULL,
-    amountMoney INTEGER NOT NULL,
-    amountCredits INTEGER NOT NULL,
-    description TEXT,
-    createdAt TEXT NOT NULL
-  )`>;
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+userId TEXT NOT NULL,
+amountMoney INTEGER NOT NULL,
+amountCredits INTEGER NOT NULL,
+description TEXT,
+createdAt TEXT NOT NULL
+)`>;
   kfCursor: Schema<`CREATE TABLE kfCursor (
-    openKfId TEXT PRIMARY KEY,
-    cursor TEXT NOT NULL
-  )`>;
+openKfId TEXT PRIMARY KEY,
+cursor TEXT NOT NULL
+)`>;
 };
 
 type _TblUser = AssertTrue<'user' extends keyof Tables ? true : false>;
