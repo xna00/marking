@@ -10,6 +10,11 @@
 // ═══════════════════════════════════════════
 
 /**
+ * Expand a computed type for IDE display (no aliases, no `&`)
+ */
+export type O<T> = { [K in keyof T]: T[K] };
+
+/**
  * SqlType<"TEXT"> → string
  *
  * SqlType<"INTEGER"> → number
@@ -104,11 +109,15 @@ type ParseCols<S extends string, Acc extends Record<string, unknown> = {}> =
     : Acc;
 
 /**
- * Schema<"CREATE TABLE user (id INTEGER PRIMARY KEY, name TEXT NOT NULL)"> → { id: number; name: string }
+ * Schema<"CREATE TABLE user (id INTEGER PRIMARY KEY, name TEXT NOT NULL)">
+ *   → { user: { id: number; name: string } }
+ *
+ * Schema<"CREATE TEMP TABLE IF NOT EXISTS log (msg TEXT)">
+ *   → { log: { msg: string | null } }
  */
 export type Schema<S extends string> =
-  S extends `${string}(${infer Cols})${string}`
-    ? ParseCols<Cols>
+  S extends `CREATE${string}TABLE ${'IF NOT EXISTS ' | ''}${infer Name} (${infer Cols})${string}`
+    ? O<Record<Name, ParseCols<Cols>>>
     : {};
 
 // ── @name parameter scanner ──
