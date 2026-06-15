@@ -1,4 +1,5 @@
 import type {
+  O,
   Schema,
   ParseTableName, SelectResult, WhereParams,
   InsertParams,
@@ -6,14 +7,12 @@ import type {
 
 // ── Test helpers ──
 
-type O<T> = { [K in keyof T]: T[K] };
 type AssertTrue<T extends true> = T;
 type AssertFalse<T extends false> = T;
 
 // ── Table definitions ──
 
-type Tables = {
-  user: O<Schema<`CREATE TABLE user (
+const USER_SQL = `CREATE TABLE user (
 externalUserId TEXT PRIMARY KEY,
 username TEXT NOT NULL UNIQUE,
 passwordHash TEXT NOT NULL,
@@ -22,27 +21,32 @@ phone TEXT,
 token TEXT,
 createdAt TEXT NOT NULL,
 updatedAt TEXT NOT NULL
-)`>>;
-  markRecord: O<Schema<`CREATE TABLE markRecord (
+)` as const;
+const MARK_RECORD_SQL = `CREATE TABLE markRecord (
 id INTEGER PRIMARY KEY AUTOINCREMENT,
 userId TEXT NOT NULL,
 costCredits REAL NOT NULL DEFAULT 1.0,
 createdAt TEXT NOT NULL,
 confirmedAt TEXT
-)`>>;
-  creditTransaction: O<Schema<`CREATE TABLE creditTransaction (
+)` as const;
+const CREDIT_TX_SQL = `CREATE TABLE creditTransaction (
 id INTEGER PRIMARY KEY AUTOINCREMENT,
 userId TEXT NOT NULL,
 amountMoney INTEGER NOT NULL,
 amountCredits INTEGER NOT NULL,
 description TEXT,
 createdAt TEXT NOT NULL
-)`>>;
-  kfCursor: O<Schema<`CREATE TABLE kfCursor (
+)` as const;
+const KF_CURSOR_SQL = `CREATE TABLE kfCursor (
 openKfId TEXT PRIMARY KEY,
 cursor TEXT NOT NULL
-)`>>;
-};
+)` as const;
+
+type Tables =
+  Schema<typeof USER_SQL>
+  & Schema<typeof MARK_RECORD_SQL>
+  & Schema<typeof CREDIT_TX_SQL>
+  & Schema<typeof KF_CURSOR_SQL>;
 
 // ── Schema tests ──
 
