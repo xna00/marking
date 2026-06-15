@@ -1,10 +1,12 @@
-import type {
-  O,
-  Schema,
-  ParseTableName, SelectResult, WhereParams,
-  InsertParams, ParseInsertTableName,
-  ParseUpdateTableName, UpdateParams,
-  ParseAggAliases, RunSqlResult,
+import {
+  type O,
+  type Schema,
+  type ParseTableName, type SelectResult, type WhereParams,
+  type InsertParams,
+  type UpdateParams,
+  type ParseAggAliases,
+  type SqlAllResult, type SqlGetResult, type SqlRunResult,
+  sqlAll, sqlGet, sqlRun,
 } from './types-sql.ts';
 
 // ── Test helpers ──
@@ -105,15 +107,15 @@ type _PtnMarkRecord = AssertTrue<
   'markRecord' extends ParseTableName<'SELECT * FROM markRecord WHERE userId = @userId'> ? true : false
 >;
 type _PtnNoWhere = AssertTrue<
-  'creditTransaction' extends ParseTableName<'SELECT * FROM creditTransaction'> ? true : false
+  'creditTransaction' extends ParseTableName<'SELECT * FROM creditTransaction '> ? true : false
 >;
 
 // ── SelectResult ──
 
 type _SrUserKey = AssertTrue<'externalUserId' extends keyof SelectResult<'SELECT * FROM user WHERE id = @id', Tables>[number] ? true : false>;
-type _SrMrkKey = AssertTrue<'userId' extends keyof SelectResult<'SELECT * FROM markRecord', Tables>[number] ? true : false>;
+type _SrMrkKey = AssertTrue<  'userId' extends keyof SelectResult<'SELECT * FROM markRecord ', Tables>[number] ? true : false>;
 type _SrUserVal = AssertFalse<null extends SelectResult<'SELECT * FROM user WHERE id = @id', Tables>[number]['externalUserId'] ? true : false>;
-type _SrMrkNull = AssertTrue<null extends SelectResult<'SELECT * FROM markRecord', Tables>[number]['confirmedAt'] ? true : false>;
+type _SrMrkNull = AssertTrue<  null extends SelectResult<'SELECT * FROM markRecord ', Tables>[number]['confirmedAt'] ? true : false>;
 
 // ── WhereParams ──
 
@@ -124,7 +126,7 @@ type _WpUserType = AssertFalse<
   null extends WhereParams<'SELECT * FROM user WHERE externalUserId = @externalUserId', Tables>['externalUserId'] ? true : false
 >;
 type _WpNoWhere = AssertTrue<
-  keyof WhereParams<'SELECT * FROM user', Tables> extends never ? true : false
+  keyof WhereParams<'SELECT * FROM user ', Tables> extends never ? true : false
 >;
 type _WpMulti = AssertTrue<
   'id' extends keyof WhereParams<'SELECT * FROM markRecord WHERE id = @id AND userId = @userId', Tables> ? true : false
@@ -178,6 +180,7 @@ const _h: _FindUserResult = [{
   updatedAt: '2024-01-01',
 }];
 
+
 // SELECT * FROM user WHERE username = @username AND token = @token
 const _i: WhereParams<'SELECT * FROM user WHERE username = @username AND token = @token', Tables> = {
   username: 'test',
@@ -225,7 +228,7 @@ type _SelectSingleColResult = SelectResult<'SELECT username FROM user WHERE user
 const _q: _SelectSingleColResult = [{ username: 'test' }];
 
 // SELECT email,phone FROM user → Pick<Tables['user'], 'email' | 'phone'>[]
-type _SelectMultiColResult = SelectResult<'SELECT email,phone FROM user', Tables>;
+type _SelectMultiColResult = SelectResult<'SELECT email,phone FROM user ', Tables>;
 const _r: _SelectMultiColResult = [{ email: null, phone: '123' }];
 
 // ParseTableName still works with column selection
@@ -234,13 +237,19 @@ const _t: ParseTableName<'SELECT username FROM user WHERE username = @username'>
 // WhereParams still works with column selection
 const _s: WhereParams<'SELECT username FROM user WHERE username = @username', Tables> = { username: 'test' };
 
-// ── ParseUpdateTableName ──
+// ── ParseTableName (UPDATE / DELETE) ──
 
-type _Putn = AssertTrue<
-  'user' extends ParseUpdateTableName<'UPDATE user SET email = @email WHERE externalUserId = @externalUserId'> ? true : false
+type _PtnUpdate = AssertTrue<
+  'user' extends ParseTableName<'UPDATE user SET email = @email WHERE externalUserId = @externalUserId'> ? true : false
 >;
-type _PutnMrk = AssertTrue<
-  'markRecord' extends ParseUpdateTableName<'UPDATE markRecord SET confirmedAt = @confirmedAt WHERE id = @id'> ? true : false
+type _PtnUpdateMrk = AssertTrue<
+  'markRecord' extends ParseTableName<'UPDATE markRecord SET confirmedAt = @confirmedAt WHERE id = @id'> ? true : false
+>;
+type _PtnDelete = AssertTrue<
+  'user' extends ParseTableName<'DELETE FROM user WHERE id = @id'> ? true : false
+>;
+type _PtnInsertRep = AssertTrue<
+  'kfCursor' extends ParseTableName<'INSERT OR REPLACE INTO kfCursor (openKfId, cursor) VALUES (@openKfId, @cursor)'> ? true : false
 >;
 
 // ── UpdateParams ──
@@ -272,30 +281,195 @@ type _PaaTotal = AssertTrue<
   'total' extends ParseAggAliases<'SELECT COALESCE(SUM(costCredits), 0) as total FROM markRecord WHERE userId = @userId'> ? true : false
 >;
 
-// ── RunSqlResult ──
-
-type _RsrInsert = AssertTrue<
-  { lastInsertRowid: number; changes: number } extends RunSqlResult<'INSERT INTO user (id) VALUES (@id)', Tables> ? true : false
->;
-type _RsrUpdate = AssertTrue<
-  { changes: number } extends RunSqlResult<'UPDATE user SET email = @email WHERE id = @id', Tables> ? true : false
->;
-type _RsrSelect = AssertTrue<
-  Tables['user'][] extends RunSqlResult<'SELECT * FROM user', Tables> ? true : false
->;
-type _RsrAgg = AssertTrue<
-  Record<string, number> extends RunSqlResult<'SELECT COUNT(*) as count FROM markRecord', Tables> ? true : false
->;
-
-const _v: RunSqlResult<'SELECT COALESCE(SUM(costCredits), 0) as total FROM markRecord WHERE userId = @userId', Tables> = { total: 100 };
-
 // ── INSERT OR REPLACE ──
 
-type _IorTName = AssertTrue<
-  'kfCursor' extends ParseInsertTableName<'INSERT OR REPLACE INTO kfCursor (openKfId, cursor) VALUES (@openKfId, @cursor)'> ? true : false
->;
 type _IorParams = AssertTrue<
   'openKfId' extends keyof InsertParams<'INSERT OR REPLACE INTO kfCursor (openKfId, cursor) VALUES (@openKfId, @cursor)', Tables> ? true : false
 > & AssertTrue<
   'cursor' extends keyof InsertParams<'INSERT OR REPLACE INTO kfCursor (openKfId, cursor) VALUES (@openKfId, @cursor)', Tables> ? true : false
 >;
+
+// ── SqlAllResult ──
+
+type _SarStar = AssertTrue<
+  Tables['user'][] extends SqlAllResult<'SELECT * FROM user WHERE id = @id', Tables> ? true : false
+>;
+type _SarCol = AssertTrue<
+  Pick<Tables['user'], 'email' | 'phone'>[] extends SqlAllResult<'SELECT email,phone FROM user ', Tables> ? true : false
+>;
+type _SarAggCount = AssertTrue<
+  { count: number }[] extends SqlAllResult<'SELECT COUNT(*) as count FROM markRecord ', Tables> ? true : false
+>;
+type _SarAggTotal = AssertTrue<
+  { total: number }[] extends SqlAllResult<'SELECT COALESCE(SUM(costCredits), 0) as total FROM markRecord WHERE userId = @userId', Tables> ? true : false
+>;
+type _SarDmlNever = AssertTrue<
+  never extends SqlAllResult<'INSERT INTO user (id) VALUES (@id)', Tables> ? true : false
+>;
+type _SarUpdateNever = AssertTrue<
+  never extends SqlAllResult<'UPDATE user SET email = @email', Tables> ? true : false
+>;
+
+// ── SqlGetResult ──
+
+type _SgrStar = AssertTrue<
+  Tables['user'] | undefined extends SqlGetResult<'SELECT * FROM user WHERE id = @id', Tables> ? true : false
+>;
+type _SgrCol = AssertTrue<
+  { username: string } | undefined extends SqlGetResult<'SELECT username FROM user WHERE username = @username', Tables> ? true : false
+>;
+type _SgrColMulti = AssertTrue<
+  Pick<Tables['user'], 'email' | 'phone'> | undefined extends SqlGetResult<'SELECT email,phone FROM user ', Tables> ? true : false
+>;
+type _SgrAggCount = AssertTrue<
+  { count: number } | undefined extends SqlGetResult<'SELECT COUNT(*) as count FROM markRecord ', Tables> ? true : false
+>;
+
+// ── SqlRunResult ──
+
+type _SrrInsert = AssertTrue<
+  { lastInsertRowid: number; changes: number } extends SqlRunResult<'INSERT INTO user (id) VALUES (@id)', Tables> ? true : false
+>;
+type _SrrUpdate = AssertTrue<
+  { lastInsertRowid: number; changes: number } extends SqlRunResult<'UPDATE user SET email = @email WHERE id = @id', Tables> ? true : false
+>;
+type _SrrDelete = AssertTrue<
+  { lastInsertRowid: number; changes: number } extends SqlRunResult<'DELETE FROM user WHERE id = @id', Tables> ? true : false
+>;
+type _SrrSelectNever = AssertTrue<
+  never extends SqlRunResult<'SELECT * FROM user ', Tables> ? true : false
+>;
+
+// ── TEMP TABLE ──
+
+const TEMP_TABLE_SQL = `CREATE TEMP TABLE tempLog (
+id INTEGER,
+msg TEXT
+)` as const;
+type TempTables = Schema<typeof TEMP_TABLE_SQL>;
+type _TempTblName = AssertTrue<'tempLog' extends keyof TempTables ? true : false>;
+type _TempTblId = AssertTrue<'id' extends keyof TempTables['tempLog'] ? true : false>;
+type _TempTblMsgNull = AssertTrue<null extends TempTables['tempLog']['msg'] ? true : false>;
+
+// ── IF NOT EXISTS ──
+
+const IFNOTEXISTS_SQL = `CREATE TABLE IF NOT EXISTS config (
+key TEXT PRIMARY KEY,
+value TEXT
+)` as const;
+type ConfigTable = Schema<typeof IFNOTEXISTS_SQL>;
+type _IfNeKey = AssertTrue<'key' extends keyof ConfigTable['config'] ? true : false>;
+type _IfNeVal = AssertTrue<'value' extends keyof ConfigTable['config'] ? true : false>;
+type _IfNeKeyNotNull = AssertFalse<null extends ConfigTable['config']['key'] ? true : false>;
+
+// ── Negative tests: invalid SQL → never ──
+
+type _InvalidAllDdl = AssertTrue<never extends SqlAllResult<'DROP TABLE user', Tables> ? true : false>;
+type _InvalidRunDdl = AssertTrue<never extends SqlRunResult<'DROP TABLE user', Tables> ? true : false>;
+type _InvalidGetDdl = AssertTrue<undefined extends SqlGetResult<'DROP TABLE user', Tables> ? true : false>;
+type _InvalidParseTableName = AssertTrue<never extends ParseTableName<'NOT SQL'> ? true : false>;
+type _InvalidParseInsert = AssertTrue<never extends ParseTableName<'BOGUS SQL'> ? true : false>;
+
+// ── Runtime validation ──
+
+const _rtAll: SqlAllResult<'SELECT * FROM user WHERE id = @id', Tables> = [{ externalUserId: 'abc', username: 'x', passwordHash: 'h', email: null, phone: null, token: null, createdAt: 'now', updatedAt: 'now' }];
+const _rtGet: SqlGetResult<'SELECT * FROM user WHERE id = @id', Tables> = undefined;
+const _rtGet2: SqlGetResult<'SELECT username FROM user WHERE username = @username', Tables> = { username: 'x' };
+const _rtRunInsert: SqlRunResult<'INSERT INTO user (id) VALUES (@id)', Tables> = { lastInsertRowid: 1, changes: 1 };
+const _rtRunUpdate: SqlRunResult<'UPDATE user SET email = @email WHERE id = @id', Tables> = { lastInsertRowid: 1, changes: 1 };
+
+// ── Runtime function tests ──
+
+const TEST_TBL_SQL = `CREATE TABLE testTbl (
+id INTEGER PRIMARY KEY,
+label TEXT NOT NULL,
+val INTEGER
+)` as const;
+type TestTables = Schema<typeof TEST_TBL_SQL>;
+
+const _db = new (require('node:sqlite').DatabaseSync)(':memory:');
+_db.exec(`CREATE TABLE testTbl (
+  id INTEGER PRIMARY KEY,
+  label TEXT NOT NULL,
+  val INTEGER
+)`);
+
+// sqlRun — INSERT
+const _ins = sqlRun<"INSERT INTO testTbl (label, val) VALUES (@label, @val)", TestTables>(
+  _db,
+  "INSERT INTO testTbl (label, val) VALUES (@label, @val)",
+  { label: 'a', val: 1 },
+);
+const _insCheck: { lastInsertRowid: number; changes: number } = _ins;
+
+// sqlRun — INSERT OR REPLACE
+const _repl = sqlRun<"INSERT OR REPLACE INTO testTbl (id, label, val) VALUES (@id, @label, @val)", TestTables>(
+  _db,
+  "INSERT OR REPLACE INTO testTbl (id, label, val) VALUES (@id, @label, @val)",
+  { id: 1, label: 'b', val: 2 },
+);
+const _replCheck: { lastInsertRowid: number; changes: number } = _repl;
+
+// sqlRun — UPDATE
+const _upd = sqlRun<"UPDATE testTbl SET label = @label WHERE id = @id", TestTables>(
+  _db,
+  "UPDATE testTbl SET label = @label WHERE id = @id",
+  { label: 'c', id: 1 },
+);
+const _updCheck: { lastInsertRowid: number; changes: number } = _upd;
+
+// sqlRun — DELETE
+const _del = sqlRun<"DELETE FROM testTbl WHERE id = @id", TestTables>(
+  _db,
+  "DELETE FROM testTbl WHERE id = @id",
+  { id: 1 },
+);
+const _delCheck: { lastInsertRowid: number; changes: number } = _del;
+
+// sqlAll — SELECT *
+const _all = sqlAll<"SELECT * FROM testTbl WHERE id = @id", TestTables>(
+  _db,
+  "SELECT * FROM testTbl WHERE id = @id",
+  { id: 1 },
+);
+const _allCheck: { id: number; label: string; val: number | null }[] = _all;
+
+// sqlGet — single row
+const _get = sqlGet<"SELECT * FROM testTbl WHERE id = @id", TestTables>(
+  _db,
+  "SELECT * FROM testTbl WHERE id = @id",
+  { id: 1 },
+);
+const _getCheck: { id: number; label: string; val: number | null } | undefined = _get;
+
+// sqlAll — empty result
+const _allEmpty = sqlAll<"SELECT * FROM testTbl WHERE id = @id", TestTables>(
+  _db,
+  "SELECT * FROM testTbl WHERE id = @id",
+  { id: 999 },
+);
+const _allEmptyCheck: { id: number; label: string; val: number | null }[] = _allEmpty;
+
+// sqlGet — no match
+const _getNone = sqlGet<"SELECT * FROM testTbl WHERE id = @id", TestTables>(
+  _db,
+  "SELECT * FROM testTbl WHERE id = @id",
+  { id: 999 },
+);
+const _getNoneCheck: { id: number; label: string; val: number | null } | undefined = _getNone;
+
+// sqlAll — column select
+const _allCol = sqlAll<"SELECT label,val FROM testTbl ", TestTables>(
+  _db,
+  "SELECT label,val FROM testTbl ",
+  {},
+);
+const _allColCheck: { label: string; val: number | null }[] = _allCol;
+
+// sqlGet — column select
+const _getCol = sqlGet<"SELECT label FROM testTbl WHERE id = @id", TestTables>(
+  _db,
+  "SELECT label FROM testTbl WHERE id = @id",
+  { id: 1 },
+);
+const _getColCheck: { label: string } | undefined = _getCol;
