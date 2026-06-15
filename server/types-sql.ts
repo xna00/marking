@@ -1,4 +1,13 @@
-// Derive TS type from a single CREATE TABLE statement
+// ═══════════════════════════════════════════════
+//  类型级 SQL 解析器
+//
+//  约定：
+//   - 关键字一律大写（SELECT, FROM, WHERE, INSERT...）
+//   - 参数用 @name，name = 列名，如 WHERE id = @id
+//   - @name 后紧跟 , 或 )，不留空格（如 @a,@b / @a)）
+//   - 传参用 object，属性顺序应与 SQL 中 @name 出现顺序一致
+//   - SELECT 结果 always T[]（.all() 语义）
+// ═══════════════════════════════════════════
 
 type Trim<S extends string> =
   S extends ` ${infer R}` ? Trim<R>
@@ -74,10 +83,41 @@ export type Schema<S extends string> =
     ? ParseCols<Trim<Cols>>
     : {};
 
-// ── SELECT parser ──
+// ── @name parameter scanner ──
+// 扫描 SQL 中所有 @name → 查 Tables[表名][name] → Record<name, type>
 
+// First word of a string (word breaks: space, comma, close-paren, semicolon)
 type FirstWord<S extends string> =
-  Trim<S> extends `${infer W} ${infer _}` ? W : Trim<S>;
+  Trim<S> extends `${infer W} ${infer _}` ? Trim<W>
+  : Trim<S> extends `${infer W},${infer _}` ? Trim<W>
+  : Trim<S> extends `${infer W})${infer _}` ? Trim<W>
+  : Trim<S> extends `${infer W};${infer _}` ? Trim<W>
+  : Trim<S>;
+
+// Extract a single parameter name from text after @
+type ParamName<S extends string> =
+  Trim<S> extends `${infer N},${infer _}` ? N
+  : Trim<S> extends `${infer N})${infer _}` ? N
+  : Trim<S> extends `${infer N};${infer _}` ? N
+  : Trim<S> extends `${infer N} ${infer _}` ? N
+  : Trim<S>;
+
+// Collect all @name references from a SQL string
+type AtParams<S extends string> = _AtParams<Split<S, '@'>>;
+
+type _AtParams<Parts extends string[], Acc extends string = never> =
+  Parts extends [infer _P, ...infer Tail extends string[]]
+    ? Tail extends [infer T extends string, ...infer Rest extends string[]]
+      ? _AtParams<Tail, Acc | ParamName<T>>
+      : Acc
+    : Acc;
+
+// Map parameter name union to Record<name, type> via table schema
+type NamesToRecord<Names extends string, TName extends keyof Tables> = {
+  [K in Names & keyof Tables[TName]]: Tables[TName][K]
+};
+
+// ── SELECT parser ──
 
 export type ParseTableName<S extends string> =
   Trim<S> extends `SELECT * FROM ${infer Rest}` ? FirstWord<Trim<Rest>>
@@ -86,22 +126,21 @@ export type ParseTableName<S extends string> =
 export type SelectResult<S extends string> =
   ParseTableName<S> extends keyof Tables ? Tables[ParseTableName<S>][] : never;
 
-type ParseWhereCond<Cond extends string, TName extends keyof Tables> =
-  Trim<Cond> extends `${infer Col} = ? AND ${infer Rest}`
-    ? Col extends keyof Tables[TName]
-      ? Record<Col, Tables[TName][Col]> & ParseWhereCond<Rest, TName>
-      : {}
-  : Trim<Cond> extends `${infer Col} = ?`
-    ? Col extends keyof Tables[TName]
-      ? Record<Col, Tables[TName][Col]>
-      : {}
-  : {};
-
 export type WhereParams<S extends string> =
   ParseTableName<S> extends keyof Tables
-    ? Trim<S> extends `${string}WHERE ${infer Cond}`
-      ? ParseWhereCond<Trim<Cond>, ParseTableName<S>>
-      : {}
+    ? NamesToRecord<AtParams<S>, ParseTableName<S>>
+    : {};
+
+// ── INSERT parser ──
+
+type ParseInsertTableName<S extends string> =
+  Trim<S> extends `INSERT OR REPLACE INTO ${infer Rest}` ? FirstWord<Trim<Rest>>
+  : Trim<S> extends `INSERT INTO ${infer Rest}` ? FirstWord<Trim<Rest>>
+  : never;
+
+export type InsertParams<S extends string> =
+  ParseInsertTableName<S> extends keyof Tables
+    ? NamesToRecord<AtParams<S>, ParseInsertTableName<S>>
     : {};
 
 // ══════════════════════════════════════════
@@ -207,21 +246,27 @@ export type Tables = {
     description TEXT,
     createdAt TEXT NOT NULL
   )`>;
+  kfCursor: Schema<`CREATE TABLE kfCursor (
+    openKfId TEXT PRIMARY KEY,
+    cursor TEXT NOT NULL
+  )`>;
 };
 
 type _TblUser = AssertTrue<'user' extends keyof Tables ? true : false>;
 type _TblMrk = AssertTrue<'markRecord' extends keyof Tables ? true : false>;
 type _TblCt = AssertTrue<'creditTransaction' extends keyof Tables ? true : false>;
+type _TblKf = AssertTrue<'kfCursor' extends keyof Tables ? true : false>;
 type _TblConfirmedNull = AssertTrue<null extends Tables['markRecord']['confirmedAt'] ? true : false>;
 type _TblDescNull = AssertTrue<null extends Tables['creditTransaction']['description'] ? true : false>;
+type _TblCursorType = AssertFalse<null extends Tables['kfCursor']['cursor'] ? true : false>;
 
 // ── ParseTableName ──
 
 type _PtnUser = AssertTrue<
-  'user' extends ParseTableName<'SELECT * FROM user WHERE id = ?'> ? true : false
+  'user' extends ParseTableName<'SELECT * FROM user WHERE id = @id'> ? true : false
 >;
 type _PtnMarkRecord = AssertTrue<
-  'markRecord' extends ParseTableName<'SELECT * FROM markRecord WHERE userId = ?'> ? true : false
+  'markRecord' extends ParseTableName<'SELECT * FROM markRecord WHERE userId = @userId'> ? true : false
 >;
 type _PtnNoWhere = AssertTrue<
   'creditTransaction' extends ParseTableName<'SELECT * FROM creditTransaction'> ? true : false
@@ -229,22 +274,48 @@ type _PtnNoWhere = AssertTrue<
 
 // ── SelectResult ──
 
-type _SrUserKey = AssertTrue<'externalUserId' extends keyof SelectResult<'SELECT * FROM user WHERE id = ?'>[number] ? true : false>;
+type _SrUserKey = AssertTrue<'externalUserId' extends keyof SelectResult<'SELECT * FROM user WHERE id = @id'>[number] ? true : false>;
 type _SrMrkKey = AssertTrue<'userId' extends keyof SelectResult<'SELECT * FROM markRecord'>[number] ? true : false>;
-type _SrUserVal = AssertFalse<null extends SelectResult<'SELECT * FROM user WHERE id = ?'>[number]['externalUserId'] ? true : false>;
+type _SrUserVal = AssertFalse<null extends SelectResult<'SELECT * FROM user WHERE id = @id'>[number]['externalUserId'] ? true : false>;
 type _SrMrkNull = AssertTrue<null extends SelectResult<'SELECT * FROM markRecord'>[number]['confirmedAt'] ? true : false>;
 
-// ── WhereParams ──
+// ── WhereParams (@name) ──
 
 type _WpUser = AssertTrue<
-  'externalUserId' extends keyof WhereParams<'SELECT * FROM user WHERE externalUserId = ?'> ? true : false
+  'externalUserId' extends keyof WhereParams<'SELECT * FROM user WHERE externalUserId = @externalUserId'> ? true : false
 >;
 type _WpUserType = AssertFalse<
-  null extends WhereParams<'SELECT * FROM user WHERE externalUserId = ?'>['externalUserId'] ? true : false
+  null extends WhereParams<'SELECT * FROM user WHERE externalUserId = @externalUserId'>['externalUserId'] ? true : false
 >;
 type _WpNoWhere = AssertTrue<
   keyof WhereParams<'SELECT * FROM user'> extends never ? true : false
 >;
 type _WpMulti = AssertTrue<
-  'id' extends keyof WhereParams<'SELECT * FROM markRecord WHERE id = ? AND userId = ?'> ? true : false
+  'id' extends keyof WhereParams<'SELECT * FROM markRecord WHERE id = @id AND userId = @userId'> ? true : false
+>;
+type _WpBoth = AssertTrue<
+  'id' extends keyof WhereParams<'SELECT * FROM markRecord WHERE id = @id AND userId = @userId'> ? true : false
+> & AssertTrue<
+  'userId' extends keyof WhereParams<'SELECT * FROM markRecord WHERE id = @id AND userId = @userId'> ? true : false
+>;
+
+// ── InsertParams (@name) ──
+
+type _IpUser = AssertTrue<
+  'externalUserId' extends keyof InsertParams<'INSERT INTO user (externalUserId, username, passwordHash, email, phone, token, createdAt, updatedAt) VALUES (@externalUserId, @username, @passwordHash, @email, @phone, @token, @createdAt, @updatedAt)'> ? true : false
+>;
+type _IpUserType = AssertFalse<
+  null extends InsertParams<'INSERT INTO user (externalUserId, username, passwordHash, email, phone, token, createdAt, updatedAt) VALUES (@externalUserId, @username, @passwordHash, @email, @phone, @token, @createdAt, @updatedAt)'>['username'] ? true : false
+>;
+type _IpUserEmail = AssertTrue<
+  null extends InsertParams<'INSERT INTO user (externalUserId, username, passwordHash, email, phone, token, createdAt, updatedAt) VALUES (@externalUserId, @username, @passwordHash, @email, @phone, @token, @createdAt, @updatedAt)'>['email'] ? true : false
+>;
+type _IpMrk = AssertTrue<
+  'userId' extends keyof InsertParams<'INSERT INTO markRecord (userId, createdAt, costCredits) VALUES (@userId, @createdAt, @costCredits)'> ? true : false
+>;
+type _IpReplace = AssertTrue<
+  'openKfId' extends keyof InsertParams<'INSERT OR REPLACE INTO kfCursor (openKfId, cursor) VALUES (@openKfId, @cursor)'> ? true : false
+>;
+type _IpCt = AssertTrue<
+  'amountMoney' extends keyof InsertParams<'INSERT INTO creditTransaction (userId, amountMoney, amountCredits, description, createdAt) VALUES (@userId, @amountMoney, @amountCredits, @description, @createdAt)'> ? true : false
 >;

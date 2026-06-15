@@ -152,6 +152,66 @@ type SelectResult<S> = Pick<Tables[table], SelectCols<S>>
 | SQL 模式匹配过宽泛（如注释/字符串内有 `=`） | Phase 1 只处理简单 case，复杂 SQL 退化为 `any` |
 | `node:sqlite` `.all()` 返回 `unknown[]` 无类型 | 函数签名负责类型，运行时不关心 |
 
+## 现状（已完成）
+
+### Phase 1 已实现的类型
+
+- `ParseTableName<S>`: `SELECT * FROM <table>` → 提取表名
+- `SelectResult<S>`: → `Tables[table][]`
+- `WhereParams<S>`: `WHERE col = ?` / `WHERE col1 = ? AND col2 = ?` → `{ col: Type }`
+
+### 已知 limitation
+
+`Object.values(params)` 顺序依赖 JS 对象属性定义顺序。若调用方写 `{ userId: 'abc', id: 1 }` 而 SQL 是 `WHERE id = ? AND userId = ?`，传参顺序会错。后续可考虑：
+
+- 运行时按 `?` 出现顺序从对象取值，而非 `Object.values`
+- 或约定调用方保持与 SQL 一致的属性顺序
+
+## 语法覆盖分析（基于 db.ts 实际 SQL）
+
+### ✅ 当前已覆盖（3/15 条）
+
+| SQL 语句 | 所在函数 |
+|----------|---------|
+| `SELECT * FROM user WHERE externalUserId = ?` | findUserByExternalUserId |
+| `SELECT * FROM user WHERE username = ?` | findUserByUsername |
+| `SELECT * FROM user WHERE token = ?` | findUserByToken |
+
+### ❌ 尚未覆盖（12/15 条）
+
+| SQL 语句 | 缺口分析 | 依赖 |
+|----------|---------|------|
+| `SELECT cursor FROM kfCursor WHERE openKfId = ?` | 非 `SELECT *`，需解析列列表 | Phase 4 |
+| `SELECT COUNT(*) as count FROM markRecord WHERE userId = ? AND confirmedAt IS NOT NULL` | 聚合查询 + 非 `*` | Phase 6 |
+| `SELECT COALESCE(SUM(costCredits), 0) as total FROM markRecord WHERE userId = ? AND confirmedAt IS NOT NULL` | 聚合表达式 + 别名 | Phase 6 |
+| `SELECT COALESCE(SUM(amountCredits), 0) as total FROM creditTransaction WHERE userId = ?` | 同上 | Phase 6 |
+| `SELECT id, amountMoney, ... FROM creditTransaction WHERE userId = ? ORDER BY ... LIMIT 50` | 列选取 + ORDER BY/LIMIT 干扰 | Phase 4 |
+| `SELECT id, createdAt, ... FROM markRecord WHERE userId = ? AND confirmedAt IS NOT NULL ORDER BY ... LIMIT 50` | 同上 | Phase 4 |
+| `INSERT INTO markRecord (userId, createdAt, costCredits) VALUES (?, ?, ?)` | INSERT 参数 + 返回值 | Phase 2 |
+| `INSERT INTO user (...) VALUES (?, ?, ?, ?, ?, ?, ?, ?)` | INSERT 参数 | Phase 2 |
+| `INSERT INTO creditTransaction (...) VALUES (?, ?, ?, ?, ?)` | INSERT 参数 | Phase 2 |
+| `INSERT OR REPLACE INTO kfCursor (openKfId, cursor) VALUES (?, ?)` | INSERT OR REPLACE 语法变体 | Phase 2 |
+| `UPDATE markRecord SET confirmedAt = ? WHERE id = ? AND userId = ?` | UPDATE SET + WHERE 参数 | Phase 5 |
+| `UPDATE user SET token = ?, updatedAt = ? WHERE externalUserId = ?` | UPDATE SET + WHERE 参数 | Phase 5 |
+
+### WHERE 子句兼容性
+
+当前 `WhereParams` 只匹配 `col = ?` 条件。`AND confirmedAt IS NOT NULL` 这类无参数条件会被忽略（结果正确，因为不需要参数）。
+
+有 `ORDER BY` / `LIMIT` 跟在 `WHERE` 后面时，如果模式是 `col = ? AND <Rest>`，`Rest` 中包含 `ORDER BY`，递归处理到不支持的模式时返回 `{}`，也不会产生错误参数。**结果是安全的**。
+
+### 各阶段依赖关系
+
+```
+Phase 1 ──→ Phase 4 (SELECT col1, col2 ...)
+  │              └──→ Phase 6 (聚合查询)
+  │
+  └──────→ Phase 2 (INSERT)
+  │           └──→ Phase 3 (INSERT 返回值区分)
+  │
+  └──────→ Phase 5 (UPDATE)
+```
+
 ## 验证方式
 
 ```ts
@@ -165,8 +225,11 @@ const rows = runSql('SELECT * FROM user WHERE externalUserId = ?', { externalUse
 
 ## 工作步骤
 
-1. types-sql.ts：新增 `ParseTableName<S>`、`ParseWhereParams<S>`、`SelectResult<S>` 等类型
-2. db.ts：新增 `runSql` 运行时实现
-3. 打通 `SELECT * FROM table WHERE col = ?` 全链路（编译期类型 + 运行时执行）
-4. types-sql-test.ts：新增测试
-5. 考虑是否逐步替换现有 `db.ts` 中的手写查询函数
+1. ✅ types-sql.ts：Phase 1 — `ParseTableName`, `SelectResult`, `WhereParams`
+2. Phase 2：`INSERT INTO table (cols) VALUES (?, ...)` — 参数类型推导
+3. Phase 4：`SELECT col1, col2 FROM table` — 列选取 + 表名提取（支持非 `*`）
+4. Phase 5：`UPDATE table SET col = ? WHERE ...` — SET/WHERE 参数
+5. Phase 3：INSERT 返回值 `{ lastInsertRowid, changes }`
+6. Phase 6：聚合查询 `COUNT(*) / SUM(col) as alias` — 返回 `Record<string, number>`
+7. db.ts：新增 `runSql` 运行时实现
+8. types-sql-test.ts：新增运行测试
