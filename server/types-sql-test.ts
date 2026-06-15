@@ -6,18 +6,16 @@ import type {
 
 // ── Schema / Tables ──
 
-type User = Schema<`
-  CREATE TABLE user (
-    externalUserId TEXT PRIMARY KEY,
-    username TEXT NOT NULL UNIQUE,
-    passwordHash TEXT NOT NULL,
-    email TEXT,
-    phone TEXT,
-    token TEXT,
-    createdAt TEXT NOT NULL,
-    updatedAt TEXT NOT NULL
-  )
-`>;
+type User = Schema<`CREATE TABLE user (
+externalUserId TEXT PRIMARY KEY,
+username TEXT NOT NULL UNIQUE,
+passwordHash TEXT NOT NULL,
+email TEXT,
+phone TEXT,
+token TEXT,
+createdAt TEXT NOT NULL,
+updatedAt TEXT NOT NULL
+)`>;
 
 const a: User = {
   externalUserId: 'abc',
@@ -101,8 +99,8 @@ const _p: InsertParams<'INSERT OR REPLACE INTO kfCursor (openKfId, cursor) VALUE
 type _SelectSingleColResult = SelectResult<'SELECT username FROM user WHERE username = @username'>;
 const _q: _SelectSingleColResult = [{ username: 'test' }];
 
-// SELECT email, phone FROM user → Pick<Tables['user'], 'email' | 'phone'>[]
-type _SelectMultiColResult = SelectResult<'SELECT email, phone FROM user'>;
+// SELECT email,phone FROM user → Pick<Tables['user'], 'email' | 'phone'>[]
+type _SelectMultiColResult = SelectResult<'SELECT email,phone FROM user'>;
 const _r: _SelectMultiColResult = [{ email: null, phone: '123' }];
 
 // ParseTableName still works with column selection

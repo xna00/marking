@@ -26,34 +26,25 @@
 ✗ INSERT INTO user (username) VALUES (?)
 ```
 
-### 空格排版（简化解析）
+### 严格格式（解析器不做空白归一化）
 
-以下规则可以减少解析器的歧义：
+移除 `Trim` 后，类型级解析器要求精确的空格/换行排版：
 
-| 规则 | 推荐 | 避免 | 原因 |
-|------|------|------|------|
-| `@name` 后紧跟 `,` 或 `)` | `@name,@name2` | `@name ,@name2` | 防止空格被当作 word terminator |
-| 逗号后加空格 | `@a, @b` | `@a,@b` | 标注惯例 |
-| `=` 前后空格 | `id = @id` | `id=@id` | 可读性，非强制 |
-| `VALUES` 紧接 `(` | `VALUES(@a,@b)` | `VALUES (@a, @b)` | 非强制，两种都支持 |
-| `INSERT INTO 表名紧接 (` | `INSERT INTO user(...` | `INSERT INTO user (...` | 非强制，两种都支持 |
-
-### 不允许的模式（解析器无法处理）
-
-- **`@` 出现在字符串字面量中**：`'email@example.com'` 会被误识别为参数
-- **多条语句**：`runSql` 每次只接受一条 SQL 语句
-- **`SELECT 列1, 列2 FROM ...`**：暂不支持非 `*` 的列选取
+| 规则 | 原因 |
+|------|------|
+| SQL 字符串 **无首尾空白** | 类型以 `SELECT`/`INSERT`/`UPDATE` 开头直接匹配 |
+| CREATE TABLE **列定义顶格写**（每行 column 0 开始，无缩进） | `_Chomp` 按 `\n` 前缀拆分列 |
+| SELECT 列列表 **逗号后无空格**：`col1,col2` | `_SplitCols` 不做空白归一化 |
+| `@name` 后紧跟 `,` 或 `)`：`@a,@b` 或 `@a)` | 逗号/paren 直接作为 word terminator |
+| `@` 出现在字面量（如 `'email@example.com'`）会误识别 | 避免在 SQL 参数中使用这种模式 |
 
 ### 参数传递：object
 
 - `runSql` 第二个参数传 object，不用 tuple：`{ externalUserId: 'abc' }`
-- 属性顺序应与 SQL 中 `@name` 出现的顺序一致（运行时 `Object.values` 按此顺序传参给 prepared statement）
+- `node:sqlite` 原生支持命名参数，**直接传 object，无需关心属性顺序**
 
 ```ts
-// ✓ 顺序一致
-runSql('WHERE id = @id AND name = @name', { id: 1, name: 'foo' })
-
-// ✗ 顺序不一致 —— Object.values 会给出错误顺序
+// ✓ 任意顺序
 runSql('WHERE id = @id AND name = @name', { name: 'foo', id: 1 })
 ```
 
@@ -72,7 +63,7 @@ runSql('WHERE id = @id AND name = @name', { name: 'foo', id: 1 })
 
 ### 返回值类型：`SelectResult<S>`
 - `SELECT * FROM 表名` → `Tables[表名][]`
-- `SELECT 列1, 列2 FROM 表名` → 计划中（Phase 4），暂不支持
+- `SELECT 列1,列2 FROM 表名` → `Pick<Tables[表名], '列1' | '列2'>[]`
 
 ## 代码组织
 
