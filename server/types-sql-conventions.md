@@ -35,7 +35,7 @@
 | SQL 字符串 **无前导或尾随空白**（表名后的尾空格是唯一例外） | 类型以 `SELECT`/`INSERT`/`UPDATE` 开头直接匹配 |
 | **表名后必须跟恰好一个空格**，即使 SQL 到此结束（如 `'SELECT * FROM user '`） | `ParseTableName` 用 `${infer Name} ${string}` 取第一个词 |
 | CREATE TABLE **列定义顶格写**（每行 column 0 开始，无缩进） | `ParseCols` 用 `Split<Rest, ",\n">` 拆分列 |
-| SELECT 列列表 **逗号后无空格**：`col1,col2` | `_SplitCols` 不做空白归一化 |
+| SELECT 列列表 **逗号后跟一个空格**：`col1, col2` | `Split<Cols, ', '>` 分隔列名 |
 | `@name` 后紧跟 `,` 或 `)`：`@a,@b` 或 `@a)` | 逗号/paren 直接作为 word terminator |
 | `@` 出现在字面量（如 `'email@example.com'`）会误识别 | 避免在 SQL 参数中使用这种模式 |
 

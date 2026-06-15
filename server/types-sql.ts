@@ -7,7 +7,8 @@
 //   - @name 后紧跟 , 或 )，不留空格（如 @a,@b / @a)）
 //   - 传参用 object（node:sqlite 原生支持命名参数，无需关心顺序）
 //   - SELECT 结果 always T[]（.all() 语义）
-//   - 表名后必须跟一个空格，即使 SQL 在此结束（如 'SELECT * FROM user '）
+//   - 表名后必须跟一个空格，即使 SQL 在此结束（如 'SELECT * FROM user ')
+//   - SELECT 列列表逗号后跟一个空格：col1, col2（不含空格则整串被当一个列名）
 // ═══════════════════════════════════════════
 
 /**
@@ -153,7 +154,7 @@ type _AtParams<Parts extends string[], Acc extends string = never> =
 /**
  * ParseTableName<"SELECT * FROM user WHERE id = @id"> → "user"
  *
- * ParseTableName<"INSERT INTO user (name) VALUES (@name)"> → "user"
+ * ParseTableName<"INSERT INTO user (name, email) VALUES (@name, @email)"> → "user"
  *
  * ParseTableName<"INSERT OR REPLACE INTO kfCursor (k) VALUES (@k)"> → "kfCursor"
  *
@@ -168,33 +169,6 @@ export type ParseTableName<S extends string> =
   : S extends `UPDATE ${infer Name} SET ${string}` ? Name
   : S extends `SELECT ${string} FROM ${infer Name} ${string}` ? Name
   : never;
-
-/**
- * ParseIsStar<"SELECT * FROM user"> → true
- *
- * ParseIsStar<"SELECT name FROM user"> → false
- */
-type ParseIsStar<S extends string> =
-  S extends `SELECT ${infer Rest}`
-    ? Rest extends `*${string}` ? true : false
-    : false;
-
-/**
- * ParseColNames<"SELECT name,email FROM user"> → "name" | "email"
- */
-type ParseColNames<S extends string> =
-  S extends `SELECT ${infer Rest}`
-    ? Rest extends `${infer Cols} FROM ${string}`
-      ? _SplitCols<Cols>
-      : never
-    : never;
-
-/**
- * _SplitCols<"a,b,c"> → "a" | "b" | "c"
- */
-type _SplitCols<S extends string> =
-  S extends `${infer C},${infer Rest}` ? C | _SplitCols<Rest>
-  : S;
 
 // ── Table-generic types ──
 
@@ -213,13 +187,15 @@ type NamesToRecord<Names extends string, TName extends keyof T, T extends Record
 /**
  * SelectResult<"SELECT * FROM user", Tables> → Tables['user'][]
  *
- * SelectResult<"SELECT username,email FROM user", Tables> → Pick<Tables['user'], 'username' | 'email'>[]
+ * SelectResult<"SELECT username, email FROM user", Tables> → Pick<Tables['user'], 'username' | 'email'>[]
  */
 export type SelectResult<S extends string, T extends Record<string, TableSchema>> =
   ParseTableName<S> extends keyof T
-    ? ParseIsStar<S> extends true
-      ? T[ParseTableName<S>][]
-      : Pick<T[ParseTableName<S>], ParseColNames<S>>[]
+    ? S extends `SELECT ${infer Cols} FROM ${string}`
+      ? Cols extends "*"
+        ? T[ParseTableName<S>][]
+        : Pick<T[ParseTableName<S>], Split<Cols, ', '>[number]>[]
+      : never
     : never;
 
 /**
