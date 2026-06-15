@@ -34,9 +34,15 @@ export const apiHandler = async (req: Request): Promise<Response> => {
     params = [req];
   } else {
     try {
-      if (req.method === "POST") params = await req.json();
-      else if (req.method === "GET")
+      if (req.method === "POST") {
+        params = await req.json();
+        getInfo().perf.bodyReadTime = performance.now();
+        logger.log(`[${getInfo().id}] body read: ${(performance.now() - getInfo().perf.startTime).toFixed(0)}ms`);
+      } else if (req.method === "GET") {
         params = JSON.parse(new URL(req.url).searchParams.get("data") ?? "");
+        getInfo().perf.bodyReadTime = performance.now();
+        logger.log(`[${getInfo().id}] params read: ${(performance.now() - getInfo().perf.startTime).toFixed(0)}ms`);
+      }
     } catch (e) {
       assert(e instanceof Error);
       logger.error(e);

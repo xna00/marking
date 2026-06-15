@@ -73,7 +73,7 @@ const handler = async (req: IncomingMessage, res: ServerResponse<IncomingMessage
   if (req.url.startsWith("/api/")) {
     response = await als.run(info, () => apiHandler(webReq));
   }
-  logger.log(`[${info.id}]`, response.status)
+  logger.log(`[${info.id}]`, response.status, `${(performance.now() - info.perf.startTime).toFixed(0)}ms`)
   respond(res, response);
 };
 
