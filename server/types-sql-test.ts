@@ -1,6 +1,11 @@
-import type { Schema, Tables } from './types-sql.ts';
+import type {
+  Schema, Tables,
+  WhereParams, SelectResult,
+  InsertParams,
+} from './types-sql.ts';
 
-// Verify fields via Schema
+// ── Schema / Tables ──
+
 type User = Schema<`
   CREATE TABLE user (
     externalUserId TEXT PRIMARY KEY,
@@ -25,14 +30,67 @@ const a: User = {
   updatedAt: '2024-01-01',
 };
 
-const b: User['email'] = null;
-const c: User['email'] = 'test@test.com';
+const _b: User['email'] = null;
+const _c: User['email'] = 'test@test.com';
 
-// Verify mapping via Tables
-const d: Tables['user']['externalUserId'] = 'abc';
-const e: Tables['markRecord']['confirmedAt'] = null;
-const f: Tables['markRecord']['costCredits'] = 1.5;
+const _d: Tables['user']['externalUserId'] = 'abc';
+const _e: Tables['markRecord']['confirmedAt'] = null;
+const _f: Tables['markRecord']['costCredits'] = 1.5;
 
-// Hover to see resolved types
-type PrintUser = User;
-type PrintTables = Tables;
+// ── 用 @name 语法验证类型推导 ──
+
+// SELECT * FROM user WHERE externalUserId = @externalUserId
+type _FindUserParams = WhereParams<'SELECT * FROM user WHERE externalUserId = @externalUserId'>;
+const _g: _FindUserParams = { externalUserId: 'abc' };
+
+type _FindUserResult = SelectResult<'SELECT * FROM user WHERE externalUserId = @externalUserId'>;
+const _h: _FindUserResult = [{
+  externalUserId: 'abc',
+  username: 'test',
+  passwordHash: 'hash',
+  email: null,
+  phone: null,
+  token: null,
+  createdAt: '2024-01-01',
+  updatedAt: '2024-01-01',
+}];
+
+// SELECT * FROM user WHERE username = @username AND token = @token
+const _i: WhereParams<'SELECT * FROM user WHERE username = @username AND token = @token'> = {
+  username: 'test',
+  token: null,
+};
+
+// INSERT INTO markRecord (userId, createdAt, costCredits) VALUES (@userId, @createdAt, @costCredits)
+const _m: InsertParams<'INSERT INTO markRecord (userId, createdAt, costCredits) VALUES (@userId, @createdAt, @costCredits)'> = {
+  userId: 'abc',
+  createdAt: '2024-01-01',
+  costCredits: 1.5,
+};
+
+// INSERT INTO user (...) VALUES (@externalUserId, @username, ...)
+const _n: InsertParams<'INSERT INTO user (externalUserId, username, passwordHash, email, phone, token, createdAt, updatedAt) VALUES (@externalUserId, @username, @passwordHash, @email, @phone, @token, @createdAt, @updatedAt)'> = {
+  externalUserId: 'abc',
+  username: 'test',
+  passwordHash: 'hash',
+  email: null,
+  phone: null,
+  token: null,
+  createdAt: '2024-01-01',
+  updatedAt: '2024-01-01',
+};
+
+// INSERT INTO creditTransaction (...) VALUES (@userId, @amountMoney, @amountCredits, @description, @createdAt)
+const _o: InsertParams<'INSERT INTO creditTransaction (userId, amountMoney, amountCredits, description, createdAt) VALUES (@userId, @amountMoney, @amountCredits, @description, @createdAt)'> = {
+  userId: 'abc',
+  amountMoney: 1000,
+  amountCredits: 100,
+  description: null,
+  createdAt: '2024-01-01',
+};
+
+// INSERT OR REPLACE INTO kfCursor (openKfId, cursor) VALUES (@openKfId, @cursor)
+const _p: InsertParams<'INSERT OR REPLACE INTO kfCursor (openKfId, cursor) VALUES (@openKfId, @cursor)'> = {
+  openKfId: 'kf_abc',
+  cursor: 'some_cursor',
+};
