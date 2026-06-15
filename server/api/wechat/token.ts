@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import { logger } from "../../logger.ts";
 
 const CACHE_FILE = join(process.cwd(), "wechat-token-cache.json");
 
@@ -19,14 +20,14 @@ function loadTokenFromCache(): CachedToken | null {
         return cached;
       }
     }
-  } catch { }
+  } catch { logger.warn("读取 wechat token 缓存失败"); }
   return null;
 }
 
 function saveTokenToCache(token: CachedToken): void {
   try {
     writeFileSync(CACHE_FILE, JSON.stringify(token, null, 2), "utf-8");
-  } catch { }
+  } catch { logger.warn("写入 wechat token 缓存失败"); }
 }
 
 const CORP_ID = process.env.WECOM_CORP_ID;

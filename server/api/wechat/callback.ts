@@ -1,12 +1,9 @@
 import { decrypt } from "@wecom/crypto";
 import { syncMessages } from "./sync.ts";
 import { handleMessages } from "./message.ts";
+import { logger } from "../../logger.ts";
 
 const ENCODING_AES_KEY = process.env.WECOM_KF_ENCODING_AES_KEY;
-
-function log(...args: unknown[]) {
-  console.log(`[${new Date().toLocaleString()}] [wechat]`, ...args);
-}
 
 type CallbackEvent = {
   ToUserName: string;
@@ -46,39 +43,39 @@ async function validateUrl(req: Request): Promise<Response> {
 async function handlePost(req: Request): Promise<Response> {
   try {
     const body = await req.text();
-    log("\n========== 收到回调 ==========");
-    log("原始请求体（前200字符）:", body.substring(0, 200));
+    logger.log("\n========== 收到回调 ==========");
+    logger.log("原始请求体（前200字符）:", body.substring(0, 200));
 
     const encryptMatch = body.match(/<Encrypt><!\[CDATA\[(.*?)\]\]><\/Encrypt>/);
     if (!encryptMatch) {
-      log("未检测到加密消息");
+      logger.log("未检测到加密消息");
       return new Response("success");
     }
 
     const encrypt = encryptMatch[1];
     if (!ENCODING_AES_KEY) {
-      log("WECOM_ENCODING_AES_KEY 未设置");
+      logger.log("WECOM_ENCODING_AES_KEY 未设置");
       return new Response("success");
     }
 
     const { message } = decrypt(ENCODING_AES_KEY, encrypt);
-    log("解密后的消息:", message);
+    logger.log("解密后的消息:", message);
 
     const event = parseXml(message);
-    log("事件类型:", event.Event);
-    log("客服账号:", event.OpenKfId);
+    logger.log("事件类型:", event.Event);
+    logger.log("客服账号:", event.OpenKfId);
 
     if (event.Event === "kf_msg_or_event") {
-      log("\n开始拉取消息...");
+      logger.log("\n开始拉取消息...");
       const msgList = await syncMessages(event.OpenKfId);
-      log(`拉取到 ${msgList.length} 条消息`);
+      logger.log(`拉取到 ${msgList.length} 条消息`);
       if (msgList.length > 0) await handleMessages(msgList);
     }
 
-    log("==============================\n");
+    logger.log("==============================\n");
     return new Response("success");
   } catch (error) {
-    log("处理回调失败:", error);
+    logger.log("处理回调失败:", error);
     return new Response("success");
   }
 }
