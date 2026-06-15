@@ -4,7 +4,7 @@ import {
   type ParseTableName, type SelectResult, type WhereParams,
   type ParseAggAliases,
   type SqlAllResult, type SqlGetResult, type SqlRunResult,
-  sqlAll, sqlGet, sqlRun,
+  TypedDb,
 } from './types-sql.ts';
 
 // ── Test helpers ──
@@ -383,91 +383,57 @@ id INTEGER PRIMARY KEY,
 label TEXT NOT NULL,
 val INTEGER
 )` as const;
-type TestTables = Schema<typeof TEST_TBL_SQL>;
+type _TestTables = Schema<typeof TEST_TBL_SQL>;
 
-const _db = new (require('node:sqlite').DatabaseSync)(':memory:');
-_db.exec(`CREATE TABLE testTbl (
+interface TestTables extends _TestTables {}
+
+// ── TypedDb ──
+
+const _nativeDb = new (require('node:sqlite').DatabaseSync)(':memory:');
+_nativeDb.exec(`CREATE TABLE testTbl (
   id INTEGER PRIMARY KEY,
   label TEXT NOT NULL,
   val INTEGER
 )`);
 
-// sqlRun — INSERT
-const _ins = sqlRun<"INSERT INTO testTbl (label, val) VALUES (@label, @val)", TestTables>(
-  _db,
-  "INSERT INTO testTbl (label, val) VALUES (@label, @val)",
-  { label: 'a', val: 1 },
-);
+const _testDb = new TypedDb<TestTables>(_nativeDb);
+
+// prepare(...).run — INSERT
+const _ins = _testDb.prepare("INSERT INTO testTbl (label, val) VALUES (@label, @val)").run({ label: 'a', val: 1 });
 const _insCheck: { lastInsertRowid: number; changes: number } = _ins;
 
-// sqlRun — INSERT OR REPLACE
-const _repl = sqlRun<"INSERT OR REPLACE INTO testTbl (id, label, val) VALUES (@id, @label, @val)", TestTables>(
-  _db,
-  "INSERT OR REPLACE INTO testTbl (id, label, val) VALUES (@id, @label, @val)",
-  { id: 1, label: 'b', val: 2 },
-);
+// prepare(...).run — INSERT OR REPLACE
+const _repl = _testDb.prepare("INSERT OR REPLACE INTO testTbl (id, label, val) VALUES (@id, @label, @val)").run({ id: 1, label: 'b', val: 2 });
 const _replCheck: { lastInsertRowid: number; changes: number } = _repl;
 
-// sqlRun — UPDATE
-const _upd = sqlRun<"UPDATE testTbl SET label = @label WHERE id = @id", TestTables>(
-  _db,
-  "UPDATE testTbl SET label = @label WHERE id = @id",
-  { label: 'c', id: 1 },
-);
+// prepare(...).run — UPDATE
+const _upd = _testDb.prepare("UPDATE testTbl SET label = @label WHERE id = @id").run({ label: 'c', id: 1 });
 const _updCheck: { lastInsertRowid: number; changes: number } = _upd;
 
-// sqlRun — DELETE
-const _del = sqlRun<"DELETE FROM testTbl WHERE id = @id", TestTables>(
-  _db,
-  "DELETE FROM testTbl WHERE id = @id",
-  { id: 1 },
-);
+// prepare(...).run — DELETE
+const _del = _testDb.prepare("DELETE FROM testTbl WHERE id = @id").run({ id: 1 });
 const _delCheck: { lastInsertRowid: number; changes: number } = _del;
 
-// sqlAll — SELECT *
-const _all = sqlAll<"SELECT * FROM testTbl WHERE id = @id", TestTables>(
-  _db,
-  "SELECT * FROM testTbl WHERE id = @id",
-  { id: 1 },
-);
+// prepare(...).all — SELECT *
+const _all = _testDb.prepare("SELECT * FROM testTbl WHERE id = @id").all({ id: 1 });
 const _allCheck: { id: number; label: string; val: number | null }[] = _all;
 
-// sqlGet — single row
-const _get = sqlGet<"SELECT * FROM testTbl WHERE id = @id", TestTables>(
-  _db,
-  "SELECT * FROM testTbl WHERE id = @id",
-  { id: 1 },
-);
+// prepare(...).get — single row
+const _get = _testDb.prepare("SELECT * FROM testTbl WHERE id = @id").get({ id: 1 });
 const _getCheck: { id: number; label: string; val: number | null } | undefined = _get;
 
-// sqlAll — empty result
-const _allEmpty = sqlAll<"SELECT * FROM testTbl WHERE id = @id", TestTables>(
-  _db,
-  "SELECT * FROM testTbl WHERE id = @id",
-  { id: 999 },
-);
+// prepare(...).all — empty result
+const _allEmpty = _testDb.prepare("SELECT * FROM testTbl WHERE id = @id").all({ id: 999 });
 const _allEmptyCheck: { id: number; label: string; val: number | null }[] = _allEmpty;
 
-// sqlGet — no match
-const _getNone = sqlGet<"SELECT * FROM testTbl WHERE id = @id", TestTables>(
-  _db,
-  "SELECT * FROM testTbl WHERE id = @id",
-  { id: 999 },
-);
+// prepare(...).get — no match
+const _getNone = _testDb.prepare("SELECT * FROM testTbl WHERE id = @id").get({ id: 999 });
 const _getNoneCheck: { id: number; label: string; val: number | null } | undefined = _getNone;
 
-// sqlAll — column select
-const _allCol = sqlAll<"SELECT label,val FROM testTbl ", TestTables>(
-  _db,
-  "SELECT label,val FROM testTbl ",
-  {},
-);
+// prepare(...).all — column select
+const _allCol = _testDb.prepare("SELECT label,val FROM testTbl ").all({});
 const _allColCheck: { label: string; val: number | null }[] = _allCol;
 
-// sqlGet — column select
-const _getCol = sqlGet<"SELECT label FROM testTbl WHERE id = @id", TestTables>(
-  _db,
-  "SELECT label FROM testTbl WHERE id = @id",
-  { id: 1 },
-);
+// prepare(...).get — column select
+const _getCol = _testDb.prepare("SELECT label FROM testTbl WHERE id = @id").get({ id: 1 });
 const _getColCheck: { label: string } | undefined = _getCol;

@@ -320,30 +320,22 @@ export type SqlRunResult<S extends string, T extends Record<string, TableSchema>
     ? O<DmlResult>
     : never;
 
-// ── Runtime functions ──
+// ── TypedDb ──
 
 import { DatabaseSync } from "node:sqlite";
 
-export function sqlAll<const S extends string, T extends Record<string, Record<string, unknown>>>(
-  db: DatabaseSync,
-  sql: S,
-  params: WhereParams<S, T>,
-): SqlAllResult<S, T> {
-  return db.prepare(sql).all(params as any) as SqlAllResult<S, T>;
-}
+export class TypedDb<S extends Record<string, Record<string, unknown>>> {
+  constructor(private db: DatabaseSync) {}
 
-export function sqlGet<const S extends string, T extends Record<string, Record<string, unknown>>>(
-  db: DatabaseSync,
-  sql: S,
-  params: WhereParams<S, T>,
-): SqlGetResult<S, T> {
-  return db.prepare(sql).get(params as any) as SqlGetResult<S, T>;
-}
-
-export function sqlRun<const S extends string, T extends Record<string, Record<string, unknown>>>(
-  db: DatabaseSync,
-  sql: S,
-  params: WhereParams<S, T>,
-): SqlRunResult<S, T> {
-  return db.prepare(sql).run(params as any) as SqlRunResult<S, T>;
+  prepare<const T extends string>(sql: T) {
+    const stmt = this.db.prepare(sql);
+    return {
+      all: (params: WhereParams<T, S>): SqlAllResult<T, S> =>
+        stmt.all(params as any) as SqlAllResult<T, S>,
+      get: (params: WhereParams<T, S>): SqlGetResult<T, S> =>
+        stmt.get(params as any) as SqlGetResult<T, S>,
+      run: (params: WhereParams<T, S>): SqlRunResult<T, S> =>
+        stmt.run(params as any) as SqlRunResult<T, S>,
+    };
+  }
 }
