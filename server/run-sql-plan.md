@@ -98,8 +98,7 @@ WHERE col IN (?, ?)   →  两个 ? 对应同列，tuple 而非 object
 
   export type RunSqlParams<S extends string> =
     IsSelect<S> extends true ? SelectParams<S>
-    : InsertParams<S> extends Record<string, unknown> ? InsertParams<S>
-    : UpdateParams<S>;
+    : WhereParams<S>;
   ```
 
   但是 TypeScript 不支持函数签名和实现分离后的泛型推导同时工作（declare + implement 会导致实现签名覆盖声明）。所以需要 **overload**：
