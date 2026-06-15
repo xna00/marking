@@ -80,7 +80,6 @@ export type Schema<S extends string> =
     : {};
 
 // ── @name parameter scanner ──
-// 扫描 SQL 中所有 @name → 查 Tables[表名][name] → Record<name, type>
 
 // First word of a string (word breaks: space, comma, close-paren, semicolon)
 type FirstWord<S extends string> =
@@ -107,11 +106,6 @@ type _AtParams<Parts extends string[], Acc extends string = never> =
       ? _AtParams<Tail, Acc | ParamName<T>>
       : Acc
     : Acc;
-
-// Map parameter name union to Record<name, type> via table schema
-type NamesToRecord<Names extends string, TName extends keyof Tables> = {
-  [K in Names & keyof Tables[TName]]: Tables[TName][K]
-};
 
 // ── SELECT parser ──
 
@@ -141,19 +135,6 @@ type _SplitCols<S extends string> =
   S extends `${infer C},${infer Rest}` ? C | _SplitCols<Rest>
   : S;
 
-// Result type: SELECT * → Tables[table][], SELECT cols → Pick<Tables[table], cols>[]
-export type SelectResult<S extends string> =
-  ParseTableName<S> extends keyof Tables
-    ? ParseIsStar<S> extends true
-      ? Tables[ParseTableName<S>][]
-      : Pick<Tables[ParseTableName<S>], ParseColNames<S>>[]
-    : never;
-
-export type WhereParams<S extends string> =
-  ParseTableName<S> extends keyof Tables
-    ? NamesToRecord<AtParams<S>, ParseTableName<S>>
-    : {};
-
 // ── INSERT parser ──
 
 type ParseInsertTableName<S extends string> =
@@ -161,183 +142,30 @@ type ParseInsertTableName<S extends string> =
   : S extends `INSERT INTO ${infer Rest}` ? FirstWord<Rest>
   : never;
 
-export type InsertParams<S extends string> =
-  ParseInsertTableName<S> extends keyof Tables
-    ? NamesToRecord<AtParams<S>, ParseInsertTableName<S>>
-    : {};
+// ── Table-generic types ──
 
-// ══════════════════════════════════════════
-//  Compile-time tests
-// ══════════════════════════════════════════
+type TableSchema = Record<string, unknown>;
 
-type AssertTrue<T extends true> = T;
-type AssertFalse<T extends false> = T;
-
-// ── user table ──
-
-type _User = Schema<`CREATE TABLE user (
-externalUserId TEXT PRIMARY KEY,
-username TEXT NOT NULL UNIQUE,
-passwordHash TEXT NOT NULL,
-email TEXT,
-phone TEXT,
-token TEXT,
-createdAt TEXT NOT NULL,
-updatedAt TEXT NOT NULL
-)`>;
-
-type O<T> = {[K in keyof T]: T[K]}
-type User = O<_User>
-
-type _Ue = AssertTrue<'externalUserId' extends keyof User ? true : false>;
-type _Un = AssertTrue<'username' extends keyof User ? true : false>;
-type _Up = AssertTrue<'passwordHash' extends keyof User ? true : false>;
-type _Ue2 = AssertTrue<'email' extends keyof User ? true : false>;
-type _Up2 = AssertTrue<'phone' extends keyof User ? true : false>;
-type _Ut = AssertTrue<'token' extends keyof User ? true : false>;
-type _Uc = AssertTrue<'createdAt' extends keyof User ? true : false>;
-type _Uu = AssertTrue<'updatedAt' extends keyof User ? true : false>;
-
-type _UserExtIdNotNull = AssertFalse<null extends User['externalUserId'] ? true : false>;
-type _UserNameNotNull = AssertFalse<null extends User['username'] ? true : false>;
-type _EmailNullable   = AssertTrue<null extends User['email'] ? true : false>;
-
-// ── markRecord table ──
-
-type _MarkRecord = Schema<`CREATE TABLE markRecord (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
-userId TEXT NOT NULL,
-costCredits REAL NOT NULL DEFAULT 1.0,
-createdAt TEXT NOT NULL,
-confirmedAt TEXT
-)`>;
-type MarkRecord = O<_MarkRecord>
-
-type _Mi = AssertTrue<'id' extends keyof MarkRecord ? true : false>;
-type _Mu = AssertTrue<'userId' extends keyof MarkRecord ? true : false>;
-type _Mc = AssertTrue<'costCredits' extends keyof MarkRecord ? true : false>;
-type _Mcr = AssertTrue<'createdAt' extends keyof MarkRecord ? true : false>;
-type _MCo = AssertTrue<'confirmedAt' extends keyof MarkRecord ? true : false>;
-
-type _MrkConfirmedNull  = AssertTrue<null extends MarkRecord['confirmedAt'] ? true : false>;
-type _MrkCreatedAtNull  = AssertFalse<null extends MarkRecord['createdAt'] ? true : false>;
-
-// ── creditTransaction table ──
-
-type _CreditTx = Schema<`CREATE TABLE creditTransaction (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
-userId TEXT NOT NULL,
-amountMoney INTEGER NOT NULL,
-amountCredits INTEGER NOT NULL,
-description TEXT,
-createdAt TEXT NOT NULL
-)`>;
-type CreditTx = O<_CreditTx>
-
-type _Cd = AssertTrue<'description' extends keyof CreditTx ? true : false>;
-type _Ca = AssertTrue<'amountMoney' extends keyof CreditTx ? true : false>;
-type _Cc = AssertTrue<'amountCredits' extends keyof CreditTx ? true : false>;
-
-type _CtDescNull = AssertTrue<null extends CreditTx['description'] ? true : false>;
-
-// ── Manual table mapping ──
-
-export type Tables = {
-  user: Schema<`CREATE TABLE user (
-externalUserId TEXT PRIMARY KEY,
-username TEXT NOT NULL UNIQUE,
-passwordHash TEXT NOT NULL,
-email TEXT,
-phone TEXT,
-token TEXT,
-createdAt TEXT NOT NULL,
-updatedAt TEXT NOT NULL
-)`>;
-  markRecord: Schema<`CREATE TABLE markRecord (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
-userId TEXT NOT NULL,
-costCredits REAL NOT NULL DEFAULT 1.0,
-createdAt TEXT NOT NULL,
-confirmedAt TEXT
-)`>;
-  creditTransaction: Schema<`CREATE TABLE creditTransaction (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
-userId TEXT NOT NULL,
-amountMoney INTEGER NOT NULL,
-amountCredits INTEGER NOT NULL,
-description TEXT,
-createdAt TEXT NOT NULL
-)`>;
-  kfCursor: Schema<`CREATE TABLE kfCursor (
-openKfId TEXT PRIMARY KEY,
-cursor TEXT NOT NULL
-)`>;
+// Map parameter name union to Record<name, type> via table schema
+type NamesToRecord<Names extends string, TName extends keyof T, T extends Record<string, TableSchema>> = {
+  [K in Names & keyof T[TName]]: T[TName][K]
 };
 
-type _TblUser = AssertTrue<'user' extends keyof Tables ? true : false>;
-type _TblMrk = AssertTrue<'markRecord' extends keyof Tables ? true : false>;
-type _TblCt = AssertTrue<'creditTransaction' extends keyof Tables ? true : false>;
-type _TblKf = AssertTrue<'kfCursor' extends keyof Tables ? true : false>;
-type _TblConfirmedNull = AssertTrue<null extends Tables['markRecord']['confirmedAt'] ? true : false>;
-type _TblDescNull = AssertTrue<null extends Tables['creditTransaction']['description'] ? true : false>;
-type _TblCursorType = AssertFalse<null extends Tables['kfCursor']['cursor'] ? true : false>;
+// Result type: SELECT * → T[table][], SELECT cols → Pick<T[table], cols>[]
+export type SelectResult<S extends string, T extends Record<string, TableSchema>> =
+  ParseTableName<S> extends keyof T
+    ? ParseIsStar<S> extends true
+      ? T[ParseTableName<S>][]
+      : Pick<T[ParseTableName<S>], ParseColNames<S>>[]
+    : never;
 
-// ── ParseTableName ──
+export type WhereParams<S extends string, T extends Record<string, TableSchema>> =
+  ParseTableName<S> extends keyof T
+    ? NamesToRecord<AtParams<S>, ParseTableName<S>, T>
+    : {};
 
-type _PtnUser = AssertTrue<
-  'user' extends ParseTableName<'SELECT * FROM user WHERE id = @id'> ? true : false
->;
-type _PtnMarkRecord = AssertTrue<
-  'markRecord' extends ParseTableName<'SELECT * FROM markRecord WHERE userId = @userId'> ? true : false
->;
-type _PtnNoWhere = AssertTrue<
-  'creditTransaction' extends ParseTableName<'SELECT * FROM creditTransaction'> ? true : false
->;
+export type InsertParams<S extends string, T extends Record<string, TableSchema>> =
+  ParseInsertTableName<S> extends keyof T
+    ? NamesToRecord<AtParams<S>, ParseInsertTableName<S>, T>
+    : {};
 
-// ── SelectResult ──
-
-type _SrUserKey = AssertTrue<'externalUserId' extends keyof SelectResult<'SELECT * FROM user WHERE id = @id'>[number] ? true : false>;
-type _SrMrkKey = AssertTrue<'userId' extends keyof SelectResult<'SELECT * FROM markRecord'>[number] ? true : false>;
-type _SrUserVal = AssertFalse<null extends SelectResult<'SELECT * FROM user WHERE id = @id'>[number]['externalUserId'] ? true : false>;
-type _SrMrkNull = AssertTrue<null extends SelectResult<'SELECT * FROM markRecord'>[number]['confirmedAt'] ? true : false>;
-
-// ── WhereParams (@name) ──
-
-type _WpUser = AssertTrue<
-  'externalUserId' extends keyof WhereParams<'SELECT * FROM user WHERE externalUserId = @externalUserId'> ? true : false
->;
-type _WpUserType = AssertFalse<
-  null extends WhereParams<'SELECT * FROM user WHERE externalUserId = @externalUserId'>['externalUserId'] ? true : false
->;
-type _WpNoWhere = AssertTrue<
-  keyof WhereParams<'SELECT * FROM user'> extends never ? true : false
->;
-type _WpMulti = AssertTrue<
-  'id' extends keyof WhereParams<'SELECT * FROM markRecord WHERE id = @id AND userId = @userId'> ? true : false
->;
-type _WpBoth = AssertTrue<
-  'id' extends keyof WhereParams<'SELECT * FROM markRecord WHERE id = @id AND userId = @userId'> ? true : false
-> & AssertTrue<
-  'userId' extends keyof WhereParams<'SELECT * FROM markRecord WHERE id = @id AND userId = @userId'> ? true : false
->;
-
-// ── InsertParams (@name) ──
-
-type _IpUser = AssertTrue<
-  'externalUserId' extends keyof InsertParams<'INSERT INTO user (externalUserId, username, passwordHash, email, phone, token, createdAt, updatedAt) VALUES (@externalUserId, @username, @passwordHash, @email, @phone, @token, @createdAt, @updatedAt)'> ? true : false
->;
-type _IpUserType = AssertFalse<
-  null extends InsertParams<'INSERT INTO user (externalUserId, username, passwordHash, email, phone, token, createdAt, updatedAt) VALUES (@externalUserId, @username, @passwordHash, @email, @phone, @token, @createdAt, @updatedAt)'>['username'] ? true : false
->;
-type _IpUserEmail = AssertTrue<
-  null extends InsertParams<'INSERT INTO user (externalUserId, username, passwordHash, email, phone, token, createdAt, updatedAt) VALUES (@externalUserId, @username, @passwordHash, @email, @phone, @token, @createdAt, @updatedAt)'>['email'] ? true : false
->;
-type _IpMrk = AssertTrue<
-  'userId' extends keyof InsertParams<'INSERT INTO markRecord (userId, createdAt, costCredits) VALUES (@userId, @createdAt, @costCredits)'> ? true : false
->;
-type _IpReplace = AssertTrue<
-  'openKfId' extends keyof InsertParams<'INSERT OR REPLACE INTO kfCursor (openKfId, cursor) VALUES (@openKfId, @cursor)'> ? true : false
->;
-type _IpCt = AssertTrue<
-  'amountMoney' extends keyof InsertParams<'INSERT INTO creditTransaction (userId, amountMoney, amountCredits, description, createdAt) VALUES (@userId, @amountMoney, @amountCredits, @description, @createdAt)'> ? true : false
->;

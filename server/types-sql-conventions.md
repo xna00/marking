@@ -69,6 +69,6 @@ runSql('WHERE id = @id AND name = @name', { name: 'foo', id: 1 })
 
 | 文件 | 职责 |
 |------|------|
-| `server/types-sql.ts` | 类型体操实现 + 编译期断言 |
-| `server/types-sql-test.ts` | 运行时类型验证 |
-| `server/db.ts` | 数据库连接 + `runSql` 运行时（待实现） |
+| `server/types-sql.ts` | lib——类型体操（Schema / ParseTableName / SelectResult / WhereParams / InsertParams），不含具体表结构 |
+| `server/types-sql-test.ts` | 运行时类型验证 + Tables 定义 + 编译期断言 |
+| `server/db.ts` | 数据库连接 + 定义 `AppTables`（`Tables` 的实际类型），计划接入 `runSql` |
