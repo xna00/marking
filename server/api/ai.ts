@@ -3,6 +3,8 @@ import { DOUBAO_URL, API_KEY } from "./constants.ts";
 import { ApiError } from "./utils.ts";
 import { getCurrentUser, getUserIfLoggedIn } from "./auth.ts";
 import { insertMarkRecord, confirmMarkRecord, countConfirmedRecords, sumCredits, sumConsumedCredits, getTransactions as getDbTransactions, getUsageHistory as getDbUsageHistory } from "../db.ts";
+import { logger } from "../logger.ts";
+import { getInfo } from "../request-context.ts";
 
 type ConfigItem = {
   position: string;
@@ -19,10 +21,6 @@ type ChatBody = {
 type RawAIResultItem = [string, number, string];
 
 export type AIResultItem = { text: string; score: number; reason: string };
-
-function log(...args: unknown[]) {
-  console.log(`[${new Date().toLocaleString()}]`, ...args);
-}
 
 const SYSTEM_PROMPT = `你是一名老师，正在批改试卷，你要批改的题有多个空。这是评分标准：
 {{评分标准}}
@@ -84,12 +82,12 @@ async function doChat(body: ChatBody): Promise<AIResultItem[]> {
 
   const errors: unknown[] = [];
   let lastContent: string | undefined;
+  const id = getInfo().id;
 
   for (let attempt = 0; attempt < 3; attempt++) {
-    const id = Math.random().toString(36).slice(2, 8);
     try {
-      log(`[${id}] => model=${resolvedModel}, image=${body.imageUrl.slice(0, 60)}...${body.imageUrl.length}chars`);
-      for (const cfg of body.config) log(`[${id}]   ${cfg.position} ${cfg.points}分 ${cfg.markingCriteria}`);
+      logger.log(`[${id}] => model=${resolvedModel}, image=${body.imageUrl.slice(0, 60)}...${body.imageUrl.length}chars`);
+      for (const cfg of body.config) logger.log(`[${id}]   ${cfg.position} ${cfg.points}分 ${cfg.markingCriteria}`);
       const start = Date.now();
       const res = await fetch(DOUBAO_URL, {
         method: "POST",
@@ -101,7 +99,7 @@ async function doChat(body: ChatBody): Promise<AIResultItem[]> {
         duplex: "half",
       });
       const ms = Date.now() - start;
-      log(`[${id}] <= ${res.status} (${ms}ms)`);
+      logger.log(`[${id}] <= ${res.status} (${ms}ms)`);
 
       if (!res.ok) {
         const errorBody = await res.json().catch(() => ({}));
@@ -112,11 +110,11 @@ async function doChat(body: ChatBody): Promise<AIResultItem[]> {
       const content = data.choices?.[0]?.message?.content;
       lastContent = content;
 
-      log(`[${id}] body: ${content}`);
+      logger.log(`[${id}] body: ${content}`);
       if (data.usage) {
         const p = MODEL_PRICES[resolvedModel];
         const cost = p ? (data.usage.prompt_tokens * p.input + data.usage.completion_tokens * p.output) / 1_000_000 : 0;
-        log(`[${id}] tokens: 输入${data.usage.prompt_tokens} 输出${data.usage.completion_tokens} 总计${data.usage.total_tokens} 费用${cost.toFixed(4)}元`);
+        logger.log(`[${id}] tokens: 输入${data.usage.prompt_tokens} 输出${data.usage.completion_tokens} 总计${data.usage.total_tokens} 费用${cost.toFixed(4)}元`);
       }
 
       if (!content) {
@@ -144,7 +142,7 @@ async function doChat(body: ChatBody): Promise<AIResultItem[]> {
         reason,
       }));
     } catch (e) {
-      log(`[${id}] attempt ${attempt + 1} failed:`, e);
+      logger.log(`[${id}] attempt ${attempt + 1} failed:`, e);
       errors.push(e);
     }
   }
