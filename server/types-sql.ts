@@ -223,26 +223,14 @@ export type SelectResult<S extends string, T extends Record<string, TableSchema>
     : never;
 
 /**
- * WhereParams<"SELECT * FROM user WHERE id = @id", Tables> → { id: number }
+ * WhereParams<
+ *   "SELECT * FROM user WHERE id = @id" |
+ *   "INSERT INTO user (id,name) VALUES (@id,@name)" |
+ *   "UPDATE user SET email = @email WHERE externalUserId = @uid",
+ *   Tables
+ * > → { id: number } | { id: number; name: string } | { email: string | null; externalUserId: string }
  */
 export type WhereParams<S extends string, T extends Record<string, TableSchema>> =
-  ParseTableName<S> extends keyof T
-    ? NamesToRecord<AtParams<S>, ParseTableName<S>, T>
-    : {};
-
-/**
- * InsertParams<"INSERT INTO user (id,name) VALUES (@id,@name)", Tables> → { id: number; name: string }
- */
-export type InsertParams<S extends string, T extends Record<string, TableSchema>> =
-  ParseTableName<S> extends keyof T
-    ? NamesToRecord<AtParams<S>, ParseTableName<S>, T>
-    : {};
-
-/**
- * UpdateParams<"UPDATE user SET email = @email WHERE externalUserId = @uid", Tables>
- *   → { email: string | null; externalUserId: string }
- */
-export type UpdateParams<S extends string, T extends Record<string, TableSchema>> =
   ParseTableName<S> extends keyof T
     ? NamesToRecord<AtParams<S>, ParseTableName<S>, T>
     : {};
@@ -355,7 +343,7 @@ export function sqlGet<const S extends string, T extends Record<string, Record<s
 export function sqlRun<const S extends string, T extends Record<string, Record<string, unknown>>>(
   db: DatabaseSync,
   sql: S,
-  params: Record<string, unknown>,
+  params: WhereParams<S, T>,
 ): SqlRunResult<S, T> {
   return db.prepare(sql).run(params as any) as SqlRunResult<S, T>;
 }
