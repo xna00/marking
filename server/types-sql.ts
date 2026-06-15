@@ -74,6 +74,36 @@ export type Schema<S extends string> =
     ? ParseCols<Trim<Cols>>
     : {};
 
+// ── SELECT parser ──
+
+type FirstWord<S extends string> =
+  Trim<S> extends `${infer W} ${infer _}` ? W : Trim<S>;
+
+export type ParseTableName<S extends string> =
+  Trim<S> extends `SELECT * FROM ${infer Rest}` ? FirstWord<Trim<Rest>>
+  : never;
+
+export type SelectResult<S extends string> =
+  ParseTableName<S> extends keyof Tables ? Tables[ParseTableName<S>][] : never;
+
+type ParseWhereCond<Cond extends string, TName extends keyof Tables> =
+  Trim<Cond> extends `${infer Col} = ? AND ${infer Rest}`
+    ? Col extends keyof Tables[TName]
+      ? Record<Col, Tables[TName][Col]> & ParseWhereCond<Rest, TName>
+      : {}
+  : Trim<Cond> extends `${infer Col} = ?`
+    ? Col extends keyof Tables[TName]
+      ? Record<Col, Tables[TName][Col]>
+      : {}
+  : {};
+
+export type WhereParams<S extends string> =
+  ParseTableName<S> extends keyof Tables
+    ? Trim<S> extends `${string}WHERE ${infer Cond}`
+      ? ParseWhereCond<Trim<Cond>, ParseTableName<S>>
+      : {}
+    : {};
+
 // ══════════════════════════════════════════
 //  Compile-time tests
 // ══════════════════════════════════════════
@@ -184,3 +214,37 @@ type _TblMrk = AssertTrue<'markRecord' extends keyof Tables ? true : false>;
 type _TblCt = AssertTrue<'creditTransaction' extends keyof Tables ? true : false>;
 type _TblConfirmedNull = AssertTrue<null extends Tables['markRecord']['confirmedAt'] ? true : false>;
 type _TblDescNull = AssertTrue<null extends Tables['creditTransaction']['description'] ? true : false>;
+
+// ── ParseTableName ──
+
+type _PtnUser = AssertTrue<
+  'user' extends ParseTableName<'SELECT * FROM user WHERE id = ?'> ? true : false
+>;
+type _PtnMarkRecord = AssertTrue<
+  'markRecord' extends ParseTableName<'SELECT * FROM markRecord WHERE userId = ?'> ? true : false
+>;
+type _PtnNoWhere = AssertTrue<
+  'creditTransaction' extends ParseTableName<'SELECT * FROM creditTransaction'> ? true : false
+>;
+
+// ── SelectResult ──
+
+type _SrUserKey = AssertTrue<'externalUserId' extends keyof SelectResult<'SELECT * FROM user WHERE id = ?'>[number] ? true : false>;
+type _SrMrkKey = AssertTrue<'userId' extends keyof SelectResult<'SELECT * FROM markRecord'>[number] ? true : false>;
+type _SrUserVal = AssertFalse<null extends SelectResult<'SELECT * FROM user WHERE id = ?'>[number]['externalUserId'] ? true : false>;
+type _SrMrkNull = AssertTrue<null extends SelectResult<'SELECT * FROM markRecord'>[number]['confirmedAt'] ? true : false>;
+
+// ── WhereParams ──
+
+type _WpUser = AssertTrue<
+  'externalUserId' extends keyof WhereParams<'SELECT * FROM user WHERE externalUserId = ?'> ? true : false
+>;
+type _WpUserType = AssertFalse<
+  null extends WhereParams<'SELECT * FROM user WHERE externalUserId = ?'>['externalUserId'] ? true : false
+>;
+type _WpNoWhere = AssertTrue<
+  keyof WhereParams<'SELECT * FROM user'> extends never ? true : false
+>;
+type _WpMulti = AssertTrue<
+  'id' extends keyof WhereParams<'SELECT * FROM markRecord WHERE id = ? AND userId = ?'> ? true : false
+>;
