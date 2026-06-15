@@ -1,6 +1,6 @@
 import type {
   Schema, Tables,
-  WhereParams, SelectResult,
+  WhereParams, SelectResult, ParseTableName,
   InsertParams,
 } from './types-sql.ts';
 
@@ -94,3 +94,19 @@ const _p: InsertParams<'INSERT OR REPLACE INTO kfCursor (openKfId, cursor) VALUE
   openKfId: 'kf_abc',
   cursor: 'some_cursor',
 };
+
+// ── SELECT col1, col2 FROM table (Phase 4) ──
+
+// SELECT username FROM user → Pick<Tables['user'], 'username'>[]
+type _SelectSingleColResult = SelectResult<'SELECT username FROM user WHERE username = @username'>;
+const _q: _SelectSingleColResult = [{ username: 'test' }];
+
+// SELECT email, phone FROM user → Pick<Tables['user'], 'email' | 'phone'>[]
+type _SelectMultiColResult = SelectResult<'SELECT email, phone FROM user'>;
+const _r: _SelectMultiColResult = [{ email: null, phone: '123' }];
+
+// ParseTableName still works with column selection
+const _t: ParseTableName<'SELECT username FROM user WHERE username = @username'> = 'user';
+
+// WhereParams still works with column selection
+const _s: WhereParams<'SELECT username FROM user WHERE username = @username'> = { username: 'test' };
