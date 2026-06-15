@@ -2,7 +2,9 @@ import type {
   O,
   Schema,
   ParseTableName, SelectResult, WhereParams,
-  InsertParams,
+  InsertParams, ParseInsertTableName,
+  ParseUpdateTableName, UpdateParams,
+  ParseAggAliases, RunSqlResult,
 } from './types-sql.ts';
 
 // ── Test helpers ──
@@ -231,3 +233,69 @@ const _t: ParseTableName<'SELECT username FROM user WHERE username = @username'>
 
 // WhereParams still works with column selection
 const _s: WhereParams<'SELECT username FROM user WHERE username = @username', Tables> = { username: 'test' };
+
+// ── ParseUpdateTableName ──
+
+type _Putn = AssertTrue<
+  'user' extends ParseUpdateTableName<'UPDATE user SET email = @email WHERE externalUserId = @externalUserId'> ? true : false
+>;
+type _PutnMrk = AssertTrue<
+  'markRecord' extends ParseUpdateTableName<'UPDATE markRecord SET confirmedAt = @confirmedAt WHERE id = @id'> ? true : false
+>;
+
+// ── UpdateParams ──
+
+type _UpToken = AssertTrue<
+  'token' extends keyof UpdateParams<'UPDATE user SET token = @token, updatedAt = @updatedAt WHERE externalUserId = @externalUserId', Tables> ? true : false
+>;
+type _UpUpdated = AssertTrue<
+  'updatedAt' extends keyof UpdateParams<'UPDATE user SET token = @token, updatedAt = @updatedAt WHERE externalUserId = @externalUserId', Tables> ? true : false
+>;
+type _UpExtId = AssertTrue<
+  'externalUserId' extends keyof UpdateParams<'UPDATE user SET token = @token, updatedAt = @updatedAt WHERE externalUserId = @externalUserId', Tables> ? true : false
+>;
+type _UpTokenNullable = AssertTrue<
+  null extends UpdateParams<'UPDATE user SET token = @token WHERE externalUserId = @externalUserId', Tables>['token'] ? true : false
+>;
+
+const _u: UpdateParams<'UPDATE user SET email = @email WHERE externalUserId = @externalUserId', Tables> = {
+  email: null,
+  externalUserId: 'abc',
+};
+
+// ── ParseAggAliases ──
+
+type _PaaCount = AssertTrue<
+  'count' extends ParseAggAliases<'SELECT COUNT(*) as count FROM markRecord WHERE userId = @userId'> ? true : false
+>;
+type _PaaTotal = AssertTrue<
+  'total' extends ParseAggAliases<'SELECT COALESCE(SUM(costCredits), 0) as total FROM markRecord WHERE userId = @userId'> ? true : false
+>;
+
+// ── RunSqlResult ──
+
+type _RsrInsert = AssertTrue<
+  { lastInsertRowid: number; changes: number } extends RunSqlResult<'INSERT INTO user (id) VALUES (@id)', Tables> ? true : false
+>;
+type _RsrUpdate = AssertTrue<
+  { changes: number } extends RunSqlResult<'UPDATE user SET email = @email WHERE id = @id', Tables> ? true : false
+>;
+type _RsrSelect = AssertTrue<
+  Tables['user'][] extends RunSqlResult<'SELECT * FROM user', Tables> ? true : false
+>;
+type _RsrAgg = AssertTrue<
+  Record<string, number> extends RunSqlResult<'SELECT COUNT(*) as count FROM markRecord', Tables> ? true : false
+>;
+
+const _v: RunSqlResult<'SELECT COALESCE(SUM(costCredits), 0) as total FROM markRecord WHERE userId = @userId', Tables> = { total: 100 };
+
+// ── INSERT OR REPLACE ──
+
+type _IorTName = AssertTrue<
+  'kfCursor' extends ParseInsertTableName<'INSERT OR REPLACE INTO kfCursor (openKfId, cursor) VALUES (@openKfId, @cursor)'> ? true : false
+>;
+type _IorParams = AssertTrue<
+  'openKfId' extends keyof InsertParams<'INSERT OR REPLACE INTO kfCursor (openKfId, cursor) VALUES (@openKfId, @cursor)', Tables> ? true : false
+> & AssertTrue<
+  'cursor' extends keyof InsertParams<'INSERT OR REPLACE INTO kfCursor (openKfId, cursor) VALUES (@openKfId, @cursor)', Tables> ? true : false
+>;
