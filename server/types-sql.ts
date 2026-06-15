@@ -9,6 +9,13 @@
 //   - SELECT 结果 always T[]（.all() 语义）
 // ═══════════════════════════════════════════
 
+/**
+ * SqlType<"TEXT"> → string
+ *
+ * SqlType<"INTEGER"> → number
+ *
+ * SqlType<"REAL"> → number
+ */
 type SqlType<T extends string> =
   T extends `INTEGER${string}` ? number
   : T extends `INT${string}` ? number
@@ -18,7 +25,9 @@ type SqlType<T extends string> =
   : T extends `BLOB${string}` ? Uint8Array
   : never;
 
-// Find first word that's a SQL type name (skip constraint keywords)
+/**
+ * TypeWord<["TEXT", "NOT", "NULL"]> → "TEXT"
+ */
 type TypeWord<Words extends string[]> =
   Words extends [infer W extends string, ...infer Rest extends string[]]
     ? W extends 'NOT' | 'NULL' | 'PRIMARY' | 'KEY' | 'UNIQUE' | 'REFERENCES'
@@ -27,17 +36,27 @@ type TypeWord<Words extends string[]> =
       : W
     : never;
 
-// Parse "name TYPE constraints..." → { name: "name", type: "TYPE" }
+/**
+ * ColNameType<"name TEXT NOT NULL"> → { name: "name"; type: "TEXT" }
+ */
 type ColNameType<S extends string> =
   S extends `${infer Name} ${infer Rest}`
     ? { name: Name; type: TypeWord<Split<Rest, ' '>> }
     : never;
 
+/**
+ * Split<"a b c", " "> → ["a", "b", "c"]
+ */
 type Split<S extends string, Sep extends string, Acc extends string[] = []> =
   S extends `${infer Head}${Sep}${infer Tail}`
     ? Split<Tail, Sep, [...Acc, Head]>
     : S extends '' ? Acc : [...Acc, S];
 
+/**
+ * ColNullable<"name TEXT NOT NULL"> → false
+ *
+ * ColNullable<"name TEXT"> → true
+ */
 type ColNullable<S extends string> =
   S extends `${string}NOT NULL${string}` ? false
   : S extends `${string}TEXT PRIMARY KEY${string}` ? false
@@ -46,6 +65,11 @@ type ColNullable<S extends string> =
   : S extends `${string}PRIMARY KEY${string}` ? false
   : true;
 
+/**
+ * ColToField<"name TEXT NOT NULL"> → { name: string }
+ *
+ * ColToField<"email TEXT"> → { email: string | null }
+ */
 type ColToField<S extends string> =
   ColNameType<S> extends infer P
     ? P extends { name: infer N extends string; type: infer T extends string }
@@ -55,13 +79,18 @@ type ColToField<S extends string> =
       : {}
     : {};
 
-// Split columns at commas (columns separated by \n,\n)
+/**
+ * _Chomp<"\na,\nb"> → ["a", "\nb"]
+ */
 type _Chomp<S extends string> =
   S extends `\n${infer A},\n${infer B}` ? [A, `\n${B}`]
   : S extends `\n${infer A}\n${string}` ? [A, '']
   : S extends `\n${infer A}` ? [A, '']
   : [S, ''];
 
+/**
+ * ParseCols<"\nid INTEGER PRIMARY KEY,\nname TEXT NOT NULL"> → { id: number; name: string }
+ */
 type ParseCols<S extends string, Acc extends Record<string, unknown> = {}> =
   _Chomp<S> extends [infer Col extends string, infer Rest extends string]
     ? Col extends '' ? Acc
@@ -74,6 +103,9 @@ type ParseCols<S extends string, Acc extends Record<string, unknown> = {}> =
       : Acc
     : Acc;
 
+/**
+ * Schema<"CREATE TABLE user (id INTEGER PRIMARY KEY, name TEXT NOT NULL)"> → { id: number; name: string }
+ */
 export type Schema<S extends string> =
   S extends `${string}(${infer Cols})${string}`
     ? ParseCols<Cols>
@@ -81,7 +113,9 @@ export type Schema<S extends string> =
 
 // ── @name parameter scanner ──
 
-// First word of a string (word breaks: space, comma, close-paren, semicolon)
+/**
+ * FirstWord<"user WHERE id = @id"> → "user"
+ */
 type FirstWord<S extends string> =
   S extends `${infer W} ${infer _}` ? W
   : S extends `${infer W},${infer _}` ? W
@@ -89,7 +123,9 @@ type FirstWord<S extends string> =
   : S extends `${infer W};${infer _}` ? W
   : S;
 
-// Extract a single parameter name from text after @
+/**
+ * ParamName<"id, @name)"> → "id"
+ */
 type ParamName<S extends string> =
   S extends `${infer N},${infer _}` ? N
   : S extends `${infer N})${infer _}` ? N
@@ -97,9 +133,16 @@ type ParamName<S extends string> =
   : S extends `${infer N} ${infer _}` ? N
   : S;
 
-// Collect all @name references from a SQL string
+/**
+ * AtParams<"SELECT * FROM user WHERE id = @id"> → "id"
+ *
+ * AtParams<"INSERT INTO user (name) VALUES (@name)"> → "name"
+ */
 type AtParams<S extends string> = _AtParams<Split<S, '@'>>;
 
+/**
+ * _AtParams<["id", "name"], never> → "id" | "name"
+ */
 type _AtParams<Parts extends string[], Acc extends string = never> =
   Parts extends [infer _P, ...infer Tail extends string[]]
     ? Tail extends [infer T extends string, ...infer Rest extends string[]]
@@ -109,7 +152,9 @@ type _AtParams<Parts extends string[], Acc extends string = never> =
 
 // ── SELECT parser ──
 
-// Extract table name from SELECT (handles both SELECT * and SELECT col1, col2)
+/**
+ * ParseTableName<"SELECT * FROM user WHERE id = @id"> → "user"
+ */
 export type ParseTableName<S extends string> =
   S extends `SELECT ${infer Rest}`
     ? Rest extends `${string} FROM ${infer TName}`
@@ -117,13 +162,19 @@ export type ParseTableName<S extends string> =
       : never
     : never;
 
-// Check if SELECT uses * (star)
+/**
+ * ParseIsStar<"SELECT * FROM user"> → true
+ *
+ * ParseIsStar<"SELECT name FROM user"> → false
+ */
 type ParseIsStar<S extends string> =
   S extends `SELECT ${infer Rest}`
     ? Rest extends `*${string}` ? true : false
     : false;
 
-// Parse column list from SELECT (comma-separated identifiers)
+/**
+ * ParseColNames<"SELECT name,email FROM user"> → "name" | "email"
+ */
 type ParseColNames<S extends string> =
   S extends `SELECT ${infer Rest}`
     ? Rest extends `${infer Cols} FROM ${string}`
@@ -131,12 +182,20 @@ type ParseColNames<S extends string> =
       : never
     : never;
 
+/**
+ * _SplitCols<"a,b,c"> → "a" | "b" | "c"
+ */
 type _SplitCols<S extends string> =
   S extends `${infer C},${infer Rest}` ? C | _SplitCols<Rest>
   : S;
 
 // ── INSERT parser ──
 
+/**
+ * ParseInsertTableName<"INSERT INTO user (name) VALUES (@name)"> → "user"
+ *
+ * ParseInsertTableName<"INSERT OR REPLACE INTO kfCursor (k) VALUES (@k)"> → "kfCursor"
+ */
 type ParseInsertTableName<S extends string> =
   S extends `INSERT OR REPLACE INTO ${infer Rest}` ? FirstWord<Rest>
   : S extends `INSERT INTO ${infer Rest}` ? FirstWord<Rest>
@@ -144,14 +203,23 @@ type ParseInsertTableName<S extends string> =
 
 // ── Table-generic types ──
 
+/**
+ * TableSchema used as the table row shape constraint.
+ */
 type TableSchema = Record<string, unknown>;
 
-// Map parameter name union to Record<name, type> via table schema
+/**
+ * NamesToRecord<"id" | "name", "user", Tables> → { id: number; name: string }
+ */
 type NamesToRecord<Names extends string, TName extends keyof T, T extends Record<string, TableSchema>> = {
   [K in Names & keyof T[TName]]: T[TName][K]
 };
 
-// Result type: SELECT * → T[table][], SELECT cols → Pick<T[table], cols>[]
+/**
+ * SelectResult<"SELECT * FROM user", Tables> → Tables['user'][]
+ *
+ * SelectResult<"SELECT username,email FROM user", Tables> → Pick<Tables['user'], 'username' | 'email'>[]
+ */
 export type SelectResult<S extends string, T extends Record<string, TableSchema>> =
   ParseTableName<S> extends keyof T
     ? ParseIsStar<S> extends true
@@ -159,13 +227,18 @@ export type SelectResult<S extends string, T extends Record<string, TableSchema>
       : Pick<T[ParseTableName<S>], ParseColNames<S>>[]
     : never;
 
+/**
+ * WhereParams<"SELECT * FROM user WHERE id = @id", Tables> → { id: number }
+ */
 export type WhereParams<S extends string, T extends Record<string, TableSchema>> =
   ParseTableName<S> extends keyof T
     ? NamesToRecord<AtParams<S>, ParseTableName<S>, T>
     : {};
 
+/**
+ * InsertParams<"INSERT INTO user (id,name) VALUES (@id,@name)", Tables> → { id: number; name: string }
+ */
 export type InsertParams<S extends string, T extends Record<string, TableSchema>> =
   ParseInsertTableName<S> extends keyof T
     ? NamesToRecord<AtParams<S>, ParseInsertTableName<S>, T>
     : {};
-
