@@ -205,7 +205,7 @@ type _SplitCols<S extends string> =
  *
  * ParseInsertTableName<"INSERT OR REPLACE INTO kfCursor (k) VALUES (@k)"> → "kfCursor"
  */
-type ParseInsertTableName<S extends string> =
+export type ParseInsertTableName<S extends string> =
   S extends `INSERT OR REPLACE INTO ${infer Rest}` ? FirstWord<Rest>
   : S extends `INSERT INTO ${infer Rest}` ? FirstWord<Rest>
   : never;
@@ -251,3 +251,77 @@ export type InsertParams<S extends string, T extends Record<string, TableSchema>
   ParseInsertTableName<S> extends keyof T
     ? NamesToRecord<AtParams<S>, ParseInsertTableName<S>, T>
     : {};
+
+// ── UPDATE parser ──
+
+/**
+ * ParseUpdateTableName<"UPDATE user SET token = @token WHERE ..."> → "user"
+ */
+export type ParseUpdateTableName<S extends string> =
+  S extends `UPDATE ${infer TName} SET ${string}` ? FirstWord<TName>
+  : never;
+
+/**
+ * UpdateParams<"UPDATE user SET email = @email WHERE externalUserId = @uid", Tables>
+ *   → { email: string | null; externalUserId: string }
+ */
+export type UpdateParams<S extends string, T extends Record<string, TableSchema>> =
+  ParseUpdateTableName<S> extends keyof T
+    ? NamesToRecord<AtParams<S>, ParseUpdateTableName<S>, T>
+    : {};
+
+// ── Aggregate SELECT parser ──
+
+/**
+ * IsAggSelect<"SELECT COUNT(*) as cnt FROM markRecord"> → true
+ * IsAggSelect<"SELECT username FROM user"> → false
+ */
+type IsAggSelect<S extends string> =
+  S extends `${string}COUNT(${string}` ? true
+  : S extends `${string}SUM(${string}` ? true
+  : false;
+
+/**
+ * ParseAggAliases<"SELECT COUNT(*) as count FROM markRecord"> → "count"
+ *
+ * ParseAggAliases<"SELECT COALESCE(SUM(costCredits), 0) as total FROM markRecord"> → "total"
+ */
+export type ParseAggAliases<S extends string> =
+  S extends `SELECT ${infer Cols} FROM ${string}`
+    ? _ParseAliases<Cols>
+    : never;
+
+type _ParseAliases<S extends string> =
+  S extends `${infer A}, ${infer Rest}`
+    ? _ParseAlias<A> | _ParseAliases<Rest>
+    : _ParseAlias<S>;
+
+type _ParseAlias<S extends string> =
+  S extends `${string} as ${infer Alias}` ? FirstWord<Alias>
+  : never;
+
+// ── Unified result types ──
+
+type InsertResult = { lastInsertRowid: number; changes: number };
+type UpdateResult = { changes: number };
+
+/**
+ * RunSqlResult<"INSERT INTO user (...) VALUES (...)", Tables>
+ *   → { lastInsertRowid: number; changes: number }
+ *
+ * RunSqlResult<"UPDATE user SET email = @email WHERE id = @id", Tables>
+ *   → { changes: number }
+ *
+ * RunSqlResult<"SELECT * FROM user", Tables>
+ *   → Tables['user'][]
+ *
+ * RunSqlResult<"SELECT COUNT(*) as count FROM markRecord", Tables>
+ *   → { count: number }
+ */
+export type RunSqlResult<S extends string, T extends Record<string, TableSchema>> =
+  S extends `INSERT${string}` ? O<InsertResult>
+  : S extends `UPDATE${string}` ? O<UpdateResult>
+  : S extends `SELECT${string}` ?
+    IsAggSelect<S> extends true ? Record<ParseAggAliases<S>, number>
+    : SelectResult<S, T>
+  : never;
