@@ -33,7 +33,7 @@
 | 规则 | 原因 |
 |------|------|
 | SQL 字符串 **无首尾空白** | 类型以 `SELECT`/`INSERT`/`UPDATE` 开头直接匹配 |
-| CREATE TABLE **列定义顶格写**（每行 column 0 开始，无缩进） | `_Chomp` 按 `\n` 前缀拆分列 |
+| CREATE TABLE **列定义顶格写**（每行 column 0 开始，无缩进） | `ParseCols` 用 `Split<Rest, ",\n">` 拆分列 |
 | SELECT 列列表 **逗号后无空格**：`col1,col2` | `_SplitCols` 不做空白归一化 |
 | `@name` 后紧跟 `,` 或 `)`：`@a,@b` 或 `@a)` | 逗号/paren 直接作为 word terminator |
 | `@` 出现在字面量（如 `'email@example.com'`）会误识别 | 避免在 SQL 参数中使用这种模式 |
@@ -64,6 +64,36 @@ runSql('WHERE id = @id AND name = @name', { name: 'foo', id: 1 })
 ### 返回值类型：`SelectResult<S>`
 - `SELECT * FROM 表名` → `Tables[表名][]`
 - `SELECT 列1,列2 FROM 表名` → `Pick<Tables[表名], '列1' | '列2'>[]`
+
+## 设计笔记
+
+### 为什么 `FirstWord` 不能用 `${infer W}${' ' | ',' | ')' | ';'}${string}`
+
+```ts
+// ❌ 不可用！
+type FirstWord<S extends string> =
+  S extends `${infer W}${' ' | ',' | ')' | ';'}${string}` ? W : S;
+```
+
+TypeScript 对 `${infer W}${A | B | C}${string}` 会做 **distribution**——每个 delimiter 独立匹配，
+结果取**所有成功匹配的 W 的 union**，而不是选最短的那一个。
+
+例：`FirstWord<"user (externalUserId, username)">`
+- 空格匹配：W = `"user"`（空格在 position 4）
+- 逗号匹配：W = `"user (externalUserId"`（逗号在 position 20）
+- 结果：`"user" | "user (externalUserId"` → `extends "user"` 为 false ❌
+
+例：`FirstWord<"externalUserId, ">`
+- 逗号匹配：W = `"externalUserId"` ✓
+- 空格匹配：W = `"externalUserId,"` ✗
+- 结果：`"externalUserId" | "externalUserId,"` → ❌
+
+**方案**：用显式链式条件类型，不同场景用不同优先级排序：
+- `FirstWord`：空格优先（SQL 关键字后取表名：`INSERT INTO user (...)` → `"user"`）
+- `ParamName`：逗号/paren 优先（`@name` 后取参数名：`@externalUserId,` → `"externalUserId"`）
+
+**教训**：`${infer W}${Union}${string}` 不保证最短匹配，会 production union；
+需要最短匹配时用链式条件 + 正确优先级。
 
 ## 代码组织
 

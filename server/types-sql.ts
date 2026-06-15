@@ -85,27 +85,18 @@ type ColToField<S extends string> =
     : {};
 
 /**
- * _Chomp<"\na,\nb"> → ["a", "\nb"]
- */
-type _Chomp<S extends string> =
-  S extends `\n${infer A},\n${infer B}` ? [A, `\n${B}`]
-  : S extends `\n${infer A}\n${string}` ? [A, '']
-  : S extends `\n${infer A}` ? [A, '']
-  : [S, ''];
-
-/**
  * ParseCols<"\nid INTEGER PRIMARY KEY,\nname TEXT NOT NULL"> → { id: number; name: string }
+ *
+ * Strips leading \n, splits by ,\n, then folds each column into one record.
  */
-type ParseCols<S extends string, Acc extends Record<string, unknown> = {}> =
-  _Chomp<S> extends [infer Col extends string, infer Rest extends string]
-    ? Col extends '' ? Acc
-    : ColToField<Col> extends infer F
-      ? F extends Record<string, unknown>
-        ? Rest extends ''
-          ? Omit<Acc, keyof F> & F
-          : ParseCols<Rest, Omit<Acc, keyof F> & F>
-        : Acc
-      : Acc
+type ParseCols<S extends string> =
+  S extends `\n${infer Rest}`
+    ? ParseColsList<Split<Rest, `,\n`>>
+    : {};
+
+type ParseColsList<Parts extends string[], Acc extends Record<string, unknown> = {}> =
+  Parts extends [infer P extends string, ...infer Rest extends string[]]
+    ? ParseColsList<Rest, Acc & ColToField<P>>
     : Acc;
 
 /**
@@ -117,13 +108,15 @@ type ParseCols<S extends string, Acc extends Record<string, unknown> = {}> =
  */
 export type Schema<S extends string> =
   S extends `CREATE${string}TABLE ${'IF NOT EXISTS ' | ''}${infer Name} (${infer Cols})${string}`
-    ? O<Record<Name, ParseCols<Cols>>>
+    ? Record<Name, O<ParseCols<Cols>>>
     : {};
 
 // ── @name parameter scanner ──
 
 /**
  * FirstWord<"user WHERE id = @id"> → "user"
+ *
+ * Space-first: for SQL keywords (INSERT/SELECT/UPDATE/... followed by space)
  */
 type FirstWord<S extends string> =
   S extends `${infer W} ${infer _}` ? W
@@ -133,7 +126,9 @@ type FirstWord<S extends string> =
   : S;
 
 /**
- * ParamName<"id, @name)"> → "id"
+ * ParamName<"externalUserId, @username)"> → "externalUserId"
+ *
+ * Comma/paren-first: for @name params (name immediately followed by , or ) or space)
  */
 type ParamName<S extends string> =
   S extends `${infer N},${infer _}` ? N
