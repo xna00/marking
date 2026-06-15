@@ -2,8 +2,6 @@ import {
   type O,
   type Schema,
   type ParseTableName, type SelectResult, type WhereParams,
-  type InsertParams,
-  type UpdateParams,
   type ParseAggAliases,
   type SqlAllResult, type SqlGetResult, type SqlRunResult,
   sqlAll, sqlGet, sqlRun,
@@ -137,25 +135,25 @@ type _WpBoth = AssertTrue<
   'userId' extends keyof WhereParams<'SELECT * FROM markRecord WHERE id = @id AND userId = @userId', Tables> ? true : false
 >;
 
-// ── InsertParams ──
+// ── WhereParams (INSERT) ──
 
 type _IpUser = AssertTrue<
-  'externalUserId' extends keyof InsertParams<'INSERT INTO user (externalUserId, username, passwordHash, email, phone, token, createdAt, updatedAt) VALUES (@externalUserId, @username, @passwordHash, @email, @phone, @token, @createdAt, @updatedAt)', Tables> ? true : false
+  'externalUserId' extends keyof WhereParams<'INSERT INTO user (externalUserId, username, passwordHash, email, phone, token, createdAt, updatedAt) VALUES (@externalUserId, @username, @passwordHash, @email, @phone, @token, @createdAt, @updatedAt)', Tables> ? true : false
 >;
 type _IpUserType = AssertFalse<
-  null extends InsertParams<'INSERT INTO user (externalUserId, username, passwordHash, email, phone, token, createdAt, updatedAt) VALUES (@externalUserId, @username, @passwordHash, @email, @phone, @token, @createdAt, @updatedAt)', Tables>['username'] ? true : false
+  null extends WhereParams<'INSERT INTO user (externalUserId, username, passwordHash, email, phone, token, createdAt, updatedAt) VALUES (@externalUserId, @username, @passwordHash, @email, @phone, @token, @createdAt, @updatedAt)', Tables>['username'] ? true : false
 >;
 type _IpUserEmail = AssertTrue<
-  null extends InsertParams<'INSERT INTO user (externalUserId, username, passwordHash, email, phone, token, createdAt, updatedAt) VALUES (@externalUserId, @username, @passwordHash, @email, @phone, @token, @createdAt, @updatedAt)', Tables>['email'] ? true : false
+  null extends WhereParams<'INSERT INTO user (externalUserId, username, passwordHash, email, phone, token, createdAt, updatedAt) VALUES (@externalUserId, @username, @passwordHash, @email, @phone, @token, @createdAt, @updatedAt)', Tables>['email'] ? true : false
 >;
 type _IpMrk = AssertTrue<
-  'userId' extends keyof InsertParams<'INSERT INTO markRecord (userId, createdAt, costCredits) VALUES (@userId, @createdAt, @costCredits)', Tables> ? true : false
+  'userId' extends keyof WhereParams<'INSERT INTO markRecord (userId, createdAt, costCredits) VALUES (@userId, @createdAt, @costCredits)', Tables> ? true : false
 >;
 type _IpReplace = AssertTrue<
-  'openKfId' extends keyof InsertParams<'INSERT OR REPLACE INTO kfCursor (openKfId, cursor) VALUES (@openKfId, @cursor)', Tables> ? true : false
+  'openKfId' extends keyof WhereParams<'INSERT OR REPLACE INTO kfCursor (openKfId, cursor) VALUES (@openKfId, @cursor)', Tables> ? true : false
 >;
 type _IpCt = AssertTrue<
-  'amountMoney' extends keyof InsertParams<'INSERT INTO creditTransaction (userId, amountMoney, amountCredits, description, createdAt) VALUES (@userId, @amountMoney, @amountCredits, @description, @createdAt)', Tables> ? true : false
+  'amountMoney' extends keyof WhereParams<'INSERT INTO creditTransaction (userId, amountMoney, amountCredits, description, createdAt) VALUES (@userId, @amountMoney, @amountCredits, @description, @createdAt)', Tables> ? true : false
 >;
 
 // ── Runtime tests ──
@@ -188,14 +186,14 @@ const _i: WhereParams<'SELECT * FROM user WHERE username = @username AND token =
 };
 
 // INSERT INTO markRecord (userId, createdAt, costCredits) VALUES (@userId, @createdAt, @costCredits)
-const _m: InsertParams<'INSERT INTO markRecord (userId, createdAt, costCredits) VALUES (@userId, @createdAt, @costCredits)', Tables> = {
+const _m: WhereParams<'INSERT INTO markRecord (userId, createdAt, costCredits) VALUES (@userId, @createdAt, @costCredits)', Tables> = {
   userId: 'abc',
   createdAt: '2024-01-01',
   costCredits: 1.5,
 };
 
 // INSERT INTO user (...) VALUES (@externalUserId, @username, ...)
-const _n: InsertParams<'INSERT INTO user (externalUserId, username, passwordHash, email, phone, token, createdAt, updatedAt) VALUES (@externalUserId, @username, @passwordHash, @email, @phone, @token, @createdAt, @updatedAt)', Tables> = {
+const _n: WhereParams<'INSERT INTO user (externalUserId, username, passwordHash, email, phone, token, createdAt, updatedAt) VALUES (@externalUserId, @username, @passwordHash, @email, @phone, @token, @createdAt, @updatedAt)', Tables> = {
   externalUserId: 'abc',
   username: 'test',
   passwordHash: 'hash',
@@ -207,7 +205,7 @@ const _n: InsertParams<'INSERT INTO user (externalUserId, username, passwordHash
 };
 
 // INSERT INTO creditTransaction (...) VALUES (@userId, @amountMoney, @amountCredits, @description, @createdAt)
-const _o: InsertParams<'INSERT INTO creditTransaction (userId, amountMoney, amountCredits, description, createdAt) VALUES (@userId, @amountMoney, @amountCredits, @description, @createdAt)', Tables> = {
+const _o: WhereParams<'INSERT INTO creditTransaction (userId, amountMoney, amountCredits, description, createdAt) VALUES (@userId, @amountMoney, @amountCredits, @description, @createdAt)', Tables> = {
   userId: 'abc',
   amountMoney: 1000,
   amountCredits: 100,
@@ -216,7 +214,7 @@ const _o: InsertParams<'INSERT INTO creditTransaction (userId, amountMoney, amou
 };
 
 // INSERT OR REPLACE INTO kfCursor (openKfId, cursor) VALUES (@openKfId, @cursor)
-const _p: InsertParams<'INSERT OR REPLACE INTO kfCursor (openKfId, cursor) VALUES (@openKfId, @cursor)', Tables> = {
+const _p: WhereParams<'INSERT OR REPLACE INTO kfCursor (openKfId, cursor) VALUES (@openKfId, @cursor)', Tables> = {
   openKfId: 'kf_abc',
   cursor: 'some_cursor',
 };
@@ -252,22 +250,22 @@ type _PtnInsertRep = AssertTrue<
   'kfCursor' extends ParseTableName<'INSERT OR REPLACE INTO kfCursor (openKfId, cursor) VALUES (@openKfId, @cursor)'> ? true : false
 >;
 
-// ── UpdateParams ──
+// ── WhereParams (UPDATE) ──
 
 type _UpToken = AssertTrue<
-  'token' extends keyof UpdateParams<'UPDATE user SET token = @token, updatedAt = @updatedAt WHERE externalUserId = @externalUserId', Tables> ? true : false
+  'token' extends keyof WhereParams<'UPDATE user SET token = @token, updatedAt = @updatedAt WHERE externalUserId = @externalUserId', Tables> ? true : false
 >;
 type _UpUpdated = AssertTrue<
-  'updatedAt' extends keyof UpdateParams<'UPDATE user SET token = @token, updatedAt = @updatedAt WHERE externalUserId = @externalUserId', Tables> ? true : false
+  'updatedAt' extends keyof WhereParams<'UPDATE user SET token = @token, updatedAt = @updatedAt WHERE externalUserId = @externalUserId', Tables> ? true : false
 >;
 type _UpExtId = AssertTrue<
-  'externalUserId' extends keyof UpdateParams<'UPDATE user SET token = @token, updatedAt = @updatedAt WHERE externalUserId = @externalUserId', Tables> ? true : false
+  'externalUserId' extends keyof WhereParams<'UPDATE user SET token = @token, updatedAt = @updatedAt WHERE externalUserId = @externalUserId', Tables> ? true : false
 >;
 type _UpTokenNullable = AssertTrue<
-  null extends UpdateParams<'UPDATE user SET token = @token WHERE externalUserId = @externalUserId', Tables>['token'] ? true : false
+  null extends WhereParams<'UPDATE user SET token = @token WHERE externalUserId = @externalUserId', Tables>['token'] ? true : false
 >;
 
-const _u: UpdateParams<'UPDATE user SET email = @email WHERE externalUserId = @externalUserId', Tables> = {
+const _u: WhereParams<'UPDATE user SET email = @email WHERE externalUserId = @externalUserId', Tables> = {
   email: null,
   externalUserId: 'abc',
 };
@@ -284,9 +282,9 @@ type _PaaTotal = AssertTrue<
 // ── INSERT OR REPLACE ──
 
 type _IorParams = AssertTrue<
-  'openKfId' extends keyof InsertParams<'INSERT OR REPLACE INTO kfCursor (openKfId, cursor) VALUES (@openKfId, @cursor)', Tables> ? true : false
+  'openKfId' extends keyof WhereParams<'INSERT OR REPLACE INTO kfCursor (openKfId, cursor) VALUES (@openKfId, @cursor)', Tables> ? true : false
 > & AssertTrue<
-  'cursor' extends keyof InsertParams<'INSERT OR REPLACE INTO kfCursor (openKfId, cursor) VALUES (@openKfId, @cursor)', Tables> ? true : false
+  'cursor' extends keyof WhereParams<'INSERT OR REPLACE INTO kfCursor (openKfId, cursor) VALUES (@openKfId, @cursor)', Tables> ? true : false
 >;
 
 // ── SqlAllResult ──
