@@ -7,7 +7,7 @@ import { Readable } from "node:stream";
 import { createGunzip, createInflate, createBrotliDecompress } from "node:zlib";
 import { apiHandler } from "./api/handler.ts";
 import { logger } from "./logger.ts";
-import { als, type RequestInfo } from "./request-context.ts";
+import { als, createRequestInfo } from "./request-context.ts";
 
 const port = Number(process.env.PORT) || 3000;
 const sslCertPath = process.env.SSL_CERT;
@@ -58,22 +58,22 @@ export const respond = (
 };
 
 const handler = async (req: IncomingMessage, res: ServerResponse<IncomingMessage> & { req: IncomingMessage }) => {
+  assert(req.url);
+  const webReq = makeRequest(req);
+  const info = createRequestInfo(webReq);
   const ip = (req.headers["x-forwarded-for"] as string | undefined)
     ?.split(",").at(0)?.trim()
     ?? req.socket.remoteAddress
     ?? "unknown";
-  logger.log(req.method, req.url, ip);
-  assert(req.url);
+  logger.log(`[${info.id}]`, req.method, req.url, ip);
 
   let response = new Response(null, {
     status: 404
   })
   if (req.url.startsWith("/api/")) {
-    const webReq = makeRequest(req);
-    const info: RequestInfo = { request: webReq, status: 200, headers: {} };
     response = await als.run(info, () => apiHandler(webReq));
   }
-  logger.log(response.status)
+  logger.log(`[${info.id}]`, response.status)
   respond(res, response);
 };
 
