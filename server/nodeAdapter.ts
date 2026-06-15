@@ -7,6 +7,7 @@ import { Readable } from "node:stream";
 import { createGunzip, createInflate, createBrotliDecompress } from "node:zlib";
 import { apiHandler } from "./api/handler.ts";
 import { logger } from "./logger.ts";
+import { als, type RequestInfo } from "./request-context.ts";
 
 const port = Number(process.env.PORT) || 3000;
 const sslCertPath = process.env.SSL_CERT;
@@ -68,7 +69,9 @@ const handler = async (req: IncomingMessage, res: ServerResponse<IncomingMessage
     status: 404
   })
   if (req.url.startsWith("/api/")) {
-    response = await apiHandler(makeRequest(req))
+    const webReq = makeRequest(req);
+    const info: RequestInfo = { request: webReq, status: 200, headers: {} };
+    response = await als.run(info, () => apiHandler(webReq));
   }
   logger.log(response.status)
   respond(res, response);

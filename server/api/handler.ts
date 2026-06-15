@@ -1,8 +1,8 @@
 import assert from "node:assert";
-import { als, type Info } from "./global.ts";
 import * as api from "./index.ts";
 import { ApiError, makeJsonResponse, makeJsonResponseApiError } from "./utils.ts";
 import { logger } from "../logger.ts";
+import { getInfo } from "../request-context.ts";
 
 const parseFn = (req: Request): [fn: any, fnName: string] => {
   const pathname = new URL(req.url).pathname;
@@ -44,16 +44,14 @@ export const apiHandler = async (req: Request): Promise<Response> => {
     }
   }
 
-  const info: Info = { request: req, status: 200, headers: {} };
-  return als.run(info, async () => {
-    try {
-      const ret = await fn(...params);
-      if (ret instanceof Response) return ret;
-      return makeJsonResponse(info.status, info.headers, ret);
-    } catch (e) {
-      logger.error(e);
-      if (e instanceof ApiError) return makeJsonResponseApiError(e);
-      return makeJsonResponseApiError(new ApiError(500, String(e), {}, "API_INTERNAL_ERROR", {}));
-    }
-  });
+  try {
+    const info = getInfo();
+    const ret = await fn(...params);
+    if (ret instanceof Response) return ret;
+    return makeJsonResponse(info.status, info.headers, ret);
+  } catch (e) {
+    logger.error(e);
+    if (e instanceof ApiError) return makeJsonResponseApiError(e);
+    return makeJsonResponseApiError(new ApiError(500, String(e), {}, "API_INTERNAL_ERROR", {}));
+  }
 };

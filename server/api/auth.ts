@@ -1,5 +1,5 @@
 import { findUserByToken, type User } from "../db.ts";
-import { getInfo } from "./global.ts";
+import { getInfo } from "../request-context.ts";
 import { ApiError } from "./utils.ts";
 
 export async function getUserIfLoggedIn(): Promise<User | null> {
