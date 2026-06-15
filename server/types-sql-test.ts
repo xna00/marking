@@ -13,7 +13,7 @@ type AssertFalse<T extends false> = T;
 // ── Table definitions ──
 
 type Tables = {
-  user: Schema<`CREATE TABLE user (
+  user: O<Schema<`CREATE TABLE user (
 externalUserId TEXT PRIMARY KEY,
 username TEXT NOT NULL UNIQUE,
 passwordHash TEXT NOT NULL,
@@ -22,31 +22,31 @@ phone TEXT,
 token TEXT,
 createdAt TEXT NOT NULL,
 updatedAt TEXT NOT NULL
-)`>;
-  markRecord: Schema<`CREATE TABLE markRecord (
+)`>>;
+  markRecord: O<Schema<`CREATE TABLE markRecord (
 id INTEGER PRIMARY KEY AUTOINCREMENT,
 userId TEXT NOT NULL,
 costCredits REAL NOT NULL DEFAULT 1.0,
 createdAt TEXT NOT NULL,
 confirmedAt TEXT
-)`>;
-  creditTransaction: Schema<`CREATE TABLE creditTransaction (
+)`>>;
+  creditTransaction: O<Schema<`CREATE TABLE creditTransaction (
 id INTEGER PRIMARY KEY AUTOINCREMENT,
 userId TEXT NOT NULL,
 amountMoney INTEGER NOT NULL,
 amountCredits INTEGER NOT NULL,
 description TEXT,
 createdAt TEXT NOT NULL
-)`>;
-  kfCursor: Schema<`CREATE TABLE kfCursor (
+)`>>;
+  kfCursor: O<Schema<`CREATE TABLE kfCursor (
 openKfId TEXT PRIMARY KEY,
 cursor TEXT NOT NULL
-)`>;
+)`>>;
 };
 
 // ── Schema tests ──
 
-type User = O<Tables['user']>;
+type User = Tables['user'];
 
 type _Ue = AssertTrue<'externalUserId' extends keyof User ? true : false>;
 type _Un = AssertTrue<'username' extends keyof User ? true : false>;
@@ -61,7 +61,7 @@ type _UserExtIdNotNull = AssertFalse<null extends User['externalUserId'] ? true 
 type _UserNameNotNull = AssertFalse<null extends User['username'] ? true : false>;
 type _EmailNullable   = AssertTrue<null extends User['email'] ? true : false>;
 
-type MarkRecord = O<Tables['markRecord']>;
+type MarkRecord = Tables['markRecord'];
 
 type _Mi = AssertTrue<'id' extends keyof MarkRecord ? true : false>;
 type _Mu = AssertTrue<'userId' extends keyof MarkRecord ? true : false>;
@@ -72,7 +72,7 @@ type _MCo = AssertTrue<'confirmedAt' extends keyof MarkRecord ? true : false>;
 type _MrkConfirmedNull  = AssertTrue<null extends MarkRecord['confirmedAt'] ? true : false>;
 type _MrkCreatedAtNull  = AssertFalse<null extends MarkRecord['createdAt'] ? true : false>;
 
-type CreditTx = O<Tables['creditTransaction']>;
+type CreditTx = Tables['creditTransaction'];
 
 type _Cd = AssertTrue<'description' extends keyof CreditTx ? true : false>;
 type _Ca = AssertTrue<'amountMoney' extends keyof CreditTx ? true : false>;
