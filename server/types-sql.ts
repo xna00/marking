@@ -175,7 +175,7 @@ type AssertFalse<T extends false> = T;
 
 // ── user table ──
 
-type User = Schema<`CREATE TABLE user (
+type _User = Schema<`CREATE TABLE user (
 externalUserId TEXT PRIMARY KEY,
 username TEXT NOT NULL UNIQUE,
 passwordHash TEXT NOT NULL,
@@ -185,6 +185,9 @@ token TEXT,
 createdAt TEXT NOT NULL,
 updatedAt TEXT NOT NULL
 )`>;
+
+type O<T> = {[K in keyof T]: T[K]}
+type User = O<_User>
 
 type _Ue = AssertTrue<'externalUserId' extends keyof User ? true : false>;
 type _Un = AssertTrue<'username' extends keyof User ? true : false>;
@@ -201,13 +204,14 @@ type _EmailNullable   = AssertTrue<null extends User['email'] ? true : false>;
 
 // ── markRecord table ──
 
-type MarkRecord = Schema<`CREATE TABLE markRecord (
+type _MarkRecord = Schema<`CREATE TABLE markRecord (
 id INTEGER PRIMARY KEY AUTOINCREMENT,
 userId TEXT NOT NULL,
 costCredits REAL NOT NULL DEFAULT 1.0,
 createdAt TEXT NOT NULL,
 confirmedAt TEXT
 )`>;
+type MarkRecord = O<_MarkRecord>
 
 type _Mi = AssertTrue<'id' extends keyof MarkRecord ? true : false>;
 type _Mu = AssertTrue<'userId' extends keyof MarkRecord ? true : false>;
@@ -220,7 +224,7 @@ type _MrkCreatedAtNull  = AssertFalse<null extends MarkRecord['createdAt'] ? tru
 
 // ── creditTransaction table ──
 
-type CreditTx = Schema<`CREATE TABLE creditTransaction (
+type _CreditTx = Schema<`CREATE TABLE creditTransaction (
 id INTEGER PRIMARY KEY AUTOINCREMENT,
 userId TEXT NOT NULL,
 amountMoney INTEGER NOT NULL,
@@ -228,6 +232,7 @@ amountCredits INTEGER NOT NULL,
 description TEXT,
 createdAt TEXT NOT NULL
 )`>;
+type CreditTx = O<_CreditTx>
 
 type _Cd = AssertTrue<'description' extends keyof CreditTx ? true : false>;
 type _Ca = AssertTrue<'amountMoney' extends keyof CreditTx ? true : false>;
