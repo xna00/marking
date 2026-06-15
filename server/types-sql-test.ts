@@ -226,7 +226,7 @@ type _SelectSingleColResult = SelectResult<'SELECT username FROM user WHERE user
 const _q: _SelectSingleColResult = [{ username: 'test' }];
 
 // SELECT email,phone FROM user → Pick<Tables['user'], 'email' | 'phone'>[]
-type _SelectMultiColResult = SelectResult<'SELECT email,phone FROM user ', Tables>;
+type _SelectMultiColResult = SelectResult<'SELECT email, phone FROM user ', Tables>;
 const _r: _SelectMultiColResult = [{ email: null, phone: '123' }];
 
 // ParseTableName still works with column selection
@@ -293,7 +293,7 @@ type _SarStar = AssertTrue<
   Tables['user'][] extends SqlAllResult<'SELECT * FROM user WHERE id = @id', Tables> ? true : false
 >;
 type _SarCol = AssertTrue<
-  Pick<Tables['user'], 'email' | 'phone'>[] extends SqlAllResult<'SELECT email,phone FROM user ', Tables> ? true : false
+  Pick<Tables['user'], 'email' | 'phone'>[] extends SqlAllResult<'SELECT email, phone FROM user ', Tables> ? true : false
 >;
 type _SarAggCount = AssertTrue<
   { count: number }[] extends SqlAllResult<'SELECT COUNT(*) as count FROM markRecord ', Tables> ? true : false
@@ -317,7 +317,7 @@ type _SgrCol = AssertTrue<
   { username: string } | undefined extends SqlGetResult<'SELECT username FROM user WHERE username = @username', Tables> ? true : false
 >;
 type _SgrColMulti = AssertTrue<
-  Pick<Tables['user'], 'email' | 'phone'> | undefined extends SqlGetResult<'SELECT email,phone FROM user ', Tables> ? true : false
+  Pick<Tables['user'], 'email' | 'phone'> | undefined extends SqlGetResult<'SELECT email, phone FROM user ', Tables> ? true : false
 >;
 type _SgrAggCount = AssertTrue<
   { count: number } | undefined extends SqlGetResult<'SELECT COUNT(*) as count FROM markRecord ', Tables> ? true : false
@@ -431,7 +431,7 @@ const _getNone = _testDb.prepare("SELECT * FROM testTbl WHERE id = @id").get({ i
 const _getNoneCheck: { id: number; label: string; val: number | null } | undefined = _getNone;
 
 // prepare(...).all — column select
-const _allCol = _testDb.prepare("SELECT label,val FROM testTbl ").all({});
+const _allCol = _testDb.prepare("SELECT label, val FROM testTbl ").all({});
 const _allColCheck: { label: string; val: number | null }[] = _allCol;
 
 // prepare(...).get — column select
