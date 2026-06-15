@@ -119,12 +119,39 @@ type NamesToRecord<Names extends string, TName extends keyof Tables> = {
 
 // ── SELECT parser ──
 
+// Extract table name from SELECT (handles both SELECT * and SELECT col1, col2)
 export type ParseTableName<S extends string> =
-  Trim<S> extends `SELECT * FROM ${infer Rest}` ? FirstWord<Trim<Rest>>
-  : never;
+  Trim<S> extends `SELECT ${infer Rest}`
+    ? Rest extends `${string} FROM ${infer TName}`
+      ? FirstWord<Trim<TName>>
+      : never
+    : never;
 
+// Check if SELECT uses * (star)
+type ParseIsStar<S extends string> =
+  Trim<S> extends `SELECT ${infer Rest}`
+    ? Rest extends `*${string}` ? true : false
+    : false;
+
+// Parse column list from SELECT (comma-separated identifiers)
+type ParseColNames<S extends string> =
+  Trim<S> extends `SELECT ${infer Rest}`
+    ? Rest extends `${infer Cols} FROM ${string}`
+      ? _SplitCols<Trim<Cols>>
+      : never
+    : never;
+
+type _SplitCols<S extends string> =
+  S extends `${infer C},${infer Rest}` ? Trim<C> | _SplitCols<Trim<Rest>>
+  : Trim<S>;
+
+// Result type: SELECT * → Tables[table][], SELECT cols → Pick<Tables[table], cols>[]
 export type SelectResult<S extends string> =
-  ParseTableName<S> extends keyof Tables ? Tables[ParseTableName<S>][] : never;
+  ParseTableName<S> extends keyof Tables
+    ? ParseIsStar<S> extends true
+      ? Tables[ParseTableName<S>][]
+      : Pick<Tables[ParseTableName<S>], ParseColNames<S>>[]
+    : never;
 
 export type WhereParams<S extends string> =
   ParseTableName<S> extends keyof Tables
