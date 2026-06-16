@@ -4,7 +4,6 @@ import { ApiError } from "./utils.ts";
 import { getCurrentUser, getUserIfLoggedIn } from "./auth.ts";
 import { insertMarkRecord, confirmMarkRecord, countConfirmedRecords, sumCredits, sumConsumedCredits, getTransactions as getDbTransactions, getUsageHistory as getDbUsageHistory } from "../db.ts";
 import { logger } from "../logger.ts";
-import { getInfo } from "../request-context.ts";
 
 type ConfigItem = {
   position: string;
@@ -82,12 +81,11 @@ async function doChat(body: ChatBody): Promise<AIResultItem[]> {
 
   const errors: unknown[] = [];
   let lastContent: string | undefined;
-  const id = getInfo().id;
 
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      logger.log(`[${id}] => model=${resolvedModel}, image=${body.imageUrl.slice(0, 60)}...${body.imageUrl.length}chars`);
-      for (const cfg of body.config) logger.log(`[${id}]   ${cfg.position} ${cfg.points}分 ${cfg.markingCriteria}`);
+      logger.logWithId(`=> model=${resolvedModel}, image=${body.imageUrl.slice(0, 60)}...${body.imageUrl.length}chars`);
+      for (const cfg of body.config) logger.logWithId(`  ${cfg.position} ${cfg.points}分 ${cfg.markingCriteria}`);
       const start = Date.now();
       const res = await fetch(DOUBAO_URL, {
         method: "POST",
@@ -99,7 +97,7 @@ async function doChat(body: ChatBody): Promise<AIResultItem[]> {
         duplex: "half",
       });
       const ms = Date.now() - start;
-      logger.log(`[${id}] <= ${res.status} (${ms}ms)`);
+      logger.logWithId('<=', res.status, `(${ms}ms)`);
 
       if (!res.ok) {
         const errorBody = await res.json().catch(() => ({}));
@@ -110,11 +108,11 @@ async function doChat(body: ChatBody): Promise<AIResultItem[]> {
       const content = data.choices?.[0]?.message?.content;
       lastContent = content;
 
-      logger.log(`[${id}] body: ${content}`);
+      logger.logWithId('body:', content);
       if (data.usage) {
         const p = MODEL_PRICES[resolvedModel];
         const cost = p ? (data.usage.prompt_tokens * p.input + data.usage.completion_tokens * p.output) / 1_000_000 : 0;
-        logger.log(`[${id}] tokens: 输入${data.usage.prompt_tokens} 输出${data.usage.completion_tokens} 总计${data.usage.total_tokens} 费用${cost.toFixed(4)}元`);
+        logger.logWithId(`tokens: 输入${data.usage.prompt_tokens} 输出${data.usage.completion_tokens} 总计${data.usage.total_tokens} 费用${cost.toFixed(4)}元`);
       }
 
       if (!content) {
@@ -142,7 +140,7 @@ async function doChat(body: ChatBody): Promise<AIResultItem[]> {
         reason,
       }));
     } catch (e) {
-      logger.log(`[${id}] attempt ${attempt + 1} failed:`, e);
+      logger.logWithId('attempt', attempt + 1, 'failed:', e);
       errors.push(e);
     }
   }
@@ -172,17 +170,21 @@ export async function markImage(body: ChatBody): Promise<{ result: AIResultItem[
   const user = await getCurrentUser();
   const result = await doChat(body);
   const markRecordId = insertMarkRecord(user.externalUserId, 1);
+  logger.logWithId(`markImage: recordId=${markRecordId}, userName=${user.username}, userId=${user.externalUserId}`);
   return { result, markRecordId };
 }
 
 export async function confirmMark(body: { markRecordId: number }) {
   const user = await getCurrentUser();
+  logger.logWithId(`confirmMark: ${JSON.stringify(body)}, userName=${user.username}, userId=${user.externalUserId}`);
   const ok = confirmMarkRecord(body.markRecordId, user.externalUserId);
   if (!ok) throw new ApiError(403, "Forbidden", {}, "API_FORBIDDEN", {});
   const confirmedCount = countConfirmedRecords(user.externalUserId);
   const consumedCredits = sumConsumedCredits(user.externalUserId);
   const totalCredits = sumCredits(user.externalUserId);
-  return { success: true, usage: { confirmedCount, consumedCredits, totalCredits, remainingCredits: totalCredits - consumedCredits } };
+  const remainingCredits = totalCredits - consumedCredits;
+  logger.logWithId(`confirmMark result: confirmedCount=${confirmedCount}, consumedCredits=${consumedCredits}, totalCredits=${totalCredits}, remainingCredits=${remainingCredits}`);
+  return { success: true, usage: { confirmedCount, consumedCredits, totalCredits, remainingCredits } };
 }
 
 export async function testMarkImage(body: ChatBody): Promise<AIResultItem[]> {
