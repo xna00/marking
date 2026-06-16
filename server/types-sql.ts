@@ -3,12 +3,15 @@
 //
 //  约定：
 //   - 关键字一律大写（SELECT, FROM, WHERE, INSERT...）
-//   - 参数用 @name，name = 列名，如 WHERE id = @id
+//   - 所有表名必须写别名：FROM user AS u, UPDATE user AS u
+//   - 所有 SELECT 列必须写别名：u.id AS id, COUNT(*) AS cnt
+//   - 参数类型从 `alias.col = @param` 推导，参数名可任意
 //   - @name 后紧跟 , 或 )，不留空格（如 @a,@b / @a)）
 //   - 传参用 object（node:sqlite 原生支持命名参数，无需关心顺序）
+//   - SELECT 必须带 WHERE，至少 WHERE 1=1，这简化了 FROM 子句提取
 //   - SELECT 结果 always T[]（.all() 语义）
-//   - 表名后必须跟一个空格，即使 SQL 在此结束（如 'SELECT * FROM user ')
-//   - SELECT 列列表逗号后跟一个空格：col1, col2（不含空格则整串被当一个列名）
+//   - 表名后必须跟一个空格，即使 SQL 在此结束（如 'SELECT * FROM user AS u '）
+//   - SELECT 列列表逗号后跟一个空格：col1, col2
 // ═══════════════════════════════════════════
 
 /**
@@ -149,131 +152,175 @@ type _AtParams<Parts extends string[], Acc extends string = never> =
       : Acc
     : Acc;
 
-// ── SELECT parser ──
+// ── Table alias map ──
 
-/**
- * ParseTableName<"SELECT * FROM user WHERE id = @id"> → "user"
- *
- * ParseTableName<"INSERT INTO user (name, email) VALUES (@name, @email)"> → "user"
- *
- * ParseTableName<"INSERT OR REPLACE INTO kfCursor (k) VALUES (@k)"> → "kfCursor"
- *
- * ParseTableName<"UPDATE user SET token = @token"> → "user"
- *
- * Table name must be followed by exactly one space (see conventions).
- */
-export type ParseTableName<S extends string> =
-  S extends `INSERT OR REPLACE INTO ${infer Name} ${string}` ? Name
-  : S extends `INSERT INTO ${infer Name} ${string}` ? Name
-  : S extends `DELETE FROM ${infer Name} ${string}` ? Name
-  : S extends `UPDATE ${infer Name} SET ${string}` ? Name
-  : S extends `SELECT ${string} FROM ${infer Name} ${string}` ? Name
+type _TblAlias<S extends string> =
+  S extends `${infer Tbl} AS ${infer A} ON ${string}` ? [Tbl, FirstWord<A>]
+  : S extends `${infer Tbl} AS ${infer A}` ? [Tbl, FirstWord<A>]
   : never;
 
-// ── Table-generic types ──
+type _NewTables<Parts extends string[], Tables extends {}, Acc extends {} = {}> =
+  Parts extends [infer F extends string, ...infer R extends string[]]
+    ? _TblAlias<F> extends [infer N extends string, infer A extends string]
+      ? N extends keyof Tables
+        ? _NewTables<R, Tables, Acc & Record<A, Tables[N]>>
+        : _NewTables<R, Tables, Acc>
+      : _NewTables<R, Tables, Acc>
+    : Acc;
 
 /**
- * TableSchema used as the table row shape constraint.
- */
-type TableSchema = Record<string, unknown>;
-
-/**
- * NamesToRecord<"id" | "name", "user", Tables> → { id: number; name: string }
- */
-type NamesToRecord<Names extends string, TName extends keyof T, T extends Record<string, TableSchema>> = {
-  [K in Names & keyof T[TName]]: T[TName][K]
-};
-
-/**
- * SelectResult<"SELECT * FROM user", Tables> → Tables['user'][]
+ * BuildAliasMap<"SELECT * FROM user AS u WHERE u.id = @id", Tables>
+ *   → { u: Tables['user'] }
  *
- * SelectResult<"SELECT username, email FROM user", Tables> → Pick<Tables['user'], 'username' | 'email'>[]
+ * BuildAliasMap<"SELECT u.id AS id, o.order_id AS oid FROM user AS u LEFT JOIN order_record AS o ON u.id = o.user_id", Tables>
+ *   → { u: Tables['user']; o: Tables['order_record'] }
  */
-export type SelectResult<S extends string, T extends Record<string, TableSchema>> =
-  ParseTableName<S> extends keyof T
-    ? S extends `SELECT ${infer Cols} FROM ${string}`
-      ? Cols extends "*"
-        ? T[ParseTableName<S>][]
-        : Pick<T[ParseTableName<S>], Split<Cols, ', '>[number]>[]
+type BuildAliasMap<S extends string, Tables extends {}> =
+  S extends `SELECT ${string} FROM ${infer Before} WHERE ${string}`
+    ? _NewTables<Split<Before, ' JOIN '>, Tables>
+  : {};
+
+// ── Column helpers ──
+
+type ColsString<S extends string> =
+  S extends `SELECT DISTINCT ${infer Cols} FROM${string}` ? Cols
+  : S extends `SELECT ${infer Cols} FROM${string}` ? Cols
+  : never;
+
+/**
+ * ColType<"u.id", { u: Tables['user'] }> → Tables['user']['id']
+ *
+ * ColType<"COUNT(*)", ...> → number
+ *
+ * ColType<"u.age + 10", ...> → unknown
+ */
+type ColType<Expr extends string, Aliases extends {}> =
+  Expr extends `${infer T}.${infer C}`
+    ? T extends keyof Aliases
+      ? C extends keyof Aliases[T]
+        ? Aliases[T][C]
+        : never
+      : never
+    : Expr extends `${string}COUNT(${string}` ? number
+    : Expr extends `${string}SUM(${string}` ? number
+    : Expr extends `${string}AVG(${string}` ? number
+    : Expr extends `${string}MAX(${string}` ? number
+    : Expr extends `${string}MIN(${string}` ? number
+    : Expr extends `${string}GROUP_CONCAT(${string}` ? number
+    : unknown;
+
+type _Col<S extends string, Aliases extends {}> =
+  S extends `${infer Expr} AS ${infer Name}`
+    ? Record<FirstWord<Name>, ColType<Expr, Aliases>>
+    : {};
+
+type _Cols<Parts extends string[], Aliases extends {}, Acc = {}> =
+  Parts extends [infer F extends string, ...infer R extends string[]]
+    ? _Cols<R, Aliases, Acc & _Col<F, Aliases>>
+    : Acc;
+
+type _UnionToIntersection<U> =
+  (U extends unknown ? (arg: U) => void : never) extends (arg: infer I) => void ? I : never;
+
+/**
+ * SelectResult<"SELECT * FROM user AS u", Tables> → Tables['user'][]
+ *
+ * SelectResult<"SELECT u.id AS id, u.email AS email FROM user AS u", Tables>
+ *   → { id: number; email: string | null }[]
+ *
+ * SelectResult<"SELECT DISTINCT u.username AS name FROM user AS u", Tables>
+ *   → { name: string }[]
+ */
+export type SelectResult<S extends string, T extends {}> =
+  ColsString<S> extends infer RawCols extends string
+    ? BuildAliasMap<S, T> extends infer AliasMap extends {}
+      ? RawCols extends '*'
+        ? _UnionToIntersection<AliasMap[keyof AliasMap]>[]
+        : _Cols<Split<RawCols, ', '>, AliasMap>[]
       : never
     : never;
 
-/**
- * WhereParams<
- *   "SELECT * FROM user WHERE id = @id" |
- *   "INSERT INTO user (id,name) VALUES (@id,@name)" |
- *   "UPDATE user SET email = @email WHERE externalUserId = @uid",
- *   Tables
- * > → { id: number } | { id: number; name: string } | { email: string | null; externalUserId: string }
- */
-export type WhereParams<S extends string, T extends Record<string, TableSchema>> =
-  ParseTableName<S> extends keyof T
-    ? NamesToRecord<AtParams<S>, ParseTableName<S>, T>
-    : {};
-
-// ── Aggregate SELECT parser ──
+// ── Param type resolution ──
 
 /**
- * IsAggSelect<"SELECT COUNT(*) as cnt FROM markRecord"> → true
- * IsAggSelect<"SELECT username FROM user"> → false
- */
-type IsAggSelect<S extends string> =
-  S extends `${string}COUNT(${string}` ? true
-  : S extends `${string}SUM(${string}` ? true
-  : false;
-
-/**
- * ParseAggAliases<"SELECT COUNT(*) as count FROM markRecord"> → "count"
+ * _TableName<"SELECT * FROM user WHERE id = @id"> → "user"
  *
- * ParseAggAliases<"SELECT COALESCE(SUM(costCredits), 0) as total FROM markRecord"> → "total"
+ * _TableName<"INSERT INTO user (name) VALUES (@name)"> → "user"
+ *
+ * _TableName<"INSERT OR REPLACE INTO kfCursor (k) VALUES (@k)"> → "kfCursor"
+ *
+ * _TableName<"UPDATE user SET token = @token"> → "user"
  */
-export type ParseAggAliases<S extends string> =
-  S extends `SELECT ${infer Cols} FROM ${string}`
-    ? _ParseAliases<Cols>
+type _TableName<S extends string> =
+  S extends `INSERT OR REPLACE INTO ${infer Name} ${string}` ? FirstWord<Name>
+  : S extends `INSERT INTO ${infer Name} ${string}` ? FirstWord<Name>
+  : S extends `DELETE FROM ${infer Name} ${string}` ? FirstWord<Name>
+  : S extends `UPDATE ${infer Name} SET ${string}` ? FirstWord<Name>
+  : S extends `SELECT ${string} FROM ${infer Name} ${string}` ? FirstWord<Name>
+  : never;
+
+/** @internal re-export for test compatibility */
+export type ParseTableName<S extends string> = _TableName<S>;
+
+type _FindColFromParam<S extends string, P extends string> =
+  S extends `${string}${infer A}.${infer C} = @${P}${string}`
+    ? [A, C]
     : never;
 
-type _ParseAliases<S extends string> =
-  S extends `${infer A}, ${infer Rest}`
-    ? _ParseAlias<A> | _ParseAliases<Rest>
-    : _ParseAlias<S>;
+type _FallbackType<S extends string, P extends string, T extends {}> =
+  _TableName<S> extends keyof T
+    ? P extends keyof T[_TableName<S> & keyof T]
+      ? T[_TableName<S> & keyof T][P & keyof T[_TableName<S> & keyof T]]
+      : never
+    : never;
 
-type _ParseAlias<S extends string> =
-  S extends `${string} as ${infer Alias}` ? FirstWord<Alias>
-  : never;
+type _ParamType<S extends string, P extends string, T extends {}> =
+  _FindColFromParam<S, P> extends [infer A extends string, infer C extends string]
+    ? A extends keyof BuildAliasMap<S, T>
+      ? C extends keyof BuildAliasMap<S, T>[A]
+        ? BuildAliasMap<S, T>[A][C]
+        : _FallbackType<S, P, T>
+      : _FallbackType<S, P, T>
+    : _FallbackType<S, P, T>;
+
+/**
+ * WhereParams<
+ *   "SELECT * FROM user AS u WHERE u.externalUserId = @euid",
+ *   Tables
+ * > → { euid: string }
+ */
+export type WhereParams<S extends string, T extends {}> =
+  _TableName<S> extends keyof T
+    ? { [P in AtParams<S>]: _ParamType<S, P, T> }
+    : {};
 
 // ── SQL method result types ──
 
 type DmlResult = { lastInsertRowid: number; changes: number };
 
 /**
- * SqlAllResult<"SELECT * FROM user ", Tables>
+ * SqlAllResult<"SELECT * FROM user AS u ", Tables>
  *   → Tables['user'][]
  *
- * SqlAllResult<"SELECT COUNT(*) as count FROM markRecord ", Tables>
+ * SqlAllResult<"SELECT COUNT(*) AS count FROM markRecord AS mr ", Tables>
  *   → { count: number }[]
  *
- * SqlAllResult<"INSERT INTO user ...", Tables>
+ * SqlAllResult<"INSERT INTO user (id) VALUES (@id)", Tables>
  *   → never
- *
- * Maps to runSql(sql, tables).all().
  */
-export type SqlAllResult<S extends string, T extends Record<string, TableSchema>> =
+export type SqlAllResult<S extends string, T extends {}> =
   S extends `SELECT${string}`
-    ? IsAggSelect<S> extends true
-      ? Record<ParseAggAliases<S>, number>[]
-      : SelectResult<S, T>
+    ? SelectResult<S, T>
     : never;
 
 /**
- * SqlGetResult<"SELECT * FROM user WHERE id = @id", Tables>
+ * SqlGetResult<"SELECT * FROM user AS u WHERE u.id = @id", Tables>
  *   → Tables['user'] | undefined
  *
- * SqlGetResult<"INSERT INTO user ...", Tables>
+ * SqlGetResult<"INSERT INTO user (id) VALUES (@id)", Tables>
  *   → undefined
- *
- * Maps to runSql(sql, tables).get().
  */
-export type SqlGetResult<S extends string, T extends Record<string, TableSchema>> =
+export type SqlGetResult<S extends string, T extends {}> =
   SqlAllResult<S, T>[number] | undefined;
 
 /**
@@ -286,21 +333,19 @@ export type SqlGetResult<S extends string, T extends Record<string, TableSchema>
  * SqlRunResult<"DELETE FROM ...", Tables>
  *   → { lastInsertRowid: number; changes: number }
  *
- * SqlRunResult<"SELECT * FROM user", Tables>
+ * SqlRunResult<"SELECT * FROM user AS u ", Tables>
  *   → never
- *
- * Maps to runSql(sql, tables).run().
  */
-export type SqlRunResult<S extends string, T extends Record<string, TableSchema>> =
+export type SqlRunResult<S extends string, T extends {}> =
   S extends `${'INSERT' | 'UPDATE' | 'DELETE'}${string}`
-    ? O<DmlResult>
+    ? DmlResult
     : never;
 
 // ── TypedDb ──
 
 import { DatabaseSync } from "node:sqlite";
 
-export class TypedDb<S extends Record<string, Record<string, unknown>>> {
+export class TypedDb<S extends {}> {
   constructor(private db: DatabaseSync) {}
 
   prepare<const T extends string>(sql: T) {
