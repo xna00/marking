@@ -2,7 +2,6 @@ import {
   type O,
   type Schema,
   type ParseTableName, type SelectResult, type WhereParams,
-  type ParseAggAliases,
   type SqlAllResult, type SqlGetResult, type SqlRunResult,
   TypedDb,
 } from './types-sql.ts';
@@ -99,40 +98,70 @@ type _TblCursorType = AssertFalse<null extends Tables['kfCursor']['cursor'] ? tr
 // ── ParseTableName ──
 
 type _PtnUser = AssertTrue<
-  'user' extends ParseTableName<'SELECT * FROM user WHERE id = @id'> ? true : false
+  'user' extends ParseTableName<'SELECT * FROM user AS u WHERE u.id = @id'> ? true : false
 >;
 type _PtnMarkRecord = AssertTrue<
-  'markRecord' extends ParseTableName<'SELECT * FROM markRecord WHERE userId = @userId'> ? true : false
+  'markRecord' extends ParseTableName<'SELECT * FROM markRecord AS mr WHERE mr.userId = @userId'> ? true : false
 >;
 type _PtnNoWhere = AssertTrue<
-  'creditTransaction' extends ParseTableName<'SELECT * FROM creditTransaction '> ? true : false
+  'creditTransaction' extends ParseTableName<'SELECT * FROM creditTransaction AS ct WHERE 1=1 '> ? true : false
 >;
 
 // ── SelectResult ──
 
-type _SrUserKey = AssertTrue<'externalUserId' extends keyof SelectResult<'SELECT * FROM user WHERE id = @id', Tables>[number] ? true : false>;
-type _SrMrkKey = AssertTrue<  'userId' extends keyof SelectResult<'SELECT * FROM markRecord ', Tables>[number] ? true : false>;
-type _SrUserVal = AssertFalse<null extends SelectResult<'SELECT * FROM user WHERE id = @id', Tables>[number]['externalUserId'] ? true : false>;
-type _SrMrkNull = AssertTrue<  null extends SelectResult<'SELECT * FROM markRecord ', Tables>[number]['confirmedAt'] ? true : false>;
+type _SrUserKey = AssertTrue<'externalUserId' extends keyof SelectResult<'SELECT * FROM user AS u WHERE u.id = @id', Tables>[number] ? true : false>;
+type _SrMrkKey = AssertTrue<  'userId' extends keyof SelectResult<'SELECT * FROM markRecord AS mr WHERE 1=1 ', Tables>[number] ? true : false>;
+type _SrUserVal = AssertFalse<null extends SelectResult<'SELECT * FROM user AS u WHERE u.id = @id', Tables>[number]['externalUserId'] ? true : false>;
+type _SrMrkNull = AssertTrue<  null extends SelectResult<'SELECT * FROM markRecord AS mr WHERE 1=1 ', Tables>[number]['confirmedAt'] ? true : false>;
+
+// ── SelectResult (LEFT JOIN) ──
+
+type _SrLeftJoinKey1 = AssertTrue<
+  'userId' extends keyof SelectResult<'SELECT u.externalUserId AS userId, mr.id AS recordId FROM user AS u LEFT JOIN markRecord AS mr ON u.externalUserId = mr.userId WHERE 1=1', Tables>[number] ? true : false
+>;
+type _SrLeftJoinKey2 = AssertTrue<
+  'recordId' extends keyof SelectResult<'SELECT u.externalUserId AS userId, mr.id AS recordId FROM user AS u LEFT JOIN markRecord AS mr ON u.externalUserId = mr.userId WHERE 1=1', Tables>[number] ? true : false
+>;
+
+// ── SelectResult (SELECT DISTINCT) ──
+
+type _SrDistinct = AssertTrue<
+  { username: string }[] extends SelectResult<'SELECT DISTINCT u.username AS username FROM user AS u WHERE 1=1 ', Tables> ? true : false
+>;
+
+// ── SelectResult (mixed aggregate + non-aggregate) ──
+
+type _SrMixedAgg = AssertTrue<
+  { cnt: number; name: string }[] extends SelectResult<'SELECT COUNT(*) AS cnt, u.username AS name FROM user AS u WHERE 1=1 ', Tables> ? true : false
+>;
+
+// ── SelectResult (SELECT * with JOIN → intersection) ──
+
+type _SrJoinStarKey1 = AssertTrue<
+  'externalUserId' extends keyof SelectResult<'SELECT * FROM user AS u LEFT JOIN kfCursor AS k ON u.externalUserId = k.openKfId WHERE 1=1 ', Tables>[number] ? true : false
+>;
+type _SrJoinStarKey2 = AssertTrue<
+  'openKfId' extends keyof SelectResult<'SELECT * FROM user AS u LEFT JOIN kfCursor AS k ON u.externalUserId = k.openKfId WHERE 1=1 ', Tables>[number] ? true : false
+>;
 
 // ── WhereParams ──
 
 type _WpUser = AssertTrue<
-  'externalUserId' extends keyof WhereParams<'SELECT * FROM user WHERE externalUserId = @externalUserId', Tables> ? true : false
+  'externalUserId' extends keyof WhereParams<'SELECT * FROM user AS u WHERE u.externalUserId = @externalUserId', Tables> ? true : false
 >;
 type _WpUserType = AssertFalse<
-  null extends WhereParams<'SELECT * FROM user WHERE externalUserId = @externalUserId', Tables>['externalUserId'] ? true : false
+  null extends WhereParams<'SELECT * FROM user AS u WHERE u.externalUserId = @externalUserId', Tables>['externalUserId'] ? true : false
 >;
 type _WpNoWhere = AssertTrue<
-  keyof WhereParams<'SELECT * FROM user ', Tables> extends never ? true : false
+  keyof WhereParams<'SELECT * FROM user AS u WHERE 1=1 ', Tables> extends never ? true : false
 >;
 type _WpMulti = AssertTrue<
-  'id' extends keyof WhereParams<'SELECT * FROM markRecord WHERE id = @id AND userId = @userId', Tables> ? true : false
+  'id' extends keyof WhereParams<'SELECT * FROM markRecord AS mr WHERE mr.id = @id AND mr.userId = @userId', Tables> ? true : false
 >;
 type _WpBoth = AssertTrue<
-  'id' extends keyof WhereParams<'SELECT * FROM markRecord WHERE id = @id AND userId = @userId', Tables> ? true : false
+  'id' extends keyof WhereParams<'SELECT * FROM markRecord AS mr WHERE mr.id = @id AND mr.userId = @userId', Tables> ? true : false
 > & AssertTrue<
-  'userId' extends keyof WhereParams<'SELECT * FROM markRecord WHERE id = @id AND userId = @userId', Tables> ? true : false
+  'userId' extends keyof WhereParams<'SELECT * FROM markRecord AS mr WHERE mr.id = @id AND mr.userId = @userId', Tables> ? true : false
 >;
 
 // ── WhereParams (INSERT) ──
@@ -162,11 +191,11 @@ const _d: Tables['user']['externalUserId'] = 'abc';
 const _e: Tables['markRecord']['confirmedAt'] = null;
 const _f: Tables['markRecord']['costCredits'] = 1.5;
 
-// SELECT * FROM user WHERE externalUserId = @externalUserId
-type _FindUserParams = WhereParams<'SELECT * FROM user WHERE externalUserId = @externalUserId', Tables>;
-const _g: _FindUserParams = { externalUserId: 'abc' };
+// SELECT * FROM user AS u WHERE u.externalUserId = @externalUserId
+type _FindUserParams = WhereParams<'SELECT * FROM user AS u WHERE u.externalUserId = @externalUserId', Tables>;
+const _g: _FindUserParams = { 'externalUserId': 'abc' };
 
-type _FindUserResult = SelectResult<'SELECT * FROM user WHERE externalUserId = @externalUserId', Tables>;
+type _FindUserResult = SelectResult<'SELECT * FROM user AS u WHERE u.externalUserId = @externalUserId', Tables>;
 const _h: _FindUserResult = [{
   externalUserId: 'abc',
   username: 'test',
@@ -179,10 +208,10 @@ const _h: _FindUserResult = [{
 }];
 
 
-// SELECT * FROM user WHERE username = @username AND token = @token
-const _i: WhereParams<'SELECT * FROM user WHERE username = @username AND token = @token', Tables> = {
-  username: 'test',
-  token: null,
+// SELECT * FROM user AS u WHERE u.username = @username AND u.token = @token
+const _i: WhereParams<'SELECT * FROM user AS u WHERE u.username = @username AND u.token = @token', Tables> = {
+  'username': 'test',
+  'token': null,
 };
 
 // INSERT INTO markRecord (userId, createdAt, costCredits) VALUES (@userId, @createdAt, @costCredits)
@@ -219,32 +248,32 @@ const _p: WhereParams<'INSERT OR REPLACE INTO kfCursor (openKfId, cursor) VALUES
   cursor: 'some_cursor',
 };
 
-// SELECT col1,col2 FROM table (Phase 4)
+// SELECT column + AS, AS
 
-// SELECT username FROM user → Pick<Tables['user'], 'username'>[]
-type _SelectSingleColResult = SelectResult<'SELECT username FROM user WHERE username = @username', Tables>;
+// SELECT u.username AS username FROM user AS u → { username: string }[]
+type _SelectSingleColResult = SelectResult<'SELECT u.username AS username FROM user AS u WHERE u.username = @username', Tables>;
 const _q: _SelectSingleColResult = [{ username: 'test' }];
 
-// SELECT email,phone FROM user → Pick<Tables['user'], 'email' | 'phone'>[]
-type _SelectMultiColResult = SelectResult<'SELECT email, phone FROM user ', Tables>;
+// SELECT u.email AS email, u.phone AS phone FROM user AS u → { email: string | null; phone: string | null }[]
+type _SelectMultiColResult = SelectResult<'SELECT u.email AS email, u.phone AS phone FROM user AS u WHERE 1=1 ', Tables>;
 const _r: _SelectMultiColResult = [{ email: null, phone: '123' }];
 
 // ParseTableName still works with column selection
-const _t: ParseTableName<'SELECT username FROM user WHERE username = @username'> = 'user';
+const _t: ParseTableName<'SELECT u.username AS username FROM user AS u WHERE u.username = @username'> = 'user';
 
 // WhereParams still works with column selection
-const _s: WhereParams<'SELECT username FROM user WHERE username = @username', Tables> = { username: 'test' };
+const _s: WhereParams<'SELECT u.username AS username FROM user AS u WHERE u.username = @username', Tables> = { 'username': 'test' };
 
 // ── ParseTableName (UPDATE / DELETE) ──
 
 type _PtnUpdate = AssertTrue<
-  'user' extends ParseTableName<'UPDATE user SET email = @email WHERE externalUserId = @externalUserId'> ? true : false
+  'user' extends ParseTableName<'UPDATE user AS u SET u.email = @email WHERE u.externalUserId = @externalUserId'> ? true : false
 >;
 type _PtnUpdateMrk = AssertTrue<
-  'markRecord' extends ParseTableName<'UPDATE markRecord SET confirmedAt = @confirmedAt WHERE id = @id'> ? true : false
+  'markRecord' extends ParseTableName<'UPDATE markRecord AS mr SET mr.confirmedAt = @confirmedAt WHERE mr.id = @id'> ? true : false
 >;
 type _PtnDelete = AssertTrue<
-  'user' extends ParseTableName<'DELETE FROM user WHERE id = @id'> ? true : false
+  'user' extends ParseTableName<'DELETE FROM user AS u WHERE u.id = @id'> ? true : false
 >;
 type _PtnInsertRep = AssertTrue<
   'kfCursor' extends ParseTableName<'INSERT OR REPLACE INTO kfCursor (openKfId, cursor) VALUES (@openKfId, @cursor)'> ? true : false
@@ -253,32 +282,32 @@ type _PtnInsertRep = AssertTrue<
 // ── WhereParams (UPDATE) ──
 
 type _UpToken = AssertTrue<
-  'token' extends keyof WhereParams<'UPDATE user SET token = @token, updatedAt = @updatedAt WHERE externalUserId = @externalUserId', Tables> ? true : false
+  'token' extends keyof WhereParams<'UPDATE user AS u SET u.token = @token, u.updatedAt = @updatedAt WHERE u.externalUserId = @externalUserId', Tables> ? true : false
 >;
 type _UpUpdated = AssertTrue<
-  'updatedAt' extends keyof WhereParams<'UPDATE user SET token = @token, updatedAt = @updatedAt WHERE externalUserId = @externalUserId', Tables> ? true : false
+  'updatedAt' extends keyof WhereParams<'UPDATE user AS u SET u.token = @token, u.updatedAt = @updatedAt WHERE u.externalUserId = @externalUserId', Tables> ? true : false
 >;
 type _UpExtId = AssertTrue<
-  'externalUserId' extends keyof WhereParams<'UPDATE user SET token = @token, updatedAt = @updatedAt WHERE externalUserId = @externalUserId', Tables> ? true : false
+  'externalUserId' extends keyof WhereParams<'UPDATE user AS u SET u.token = @token, u.updatedAt = @updatedAt WHERE u.externalUserId = @externalUserId', Tables> ? true : false
 >;
 type _UpTokenNullable = AssertTrue<
-  null extends WhereParams<'UPDATE user SET token = @token WHERE externalUserId = @externalUserId', Tables>['token'] ? true : false
+  null extends WhereParams<'UPDATE user AS u SET u.token = @token WHERE u.externalUserId = @externalUserId', Tables>['token'] ? true : false
 >;
 
-const _u: WhereParams<'UPDATE user SET email = @email WHERE externalUserId = @externalUserId', Tables> = {
-  email: null,
-  externalUserId: 'abc',
+const _u: WhereParams<'UPDATE user AS u SET u.email = @email WHERE u.externalUserId = @externalUserId', Tables> = {
+  'email': null,
+  'externalUserId': 'abc',
 };
 
-// ── ParseAggAliases ──
+// ── WhereParams (DELETE) ──
 
-type _PaaCount = AssertTrue<
-  'count' extends ParseAggAliases<'SELECT COUNT(*) as count FROM markRecord WHERE userId = @userId'> ? true : false
+type _WpDelete = AssertTrue<
+  'id' extends keyof WhereParams<'DELETE FROM user AS u WHERE u.id = @id', Tables> ? true : false
 >;
-type _PaaTotal = AssertTrue<
-  'total' extends ParseAggAliases<'SELECT COALESCE(SUM(costCredits), 0) as total FROM markRecord WHERE userId = @userId'> ? true : false
+type _WpDeleteType = AssertFalse<
+  null extends WhereParams<'DELETE FROM user AS u WHERE u.id = @id', Tables>['id'] ? true : false
 >;
-
+ 
 // ── INSERT OR REPLACE ──
 
 type _IorParams = AssertTrue<
@@ -290,16 +319,16 @@ type _IorParams = AssertTrue<
 // ── SqlAllResult ──
 
 type _SarStar = AssertTrue<
-  Tables['user'][] extends SqlAllResult<'SELECT * FROM user WHERE id = @id', Tables> ? true : false
+  Tables['user'][] extends SqlAllResult<'SELECT * FROM user AS u WHERE u.id = @id', Tables> ? true : false
 >;
 type _SarCol = AssertTrue<
-  Pick<Tables['user'], 'email' | 'phone'>[] extends SqlAllResult<'SELECT email, phone FROM user ', Tables> ? true : false
+  { email: string | null; phone: string | null }[] extends SqlAllResult<'SELECT u.email AS email, u.phone AS phone FROM user AS u WHERE 1=1 ', Tables> ? true : false
 >;
 type _SarAggCount = AssertTrue<
-  { count: number }[] extends SqlAllResult<'SELECT COUNT(*) as count FROM markRecord ', Tables> ? true : false
+  { count: number }[] extends SqlAllResult<'SELECT COUNT(*) AS count FROM markRecord AS mr WHERE 1=1 ', Tables> ? true : false
 >;
 type _SarAggTotal = AssertTrue<
-  { total: number }[] extends SqlAllResult<'SELECT COALESCE(SUM(costCredits), 0) as total FROM markRecord WHERE userId = @userId', Tables> ? true : false
+  { total: number }[] extends SqlAllResult<'SELECT COALESCE(SUM(mr.costCredits), 0) AS total FROM markRecord AS mr WHERE mr.userId = @userId', Tables> ? true : false
 >;
 type _SarDmlNever = AssertTrue<
   never extends SqlAllResult<'INSERT INTO user (id) VALUES (@id)', Tables> ? true : false
@@ -311,16 +340,16 @@ type _SarUpdateNever = AssertTrue<
 // ── SqlGetResult ──
 
 type _SgrStar = AssertTrue<
-  Tables['user'] | undefined extends SqlGetResult<'SELECT * FROM user WHERE id = @id', Tables> ? true : false
+  Tables['user'] | undefined extends SqlGetResult<'SELECT * FROM user AS u WHERE u.id = @id', Tables> ? true : false
 >;
 type _SgrCol = AssertTrue<
-  { username: string } | undefined extends SqlGetResult<'SELECT username FROM user WHERE username = @username', Tables> ? true : false
+  { username: string } | undefined extends SqlGetResult<'SELECT u.username AS username FROM user AS u WHERE u.username = @username', Tables> ? true : false
 >;
 type _SgrColMulti = AssertTrue<
-  Pick<Tables['user'], 'email' | 'phone'> | undefined extends SqlGetResult<'SELECT email, phone FROM user ', Tables> ? true : false
+  { email: string | null; phone: string | null } | undefined extends SqlGetResult<'SELECT u.email AS email, u.phone AS phone FROM user AS u WHERE 1=1 ', Tables> ? true : false
 >;
 type _SgrAggCount = AssertTrue<
-  { count: number } | undefined extends SqlGetResult<'SELECT COUNT(*) as count FROM markRecord ', Tables> ? true : false
+  { count: number } | undefined extends SqlGetResult<'SELECT COUNT(*) AS count FROM markRecord AS mr WHERE 1=1 ', Tables> ? true : false
 >;
 
 // ── SqlRunResult ──
@@ -329,13 +358,13 @@ type _SrrInsert = AssertTrue<
   { lastInsertRowid: number; changes: number } extends SqlRunResult<'INSERT INTO user (id) VALUES (@id)', Tables> ? true : false
 >;
 type _SrrUpdate = AssertTrue<
-  { lastInsertRowid: number; changes: number } extends SqlRunResult<'UPDATE user SET email = @email WHERE id = @id', Tables> ? true : false
+  { lastInsertRowid: number; changes: number } extends SqlRunResult<'UPDATE user AS u SET u.email = @email WHERE u.id = @id', Tables> ? true : false
 >;
 type _SrrDelete = AssertTrue<
-  { lastInsertRowid: number; changes: number } extends SqlRunResult<'DELETE FROM user WHERE id = @id', Tables> ? true : false
+  { lastInsertRowid: number; changes: number } extends SqlRunResult<'DELETE FROM user AS u WHERE u.id = @id', Tables> ? true : false
 >;
 type _SrrSelectNever = AssertTrue<
-  never extends SqlRunResult<'SELECT * FROM user ', Tables> ? true : false
+  never extends SqlRunResult<'SELECT * FROM user AS u WHERE 1=1 ', Tables> ? true : false
 >;
 
 // ── TEMP TABLE ──
@@ -370,11 +399,11 @@ type _InvalidParseInsert = AssertTrue<never extends ParseTableName<'BOGUS SQL'> 
 
 // ── Runtime validation ──
 
-const _rtAll: SqlAllResult<'SELECT * FROM user WHERE id = @id', Tables> = [{ externalUserId: 'abc', username: 'x', passwordHash: 'h', email: null, phone: null, token: null, createdAt: 'now', updatedAt: 'now' }];
-const _rtGet: SqlGetResult<'SELECT * FROM user WHERE id = @id', Tables> = undefined;
-const _rtGet2: SqlGetResult<'SELECT username FROM user WHERE username = @username', Tables> = { username: 'x' };
+const _rtAll: SqlAllResult<'SELECT * FROM user AS u WHERE u.id = @id', Tables> = [{ externalUserId: 'abc', username: 'x', passwordHash: 'h', email: null, phone: null, token: null, createdAt: 'now', updatedAt: 'now' }];
+const _rtGet: SqlGetResult<'SELECT * FROM user AS u WHERE u.id = @id', Tables> = undefined;
+const _rtGet2: SqlGetResult<'SELECT u.username AS username FROM user AS u WHERE u.username = @username', Tables> = { username: 'x' };
 const _rtRunInsert: SqlRunResult<'INSERT INTO user (id) VALUES (@id)', Tables> = { lastInsertRowid: 1, changes: 1 };
-const _rtRunUpdate: SqlRunResult<'UPDATE user SET email = @email WHERE id = @id', Tables> = { lastInsertRowid: 1, changes: 1 };
+const _rtRunUpdate: SqlRunResult<'UPDATE user AS u SET u.email = @email WHERE u.id = @id', Tables> = { lastInsertRowid: 1, changes: 1 };
 
 // ── Runtime function tests ──
 
@@ -398,42 +427,42 @@ _nativeDb.exec(`CREATE TABLE testTbl (
 
 const _testDb = new TypedDb<TestTables>(_nativeDb);
 
-// prepare(...).run — INSERT
+// prepare(...).run — INSERT (no alias for INSERT)
 const _ins = _testDb.prepare("INSERT INTO testTbl (label, val) VALUES (@label, @val)").run({ label: 'a', val: 1 });
 const _insCheck: { lastInsertRowid: number; changes: number } = _ins;
 
-// prepare(...).run — INSERT OR REPLACE
+// prepare(...).run — INSERT OR REPLACE (no alias for INSERT)
 const _repl = _testDb.prepare("INSERT OR REPLACE INTO testTbl (id, label, val) VALUES (@id, @label, @val)").run({ id: 1, label: 'b', val: 2 });
 const _replCheck: { lastInsertRowid: number; changes: number } = _repl;
 
 // prepare(...).run — UPDATE
-const _upd = _testDb.prepare("UPDATE testTbl SET label = @label WHERE id = @id").run({ label: 'c', id: 1 });
+const _upd = _testDb.prepare("UPDATE testTbl AS t SET t.label = @label WHERE t.id = @id").run({ 'label': 'c', 'id': 1 });
 const _updCheck: { lastInsertRowid: number; changes: number } = _upd;
 
 // prepare(...).run — DELETE
-const _del = _testDb.prepare("DELETE FROM testTbl WHERE id = @id").run({ id: 1 });
+const _del = _testDb.prepare("DELETE FROM testTbl AS t WHERE t.id = @id").run({ 'id': 1 });
 const _delCheck: { lastInsertRowid: number; changes: number } = _del;
 
 // prepare(...).all — SELECT *
-const _all = _testDb.prepare("SELECT * FROM testTbl WHERE id = @id").all({ id: 1 });
+const _all = _testDb.prepare("SELECT * FROM testTbl AS t WHERE t.id = @id").all({ 'id': 1 });
 const _allCheck: { id: number; label: string; val: number | null }[] = _all;
 
 // prepare(...).get — single row
-const _get = _testDb.prepare("SELECT * FROM testTbl WHERE id = @id").get({ id: 1 });
+const _get = _testDb.prepare("SELECT * FROM testTbl AS t WHERE t.id = @id").get({ 'id': 1 });
 const _getCheck: { id: number; label: string; val: number | null } | undefined = _get;
 
 // prepare(...).all — empty result
-const _allEmpty = _testDb.prepare("SELECT * FROM testTbl WHERE id = @id").all({ id: 999 });
+const _allEmpty = _testDb.prepare("SELECT * FROM testTbl AS t WHERE t.id = @id").all({ 'id': 999 });
 const _allEmptyCheck: { id: number; label: string; val: number | null }[] = _allEmpty;
 
 // prepare(...).get — no match
-const _getNone = _testDb.prepare("SELECT * FROM testTbl WHERE id = @id").get({ id: 999 });
+const _getNone = _testDb.prepare("SELECT * FROM testTbl AS t WHERE t.id = @id").get({ 'id': 999 });
 const _getNoneCheck: { id: number; label: string; val: number | null } | undefined = _getNone;
 
 // prepare(...).all — column select
-const _allCol = _testDb.prepare("SELECT label, val FROM testTbl ").all({});
+const _allCol = _testDb.prepare("SELECT t.label AS label, t.val AS val FROM testTbl AS t WHERE 1=1 ").all({});
 const _allColCheck: { label: string; val: number | null }[] = _allCol;
 
 // prepare(...).get — column select
-const _getCol = _testDb.prepare("SELECT label FROM testTbl WHERE id = @id").get({ id: 1 });
+const _getCol = _testDb.prepare("SELECT t.label AS label FROM testTbl AS t WHERE t.id = @id").get({ 'id': 1 });
 const _getColCheck: { label: string } | undefined = _getCol;
