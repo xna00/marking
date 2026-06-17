@@ -1,4 +1,4 @@
-import { sendEventResponseMessage, sendTextMessage } from "./send.ts";
+import { sendEventResponseMessage, sendMsgMenuMessage, type EventResponsePayload } from "./send.ts";
 import { createUser, findUserByExternalUserId, findUserByUsername, insertCreditTransaction } from "../../db.ts";
 import { completeLoginSession } from "./login.ts";
 import type { KfEventMessage, KfTextMessage, KfMessage } from "./sync.ts";
@@ -22,7 +22,7 @@ async function handleEnterSession(msg: KfEventMessage) {
   const existing = findUserByExternalUserId(external_userid);
 
   if (existing) {
-    reply = `欢迎，${existing.username}`;
+    reply = `欢迎使用改卷仙人！\n欢迎回来，${existing.username}`;
     logger.log(`老用户进入会话: ${existing.username}`);
   } else {
     let username: string;
@@ -35,7 +35,7 @@ async function handleEnterSession(msg: KfEventMessage) {
     } while (password.includes("4"));
     createUser(external_userid, username, password);
     insertCreditTransaction(external_userid, 0, 300, "新用户赠送");
-    reply = `已为您注册账号\n\n用户名：${username}\n密码：${password}`;
+    reply = `欢迎使用改卷仙人！\n已为您注册账号\n\n用户名：${username}\n密码：${password}`;
     logger.log(`新用户注册: ${username}`);
   }
 
@@ -43,21 +43,26 @@ async function handleEnterSession(msg: KfEventMessage) {
     completeLoginSession(msg.event.scene_param, external_userid);
   }
 
+  const menuList = [{ type: "view" as const, view: { url: "https://marking.xna00.top/", content: "查看使用说明" } }];
+
   if (welcome_code) {
     try {
-      await sendEventResponseMessage(welcome_code, reply);
+      await sendEventResponseMessage(welcome_code, {
+        msgtype: "msgmenu",
+        msgmenu: { head_content: reply, list: menuList },
+      });
       logger.log(`事件响应消息已发送: ${reply}`);
     } catch (e) {
       logger.log(`事件响应消息失败: ${e}`);
     }
   }
-
   try {
-    await sendTextMessage(reply, open_kfid, external_userid);
-    logger.log(`普通消息已发送: ${reply}`);
+    await sendMsgMenuMessage(reply, menuList, undefined, open_kfid, external_userid);
+    logger.log(`菜单消息已发送: ${reply}`);
   } catch (e) {
-    logger.log(`普通消息发送失败: ${e}`);
+    logger.log(`菜单消息发送失败: ${e}`);
   }
+
 }
 
 async function handleTextMessage(msg: KfTextMessage) {
