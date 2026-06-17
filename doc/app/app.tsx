@@ -4,6 +4,8 @@ import { useHashLocation } from "wouter/use-hash-location";
 import { createHandler } from "@marking/api";
 import { Usage } from "./Usage.js";
 import { Recharge } from "./Recharge.js";
+import { Login } from "./Login.js";
+import { AdminRecharge } from "./AdminRecharge.js";
 
 const params = new URLSearchParams(location.search);
 const token = params.get("token") || sessionStorage.getItem("authToken");
@@ -23,6 +25,8 @@ const App = () => (
     <Switch>
       <Route path="/usage"><Usage /></Route>
       <Route path="/recharge"><Recharge /></Route>
+      <Route path="/login"><Login /></Route>
+      <Route path="/admin"><AdminRecharge /></Route>
     </Switch>
   </Router>
 );
