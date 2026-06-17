@@ -19,13 +19,14 @@ async function handleEnterSession(msg: KfEventMessage) {
   }
 
   let reply: string;
+  let username: string;
   const existing = findUserByExternalUserId(external_userid);
 
   if (existing) {
-    reply = `欢迎使用改卷仙人！\n欢迎回来，${existing.username}`;
-    logger.log(`老用户进入会话: ${existing.username}`);
+    username = existing.username;
+    reply = `欢迎使用改卷仙人！\n欢迎回来，${username}`;
+    logger.log(`老用户进入会话: ${username}`);
   } else {
-    let username: string;
     do {
       username = String(Math.floor(Math.random() * 10000)).padStart(4, "0");
     } while (username.includes("4") || findUserByUsername(username));
@@ -43,7 +44,8 @@ async function handleEnterSession(msg: KfEventMessage) {
     completeLoginSession(msg.event.scene_param, external_userid);
   }
 
-  const menuList = [{ type: "view" as const, view: { url: "https://marking.xna00.top/", content: "查看使用说明" } }];
+  const docUrl = `https://marking.xna00.top/?source=wechat_kf&username=${encodeURIComponent(username)}`;
+  const menuList = [{ type: "view" as const, view: { url: docUrl, content: "查看使用说明" } }];
 
   if (welcome_code) {
     try {
