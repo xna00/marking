@@ -227,7 +227,7 @@ const Main = () => {
                       const t = r[storageKeys.AUTH_TOKEN];
                       window.open(`https://marking.xna00.top/app/?token=${t}#/recharge`, "_blank");
                     });
-                  }}>充值(0.5元/100份)</span>
+                  }}>充值(0.3元/100份)</span>
                 </div>
               </div>
             )}

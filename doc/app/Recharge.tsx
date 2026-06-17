@@ -10,6 +10,6 @@ export const Recharge = () => (
     <p className="text-gray-500 text-sm mt-3">加好友后转账并发送用户名</p>
     <p className="text-gray-500 text-sm">用户名的四位数字：</p>
     <img src={usernamePng} alt="用户名位置" className="mx-auto mt-1 max-w-full" style={{ width: 380 }} />
-    <p className="text-gray-500 text-sm mt-3">价格：0.5 元 / 100 份</p>
+    <p className="text-gray-500 text-sm mt-3">价格：0.3 元 / 100 份</p>
   </div>
 );
