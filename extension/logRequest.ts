@@ -101,9 +101,11 @@ const detachDebugger = async (tabId: number) => {
 };
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  tabImageCount.delete(tabId);
-  urlResponseMap.clear();
-  imageMap.clear();
+  if (changeInfo.status !== 'complete') {
+    tabImageCount.delete(tabId);
+    urlResponseMap.clear();
+    imageMap.clear();
+  }
   if (
     changeInfo.status === "complete" &&
     tab.url &&
