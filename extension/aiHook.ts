@@ -19,7 +19,7 @@ async function runAiRecognition(dataUrlPromise: Promise<string>) {
   const dataUrl = await dataUrlPromise;
   const scaledDataUrl = await scaleImage(dataUrl);
   const bitmap = await getImageBitmap(scaledDataUrl);
-  console.log("AI hook for URL:", scaledDataUrl, scaledDataUrl.length, "bitmap size:", bitmap.width, bitmap.height);
+  console.log("[aiHook] AI hook for URL:", scaledDataUrl, scaledDataUrl.length, "bitmap size:", bitmap.width, bitmap.height);
   printImageInConsole(scaledDataUrl, bitmap.width, bitmap.height);
   bitmap.close();
   return recognizeImage(scaledDataUrl);
@@ -32,10 +32,10 @@ const awaitResult = async (url: string, pendingResult: Promise<{
 }>): Promise<{ result: AIResultItem[]; markRecordId: number } | { error: string }> => {
   try {
     const result = await pendingResult;
-    console.log("getAIResult found");
+    console.log("[aiHook] getAIResult found");
     return { result: result.result, markRecordId: result.markRecordId };
   } catch (error) {
-    console.error("Error fetching AI result:", error);
+    console.error("[aiHook] Error fetching AI result:", error);
     urlResultMap.delete(url);
     if (error instanceof ApiError) {
       const code = error.body?.errorCode;
@@ -59,7 +59,7 @@ export const getAIResultHandler = async (
 ): Promise<{ result: AIResultItem[]; markRecordId: number } | { error: string }> => {
   const groupKey = getGroupKey(data.url, data.count);
   let pendingResult = urlResultMap.get(groupKey);
-  console.log("getAIResult", data.url, groupKey, pendingResult);
+  console.log("[aiHook] getAIResult", data.url, groupKey, pendingResult);
   if (!pendingResult) {
     const promise = getImagePromise(groupKey);
     if (!promise) return { error: "没有图片记录，请刷新页面重试" };

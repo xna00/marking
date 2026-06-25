@@ -14,6 +14,6 @@ export async function recognizeImage(imageUrl: string): Promise<{ result: AIResu
   const config = storage[storageKeys.CRITERIA_CONFIG] || [];
 
   const data = await api.ai.markImage({ model, config, imageUrl });
-  console.log("AI识别结果:", data.result);
+  console.log("[ai] AI识别结果:", data.result);
   return { result: data.result, markRecordId: data.markRecordId };
 }

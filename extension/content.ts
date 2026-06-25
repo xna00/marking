@@ -3,7 +3,7 @@ import { storageKeys } from "./constants";
 import type { AIResultItem } from "@marking/server";
 import { chromeStorageLocalGet } from "./storage";
 
-console.log("content.ts loaded");
+console.log("[content] content.ts loaded");
 
 const testPageHandlers = {
   submit: () => {
@@ -67,7 +67,7 @@ const getStoredPositions = (): Record<
     const data = localStorage.getItem(POSITION_STORAGE_KEY);
     return data ? JSON.parse(data) : {};
   } catch (e) {
-    console.error("Error loading stored positions:", e);
+    console.error("[content] Error loading stored positions:", e);
     return {};
   }
 };
@@ -78,7 +78,7 @@ const savePosition = (id: string, left: number, top: number): void => {
     positions[id] = { left, top };
     localStorage.setItem(POSITION_STORAGE_KEY, JSON.stringify(positions));
   } catch (e) {
-    console.error("Error saving position:", e);
+    console.error("[content] Error saving position:", e);
   }
 };
 
@@ -92,7 +92,7 @@ const saveTotalScore = (score: number): void => {
   try {
     localStorage.setItem(TOTAL_SCORE_KEY, score.toString());
   } catch (e) {
-    console.error("Error saving total score:", e);
+    console.error("[content] Error saving total score:", e);
   }
 };
 
@@ -177,7 +177,7 @@ let scores: number[] = [];
 
 const showAiResult = (result: AIResultItem[]) => {
   try {
-    console.log(result);
+    console.log("[content]", result);
     overlay.innerHTML = "";
 
     totalScore = calculateTotalScore(result);
@@ -211,7 +211,7 @@ const showAiResult = (result: AIResultItem[]) => {
       makeDraggable(div, uniqueId);
     });
   } catch (e) {
-    console.error(e);
+    console.error("[content]", e);
   }
 };
 
@@ -240,22 +240,22 @@ const handleImageSrcChange = async (currentSrc: string) => {
     });
   }
   overlay.innerHTML = "";
-  console.log("Image src changed:", currentSrc);
+  console.log("[content] Image src changed:", currentSrc);
   lastResult = await sendMessage({
     action: "getAIResult",
     data: { url: currentSrc, count: getImageCount() },
   });
-  console.log(lastResult);
+  console.log("[content]", lastResult);
   if ("error" in lastResult) {
     overlay.innerHTML = `<div style="color:red;font-size:16px;padding:10px 20px;position:fixed;top:30vh;left:50%;transform:translateX(-50%);background:#fff;border:1px solid #ccc;border-radius:4px;z-index:10000;text-align:center">AI 评分失败：${lastResult.error}</div>`;
-    console.error("AI result error:", lastResult.error);
+    console.error("[content] AI result error:", lastResult.error);
   } else {
     const result = lastResult.result;
     const { [storageKeys.CRITERIA_CONFIG]: rules, [storageKeys.AI_DELAY]: delayRange = [0, 0] as const } = await chromeStorageLocalGet([storageKeys.CRITERIA_CONFIG, storageKeys.AI_DELAY]);
     scores = rules?.map(r => r.points) ?? [];
     const [min, max] = delayRange;
     const waitSeconds = Math.random() * (max - min) + min;
-    console.log(`Delaying AI result by ${waitSeconds.toFixed(2)} seconds`);
+    console.log(`[content] Delaying AI result by ${waitSeconds.toFixed(2)} seconds`);
     await new Promise(r => setTimeout(r, waitSeconds * 1000));
     showAiResult(result);
   }

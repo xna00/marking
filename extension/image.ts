@@ -58,8 +58,8 @@ export const scaleImage = async (
     // 将Blob转换为data URL
     return blobToDataUrl(scaledDataBlob);
   } catch (error) {
-    console.error("Crop failed:", error, );
-    console.error(dataUrl)
+    console.error("[image] Crop failed:", error, );
+    console.error("[image]", dataUrl)
     throw error;
   }
 };

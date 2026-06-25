@@ -9,7 +9,7 @@ let updateCache: UpdateInfo | undefined;
 export const checkUpdate = async (): Promise<UpdateInfo | undefined> => {
   if (updateCache) return updateCache;
 
-  console.log("checkUpdate");
+  console.log("[update] checkUpdate");
   const manifest = await (
     await fetch(new URL("/update.json?" + Date.now(), HOST), {
       headers: {
@@ -18,7 +18,7 @@ export const checkUpdate = async (): Promise<UpdateInfo | undefined> => {
       },
     })
   ).json();
-  console.log(manifest);
+  console.log("[update]", manifest);
   if (manifest.version !== chrome.runtime.getManifest().version) {
     updateCache = { version: manifest.version };
     return updateCache;
@@ -51,6 +51,6 @@ export async function setUpdateIcon(hasUpdate: boolean) {
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     await chrome.action.setIcon({ imageData });
   } catch (error) {
-    console.error("setUpdateIcon error:", error);
+    console.error("[update] setUpdateIcon error:", error);
   }
 }

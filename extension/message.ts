@@ -32,7 +32,7 @@ export const addEventListener = <const A extends keyof MessageActionDataRet>(act
             // 返回值进行异步响应，但该功能在 144 首次发布后因兼容性问题被回滚，
             // 直到 148 才完全覆盖所有用户（chromium-extensions PSA）。
             // 改用 return true + sendResponse 兼容所有版本。
-            handler(msg.data, sender).then(sendResponse).catch(console.error)
+            handler(msg.data, sender).then(sendResponse).catch(e => console.error("[message]", e))
             return true
         }
     }

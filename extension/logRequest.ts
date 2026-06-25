@@ -43,7 +43,7 @@ async function getImageCount(tabId: number): Promise<number> {
         world: "ISOLATED",
       }))
       .then(([{ result }]) => {
-        console.log("Image count for tab", tabId, "is", result);
+        console.log("[logRequest] Image count for tab", tabId, "is", result);
         return result ?? 1;
       });
     tabImageCount.set(tabId, promise);
@@ -81,9 +81,9 @@ const attachAndEnableNetwork = async (tabId: number, tab: chrome.tabs.Tab) => {
       await chrome.debugger.attach({ tabId }, "1.3");
       await chrome.debugger.sendCommand({ tabId }, "Network.enable");
       attachedTabs.set(tabId, true);
-      console.log("Debugger attached to:", tabId, tab.url);
+      console.log("[logRequest] Debugger attached to:", tabId, tab.url);
     } catch (e) {
-      console.error("Failed to attach debugger:", e);
+      console.error("[logRequest] Failed to attach debugger:", e);
     }
   }
 };
@@ -93,9 +93,9 @@ const detachDebugger = async (tabId: number) => {
     try {
       await chrome.debugger.detach({ tabId });
       attachedTabs.set(tabId, false);
-      console.log("Debugger detached from:", tabId);
+      console.log("[logRequest] Debugger detached from:", tabId);
     } catch (e) {
-      console.error("Failed to detach debugger:", e);
+      console.error("[logRequest] Failed to detach debugger:", e);
     }
   }
 };
@@ -191,10 +191,10 @@ chrome.debugger.onEvent.addListener(async (source, method, rawParams) => {
           requestId: responseParams.requestId,
         }
       );
-      console.log("Response body:", response);
+      console.log("[logRequest] Response body:", response);
 
       if (!response) {
-        console.log("Response is undefined");
+        console.log("[logRequest] Response is undefined");
         return;
       }
       const responseBody = response as NetworkGetResponseBodyResponse;
