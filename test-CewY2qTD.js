@@ -1,0 +1,1 @@
+import{i as t}from"./imageSrc-78_mFZhl.js";console.log("main.ts");const n=document.getElementById("cardImage"),c=document.getElementById("submitBtn");let e=0;function m(){e=(e+1)%t.length,n.src=t[e]}n.src=t[e];c.addEventListener("click",()=>{m()});document.addEventListener("customSubmit",()=>{c.click()});
