@@ -232,6 +232,8 @@ const startPolling = () => {
   poll();
 };
 
+let showErrorTimer: number | undefined = undefined
+
 const handleImageSrcChange = async (currentSrc: string) => {
   if (lastResult && "markRecordId" in lastResult) {
     sendMessage({
@@ -239,6 +241,7 @@ const handleImageSrcChange = async (currentSrc: string) => {
       data: { markRecordId: lastResult.markRecordId },
     });
   }
+  clearTimeout(showErrorTimer)
   overlay.innerHTML = "";
   console.log("[content] Image src changed:", currentSrc);
   lastResult = await sendMessage({
@@ -247,7 +250,10 @@ const handleImageSrcChange = async (currentSrc: string) => {
   });
   console.log("[content]", lastResult);
   if ("error" in lastResult) {
-    overlay.innerHTML = `<div style="color:red;font-size:16px;padding:10px 20px;position:fixed;top:30vh;left:50%;transform:translateX(-50%);background:#fff;border:1px solid #ccc;border-radius:4px;z-index:10000;text-align:center">AI 评分失败：${lastResult.error}</div>`;
+    const msg = lastResult.error
+    showErrorTimer = setTimeout(() => {
+      overlay.innerHTML = `<div style="color:red;font-size:16px;padding:10px 20px;position:fixed;top:30vh;left:50%;transform:translateX(-50%);background:#fff;border:1px solid #ccc;border-radius:4px;z-index:10000;text-align:center">AI 评分失败：${msg}</div>`;
+    }, 1000)
     console.error("[content] AI result error:", lastResult.error);
   } else {
     const result = lastResult.result;
