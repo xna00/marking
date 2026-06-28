@@ -36,6 +36,7 @@ export enum storageKeys {
 
   // AI 结果延迟
   AI_DELAY = "aiDelay",
+  AI_RESULT_FONT_SIZE = "aiResultFontSize",
 
   // 缓存数据
   CACHE_DATA = "cacheData",
@@ -70,6 +71,7 @@ export type StorageSchema = {
   [storageKeys.AI_MODEL]?: ModelName;
   [storageKeys.CRITERIA_CONFIG]?: ConfigItem[];
   [storageKeys.AI_DELAY]?: [number, number];
+  [storageKeys.AI_RESULT_FONT_SIZE]?: number;
   [storageKeys.AUTH_TOKEN]?: string;
   [storageKeys.IMAGE_SRC]?: string;
 };

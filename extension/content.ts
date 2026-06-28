@@ -1,7 +1,7 @@
 import { sendMessage, addEventListener } from "./message";
 import { storageKeys } from "./constants";
 import type { AIResultItem } from "@marking/server";
-import { chromeStorageLocalGet } from "./storage";
+import { chromeStorageLocalGet, chromeStorageLocalSet } from "./storage";
 
 console.log("[content] content.ts loaded");
 
@@ -174,6 +174,7 @@ document.addEventListener("mouseup", () => {
 });
 
 let scores: number[] = [];
+let resultFontSize = 14
 
 const showAiResult = (result: AIResultItem[]) => {
   try {
@@ -192,7 +193,8 @@ const showAiResult = (result: AIResultItem[]) => {
       div.style.padding = "5px 10px";
       div.style.border = "1px solid #ccc";
       div.style.borderRadius = "4px";
-      div.style.fontSize = "14px";
+      div.style.fontSize = `${resultFontSize}px`;
+      div.className = "ai-result-item";
       let color = "";
 
       if (r.score === 0) {
@@ -210,9 +212,30 @@ const showAiResult = (result: AIResultItem[]) => {
 
       makeDraggable(div, uniqueId);
     });
+
+    const toolbar = document.createElement("div");
+    toolbar.style.cssText = "position:fixed;z-index:10001;display:flex;align-items:center;gap:8px;padding:6px 12px;background:#fff;border:1px solid #ccc;border-radius:4px;font-size:14px";
+    toolbar.innerHTML = `字号 <button id="font-size-dec" style="cursor:pointer;width:24px;height:24px;border:1px solid #999;border-radius:2px;background:#fff;font-size:16px;line-height:1">−</button> <span id="font-size-display" style="min-width:20px;text-align:center">${resultFontSize}</span> <button id="font-size-inc" style="cursor:pointer;width:24px;height:24px;border:1px solid #999;border-radius:2px;background:#fff;font-size:16px;line-height:1">+</button>`;
+    overlay.appendChild(toolbar);
+    toolbar.style.left = `${window.innerWidth - toolbar.offsetWidth - 15}px`;
+    toolbar.style.top = "15px";
+    makeDraggable(toolbar, "font-size-toolbar");
+
+    ;[document.getElementById("font-size-dec")!, document.getElementById("font-size-inc")!].forEach(btn => {
+      btn.addEventListener("mousedown", (e) => e.stopPropagation())
+      btn.addEventListener("click", () => adjustFontSize(btn.id === "font-size-inc" ? 1 : -1))
+    })
   } catch (e) {
     console.error("[content]", e);
   }
+};
+
+const adjustFontSize = (delta: number) => {
+  resultFontSize = Math.max(10, Math.min(30, resultFontSize + delta));
+  chromeStorageLocalSet({ [storageKeys.AI_RESULT_FONT_SIZE]: resultFontSize });
+  const display = document.getElementById("font-size-display");
+  if (display) display.textContent = `${resultFontSize}`;
+  overlay.querySelectorAll<HTMLElement>(".ai-result-item").forEach(div => { div.style.fontSize = `${resultFontSize}px` });
 };
 
 let lastResult: { result: AIResultItem[]; markRecordId: number } | { error: string } | null = null;
@@ -251,13 +274,15 @@ const handleImageSrcChange = async (currentSrc: string) => {
   console.log("[content]", lastResult);
   if ("error" in lastResult) {
     const msg = lastResult.error
+    const errFontSize = resultFontSize
     showErrorTimer = setTimeout(() => {
-      overlay.innerHTML = `<div style="color:red;font-size:16px;padding:10px 20px;position:fixed;top:30vh;left:50%;transform:translateX(-50%);background:#fff;border:1px solid #ccc;border-radius:4px;z-index:10000;text-align:center">AI 评分失败：${msg}</div>`;
+      overlay.innerHTML = `<div style="color:red;font-size:${errFontSize}px;padding:10px 20px;position:fixed;top:30vh;left:50%;transform:translateX(-50%);background:#fff;border:1px solid #ccc;border-radius:4px;z-index:10000;text-align:center">AI 评分失败：${msg}</div>`;
     }, 1000)
     console.error("[content] AI result error:", lastResult.error);
   } else {
     const result = lastResult.result;
-    const { [storageKeys.CRITERIA_CONFIG]: rules, [storageKeys.AI_DELAY]: delayRange = [0, 0] as const } = await chromeStorageLocalGet([storageKeys.CRITERIA_CONFIG, storageKeys.AI_DELAY]);
+    const { [storageKeys.CRITERIA_CONFIG]: rules, [storageKeys.AI_DELAY]: delayRange = [0, 0] as const, [storageKeys.AI_RESULT_FONT_SIZE]: fontSize = 14 } = await chromeStorageLocalGet([storageKeys.CRITERIA_CONFIG, storageKeys.AI_DELAY, storageKeys.AI_RESULT_FONT_SIZE]);
+    resultFontSize = fontSize;
     scores = rules?.map(r => r.points) ?? [];
     const [min, max] = delayRange;
     const waitSeconds = Math.random() * (max - min) + min;
