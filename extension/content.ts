@@ -18,6 +18,7 @@ const testPageHandlers = {
 };
 
 const overlay = document.createElement("div");
+overlay.style.position = "absolute";
 overlay.style.top = "0";
 overlay.style.left = "0";
 overlay.style.zIndex = "9999";
@@ -186,7 +187,7 @@ const showAiResult = (result: AIResultItem[]) => {
 
     result.forEach((r, index) => {
       const div = document.createElement("div");
-      div.style.position = "absolute";
+      div.style.position = "fixed";
       div.style.left = `${50 + index * 20}px`;
       div.style.top = `${150 + index * 40}px`;
       div.innerText = `${r.text}(${r.score}分,${r.reason})`;
