@@ -76,7 +76,7 @@ async function doChat(body: ChatBody): Promise<AIResultItem[]> {
       },
     ],
     thinking: { type: "disabled" },
-    max_completion_tokens: 200,
+    // max_completion_tokens: 200,
   };
 
   const errors: unknown[] = [];
