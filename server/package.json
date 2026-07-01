@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "@wecom/crypto": "^1.0.1",
-    "jsonrepair": "^3.14.0"
+    "jsonrepair": "^3.14.0",
+    "@marking/shared": ""
   },
   "devDependencies": {
     "@types/node": "^25.9.1"

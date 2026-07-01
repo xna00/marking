@@ -31,7 +31,8 @@
   "workspaces": [
     "server",
     "api",
-    "extension"
+    "extension",
+    "shared"
   ],
   "devDependencies": {
     "esbuild": "^0.27.2",

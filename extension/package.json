@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@marking/api": "^1.0.0",
+    "@marking/shared": "",
     "lean-qr": "^2.7.1",
     "wouter": "3.10.0"
   },

@@ -2,7 +2,7 @@ import type { AIResultItem } from "@marking/server";
 
 type MessageActionDataRet = {
     getAIResult: [{ url: string, count: number }, { result: AIResultItem[], markRecordId: number } | { error: string }],
-    confirmMark: [{ markRecordId: number }, { success: true, usage: { confirmedCount: number, consumedCredits: number, totalCredits: number, remainingCredits: number } } | { error: string }],
+    confirmMark: [{ markRecordId: number }, void],
     hello: [undefined, string],
     usageUpdated: [{ usage: { confirmedCount: number, consumedCredits: number, totalCredits: number, remainingCredits: number } }, undefined],
     getBackgroundVersion: [undefined, string],

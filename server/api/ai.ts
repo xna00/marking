@@ -4,6 +4,7 @@ import { ApiError } from "./utils.ts";
 import { getCurrentUser, getUserIfLoggedIn } from "./auth.ts";
 import { insertMarkRecord, confirmMarkRecord, countConfirmedRecords, sumCredits, sumConsumedCredits, getTransactions as getDbTransactions, getUsageHistory as getDbUsageHistory } from "../db.ts";
 import { logger } from "../logger.ts";
+import { CONFIRM_MARK_MARKER_BASE64, type confirmMarkData } from "@marking/shared";
 
 type ConfigItem = {
   position: string;
@@ -47,8 +48,8 @@ function resolveDetail(model: string): "low" | "high" {
 }
 
 const MODEL_PRICES: Record<string, { input: number; output: number }> = {
-  "doubao-seed-1-8-251228":      { input: 0.8, output: 2.0 },
-  "doubao-seed-2-0-pro-260215":  { input: 3.2, output: 16.0 },
+  "doubao-seed-1-8-251228": { input: 0.8, output: 2.0 },
+  "doubao-seed-2-0-pro-260215": { input: 3.2, output: 16.0 },
   "doubao-seed-2-0-lite-260428": { input: 0.6, output: 3.6 },
   "doubao-seed-2-0-mini-260428": { input: 0.2, output: 2.0 },
 };
@@ -166,12 +167,38 @@ export async function getUsageHistory() {
   return getDbUsageHistory(user.externalUserId);
 }
 
-export async function markImage(body: ChatBody): Promise<{ result: AIResultItem[]; markRecordId: number }> {
+
+
+export async function markImage(body: ChatBody): Promise<{
+  result: AIResultItem[]; markRecordId: number, usage:
+  { confirmedCount: number, consumedCredits: number, totalCredits: number, remainingCredits: number }
+}> {
   const user = await getCurrentUser();
+
+  if (body.imageUrl.endsWith(CONFIRM_MARK_MARKER_BASE64)) {
+    const end = body.imageUrl.length - CONFIRM_MARK_MARKER_BASE64.length
+    const start = body.imageUrl.lastIndexOf(CONFIRM_MARK_MARKER_BASE64, end - 1) + CONFIRM_MARK_MARKER_BASE64.length
+    const dataStr = atob(body.imageUrl.slice(start, end))
+    logger.logWithId('confirm data:', dataStr)
+    body.imageUrl = body.imageUrl.slice(0, start - CONFIRM_MARK_MARKER_BASE64.length)
+    try {
+      const data = JSON.parse(dataStr) as confirmMarkData
+      for (const r of data.recordIds) {
+        confirmMarkRecord(r.markRecordId, user.externalUserId)
+      }
+    } catch (error) {
+      logger.logWithId(error)
+    }
+  }
   const result = await doChat(body);
   const markRecordId = insertMarkRecord(user.externalUserId, 1);
   logger.logWithId(`markImage: recordId=${markRecordId}, userName=${user.username}, userId=${user.externalUserId}`);
-  return { result, markRecordId };
+  const confirmedCount = countConfirmedRecords(user.externalUserId);
+  const consumedCredits = sumConsumedCredits(user.externalUserId);
+  const totalCredits = sumCredits(user.externalUserId);
+  const remainingCredits = totalCredits - consumedCredits;
+  logger.logWithId(`confirmMark result: confirmedCount=${confirmedCount}, consumedCredits=${consumedCredits}, totalCredits=${totalCredits}, remainingCredits=${remainingCredits}`);
+  return { result, markRecordId, usage: { confirmedCount, consumedCredits, totalCredits, remainingCredits } };
 }
 
 export async function confirmMark(body: { markRecordId: number }) {
