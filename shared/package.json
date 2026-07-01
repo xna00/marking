@@ -1,7 +1,7 @@
 {
   "name": "@marking/shared",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "index.ts",
   "types": "index.ts",
   "type": "module",
   "scripts": {
