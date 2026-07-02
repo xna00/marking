@@ -215,16 +215,21 @@ export function getImagePromise(groupKey: string): Promise<string> | undefined {
 }
 
 addEventListener("getResponse", async (data) => {
-  const tab = await chrome.tabs.query({ active: true, currentWindow: true })
-  let count = 1
-  if (typeof tab[0]?.id === 'number') {
-    count = await tabImageCount.get(tab[0].id) ?? 1
-  }
-  const groupKey = getGroupKey(data.url, count);
-  const entry = imageMap.get(groupKey);
+  try {
+    const tab = await chrome.tabs.query({ active: true, currentWindow: true })
+    let count = 1
+    if (typeof tab[0]?.id === 'number') {
+      count = await tabImageCount.get(tab[0].id) ?? 1
+    }
+    const groupKey = getGroupKey(data.url, count);
+    const entry = imageMap.get(groupKey);
 
-  if (entry) return { dataUrl: await entry.deferred.promise };
-  const d = urlResponseMap.get(data.url);
-  if (d) return { dataUrl: await d.promise };
-  return { dataUrl: undefined };
+    if (entry) return { dataUrl: await entry.deferred.promise };
+    const d = urlResponseMap.get(data.url);
+    if (d) return { dataUrl: await d.promise };
+    return { dataUrl: undefined };
+  } catch (e) {
+    console.error("[logRequest] getResponse error:", e);
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
 });

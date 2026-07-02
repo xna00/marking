@@ -5,7 +5,7 @@ import {
 import type { ConfigItem, ModelName } from "../models.js";
 import { blobToDataUrl, scaleImage } from "../image.js";
 import { modelNames } from "../models.js";
-import { storageKeys, shouldReloadOnMismatch } from "../constants.js";
+import { storageKeys, shouldReloadOnMismatch, EXTENSION_VERSION } from "../constants.js";
 import { createRoot } from "react-dom/client";
 import { useEffect, useRef, useState } from "react";
 import { CriteriaTable } from "./CriteriaTable.js";
@@ -51,24 +51,23 @@ export type InputRef = {
 };
 const syncImageSrc = async () => {
   const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tabs[0]?.id) return;
+  if (!tabs[0]?.id) throw new Error("没有找到活动标签页");
   const [{ result }] = await chrome.scripting.executeScript({
     target: { tabId: tabs[0].id },
     func: () => {
       const img = document.querySelector('.imgSection.clear>img') as HTMLImageElement;
-      return img?.src;
+      return img?.src ?? null;
     },
     world: "ISOLATED",
   });
-  if (result) {
-    const res = await sendMessage({
-      action: "getResponse",
-      data: { url: result },
-    });
-    if (res.dataUrl) {
-      return await scaleImage(res.dataUrl, 700);
-    }
-  }
+  if (!result) throw new Error("未在页面中找到图片 (.imgSection.clear>img)");
+  const res = await sendMessage({
+    action: "getResponse",
+    data: { url: result },
+  });
+  if ("error" in res) throw new Error(`图片 URL: ${result}\n${res.error}`);
+  if (!res.dataUrl) throw new Error(`图片 URL: ${result}\n无该图片的响应数据`);
+  return await scaleImage(res.dataUrl, 700);
 };
 
 const pasteImageFromClipboard = async () => {
@@ -364,10 +363,16 @@ const Main = () => {
             <div className="inline-flex gap-x-3">
               <button
                 className="small-btn"
-                onClick={() => {
-                  syncImageSrc().then((dataUrl) => {
-                    dataUrl && setSettings(s => ({ ...s, [storageKeys.IMAGE_SRC]: dataUrl }));
-                  });
+                onClick={async () => {
+                  try {
+                    const dataUrl = await syncImageSrc()
+                    if (dataUrl) setSettings(s => ({ ...s, [storageKeys.IMAGE_SRC]: dataUrl }))
+                  } catch (e) {
+                    const msg = e instanceof Error ? e.message : String(e)
+                    const ver = navigator.userAgent.match(/(Chrome|Edg|Firefox)\/([\d.]+)/)
+                    const browser = ver ? `${ver[1]} ${ver[2]}` : navigator.userAgent
+                    setResult({ tag: "error", msg: `${msg}\n扩展版本: ${chrome.runtime.getManifest().version} (build: ${EXTENSION_VERSION})\n浏览器: ${browser}` })
+                  }
                 }}
               >
                 同步

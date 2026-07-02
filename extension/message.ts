@@ -6,7 +6,7 @@ type MessageActionDataRet = {
     hello: [undefined, string],
     usageUpdated: [{ usage: { confirmedCount: number, consumedCredits: number, totalCredits: number, remainingCredits: number } }, undefined],
     getBackgroundVersion: [undefined, string],
-    getResponse: [{ url: string }, { dataUrl: string | undefined }],
+    getResponse: [{ url: string }, { dataUrl: string | undefined } | { error: string }],
     urlResponseUpdated: [string, undefined]
 }
 
