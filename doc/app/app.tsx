@@ -6,6 +6,7 @@ import { Usage } from "./Usage.js";
 import { Recharge } from "./Recharge.js";
 import { Login } from "./Login.js";
 import { AdminRecharge } from "./AdminRecharge.js";
+import { MarkLogs } from "./MarkLogs.js";
 
 const params = new URLSearchParams(location.search);
 const token = params.get("token") || sessionStorage.getItem("authToken");
@@ -27,6 +28,7 @@ const App = () => (
       <Route path="/recharge"><Recharge /></Route>
       <Route path="/login"><Login /></Route>
       <Route path="/admin"><AdminRecharge /></Route>
+      <Route path="/admin/mark-logs"><MarkLogs /></Route>
     </Switch>
   </Router>
 );

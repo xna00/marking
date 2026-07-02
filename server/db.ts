@@ -69,6 +69,11 @@ export function insertMarkLog(userId: string, model: string, criteriaConfig: str
   stmt.run(markRecordId, userId, model, criteriaConfig, imageFilename, result, new Date().toISOString());
 }
 
+export function getMarkLogs(limit = 50, offset = 0) {
+  const stmt = getDb().prepare("SELECT * FROM markLog ORDER BY createdAt DESC LIMIT ? OFFSET ?");
+  return stmt.all(limit, offset);
+}
+
 export function countConfirmedRecords(userId: string): number {
   const stmt = getDb().prepare("SELECT COUNT(*) as count FROM markRecord WHERE userId = ? AND confirmedAt IS NOT NULL");
   return (stmt.get(userId) as { count: number }).count;
