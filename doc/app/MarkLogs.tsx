@@ -12,13 +12,31 @@ type MarkLogEntry = {
   createdAt: string;
 };
 
+const ImagePreview = ({ filename }: { filename: string }) => {
+  const [src, setSrc] = useState("");
+  useEffect(() => {
+    let cancelled = false;
+    api.logs.getMarkImage({ filename }).then(
+      (res) => {
+        if (cancelled) return;
+        (res as unknown as Response).blob().then((blob) => {
+          if (!cancelled) setSrc(URL.createObjectURL(blob));
+        });
+      },
+      () => {},
+    );
+    return () => { cancelled = true; };
+  }, [filename]);
+  if (!src) return <span style={{ fontSize: "11px", color: "#999" }}>加载中...</span>;
+  return <img src={src} alt="" style={{ maxWidth: "240px", maxHeight: "160px", display: "block", borderRadius: "4px" }} />;
+};
+
 export const MarkLogs = () => {
   const [adminUsername, setAdminUsername] = useState("");
   const [logs, setLogs] = useState<MarkLogEntry[]>([]);
   const [limit, setLimit] = useState(20);
   const [offset, setOffset] = useState(0);
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
-  const [imageModal, setImageModal] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   const fetchLogs = async (newLimit: number, newOffset: number) => {
@@ -59,16 +77,6 @@ export const MarkLogs = () => {
 
   const handlePrev = () => fetchLogs(limit, Math.max(0, offset - limit));
   const handleNext = () => fetchLogs(limit, offset + limit);
-
-  const viewImage = async (filename: string) => {
-    try {
-      const res = await api.logs.getMarkImage({ filename });
-      const blob = await (res as unknown as Response).blob();
-      setImageModal(URL.createObjectURL(blob));
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "加载图片失败");
-    }
-  };
 
   const formatJson = (json: string) => {
     try {
@@ -139,9 +147,7 @@ export const MarkLogs = () => {
                   )}
                 </td>
                 <td style={tdStyle}>
-                  <button onClick={() => viewImage(log.imageFilename)} style={{ cursor: "pointer", border: "none", background: "none", color: "#2563eb", fontSize: "12px", padding: 0 }}>
-                    {log.imageFilename}
-                  </button>
+                  <ImagePreview filename={log.imageFilename} />
                 </td>
                 <td style={tdStyle}>
                   <button onClick={() => toggleRow(-log.id)} style={{ cursor: "pointer", border: "none", background: "none", color: "#2563eb", fontSize: "12px", padding: 0 }}>
@@ -157,15 +163,6 @@ export const MarkLogs = () => {
           </tbody>
         </table>
       </div>
-
-      {imageModal && (
-        <div
-          onClick={() => { URL.revokeObjectURL(imageModal); setImageModal(null); }}
-          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, cursor: "pointer" }}
-        >
-          <img src={imageModal} alt="评分图片" style={{ maxWidth: "90vw", maxHeight: "90vh", objectFit: "contain" }} />
-        </div>
-      )}
     </div>
   );
 };
