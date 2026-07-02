@@ -35,7 +35,7 @@ jobs:
         run: npm run build
 
       - name: Deploy to GitHub Pages
-        uses: JamesIves/github-pages-deploy-action@v4.2.2
+        uses: JamesIves/github-pages-deploy-action@v4.8.0
         with:
           branch: gh-pages  # 部署到gh-pages分支
           folder: ./dist/doc  # 部署dist/doc目录
