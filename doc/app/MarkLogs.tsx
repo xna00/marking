@@ -36,7 +36,6 @@ export const MarkLogs = () => {
   const [logs, setLogs] = useState<MarkLogEntry[]>([]);
   const [limit, setLimit] = useState(10);
   const [offset, setOffset] = useState(0);
-  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const [error, setError] = useState("");
 
   const fetchLogs = async (newLimit: number, newOffset: number) => {
@@ -61,15 +60,6 @@ export const MarkLogs = () => {
     );
   }, []);
 
-  const toggleRow = (id: number) => {
-    setExpandedRows((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
   const handleLogout = () => {
     sessionStorage.removeItem("authToken");
     location.hash = "#/login";
@@ -78,9 +68,19 @@ export const MarkLogs = () => {
   const handlePrev = () => fetchLogs(limit, Math.max(0, offset - limit));
   const handleNext = () => fetchLogs(limit, offset + limit);
 
-  const formatJson = (json: string) => {
+  const formatCriteriaConfig = (json: string) => {
     try {
-      return JSON.stringify(JSON.parse(json), null, 2);
+      const items: { position: string; points: number; markingCriteria: string }[] = JSON.parse(json);
+      return items.map((item, i) => <div key={i}>{item.position} {item.points}分: {item.markingCriteria}</div>);
+    } catch {
+      return json;
+    }
+  };
+
+  const formatResult = (json: string) => {
+    try {
+      const items: { text: string; score: number; reason: string }[] = JSON.parse(json);
+      return items.map((item, i) => <div key={i}>{item.text} {item.score}分 {item.reason}</div>);
     } catch {
       return json;
     }
@@ -139,23 +139,13 @@ export const MarkLogs = () => {
                 <td style={tdStyle}>{log.userId}</td>
                 <td style={tdStyle} title={log.model}>{log.model.length > 20 ? log.model.slice(0, 20) + "..." : log.model}</td>
                 <td style={tdStyle}>
-                  <button onClick={() => toggleRow(log.id)} style={{ cursor: "pointer", border: "none", background: "none", color: "#2563eb", fontSize: "12px", padding: 0 }}>
-                    {expandedRows.has(log.id) ? "收起" : "展开"}
-                  </button>
-                  {expandedRows.has(log.id) && (
-                    <pre style={{ maxWidth: "300px", overflow: "auto", fontSize: "11px", background: "#f9f9f9", padding: "4px", margin: "4px 0 0 0", borderRadius: "2px" }}>{formatJson(log.criteriaConfig)}</pre>
-                  )}
+                  <div style={{ maxWidth: "300px", overflowX: "auto" }}>{formatCriteriaConfig(log.criteriaConfig)}</div>
                 </td>
                 <td style={tdStyle}>
                   <ImagePreview filename={log.imageFilename} />
                 </td>
                 <td style={tdStyle}>
-                  <button onClick={() => toggleRow(-log.id)} style={{ cursor: "pointer", border: "none", background: "none", color: "#2563eb", fontSize: "12px", padding: 0 }}>
-                    {expandedRows.has(-log.id) ? "收起" : "展开"}
-                  </button>
-                  {expandedRows.has(-log.id) && (
-                    <pre style={{ maxWidth: "300px", overflow: "auto", fontSize: "11px", background: "#f9f9f9", padding: "4px", margin: "4px 0 0 0", borderRadius: "2px" }}>{formatJson(log.result)}</pre>
-                  )}
+                  <div style={{ maxWidth: "300px", overflowX: "auto" }}>{formatResult(log.result)}</div>
                 </td>
                 <td style={tdStyle}>{log.createdAt}</td>
               </tr>
