@@ -2,9 +2,12 @@ import { jsonrepair } from "jsonrepair";
 import { DOUBAO_URL, API_KEY } from "./constants.ts";
 import { ApiError } from "./utils.ts";
 import { getCurrentUser, getUserIfLoggedIn } from "./auth.ts";
-import { insertMarkRecord, confirmMarkRecord, countConfirmedRecords, sumCredits, sumConsumedCredits, getTransactions as getDbTransactions, getUsageHistory as getDbUsageHistory } from "../db.ts";
+import { insertMarkRecord, confirmMarkRecord, countConfirmedRecords, sumCredits, sumConsumedCredits, getTransactions as getDbTransactions, getUsageHistory as getDbUsageHistory, insertMarkLog } from "../db.ts";
 import { logger } from "../logger.ts";
 import { CONFIRM_MARK_MARKER_BASE64, type confirmMarkData } from "@marking/shared";
+import { createHash } from "node:crypto";
+import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 
 type ConfigItem = {
   position: string;
@@ -170,6 +173,19 @@ export async function getUsageHistory() {
 
 
 
+async function saveImageFile(dataUrl: string): Promise<string> {
+  const base64Index = dataUrl.indexOf("base64,");
+  if (base64Index === -1) return "";
+  const base64 = dataUrl.slice(base64Index + 7);
+  const buffer = Buffer.from(base64, "base64");
+  const hash = createHash("sha256").update(buffer).digest("hex").slice(0, 12);
+  const filename = `${hash}.webp`;
+  const dir = join(process.cwd(), "data", "mark-images");
+  await mkdir(dir, { recursive: true });
+  await writeFile(join(dir, filename), buffer);
+  return filename;
+}
+
 export async function markImage(body: ChatBody): Promise<{
   result: AIResultItem[]; markRecordId: number, usage:
   { confirmedCount: number, consumedCredits: number, totalCredits: number, remainingCredits: number }
@@ -194,6 +210,13 @@ export async function markImage(body: ChatBody): Promise<{
   const result = await doChat(body);
   const markRecordId = insertMarkRecord(user.externalUserId, 1);
   logger.logWithId(`markImage: recordId=${markRecordId}, userName=${user.username}, userId=${user.externalUserId}`);
+  try {
+    const imageFilename = await saveImageFile(body.imageUrl);
+    insertMarkLog(user.externalUserId, body.model, JSON.stringify(body.config), imageFilename, JSON.stringify(result), markRecordId);
+    logger.logWithId(`markLog: image=${imageFilename}`);
+  } catch (e) {
+    logger.logWithId('markLog error:', e);
+  }
   const confirmedCount = countConfirmedRecords(user.externalUserId);
   const consumedCredits = sumConsumedCredits(user.externalUserId);
   const totalCredits = sumCredits(user.externalUserId);

@@ -46,12 +46,27 @@ export function initDb(): void {
     description     TEXT,
     createdAt       TEXT NOT NULL
   )`);
+  d.exec(`CREATE TABLE IF NOT EXISTS markLog (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    markRecordId    INTEGER NOT NULL,
+    userId          TEXT NOT NULL,
+    model           TEXT NOT NULL,
+    criteriaConfig  TEXT NOT NULL,
+    imageFilename   TEXT NOT NULL,
+    result          TEXT NOT NULL,
+    createdAt       TEXT NOT NULL
+  )`);
 }
 
 export function insertMarkRecord(userId: string, costCredits: number): number {
   const stmt = getDb().prepare("INSERT INTO markRecord (userId, createdAt, costCredits) VALUES (?, ?, ?)");
   const result = stmt.run(userId, new Date().toISOString(), costCredits) as { lastInsertRowid: number };
   return Number(result.lastInsertRowid);
+}
+
+export function insertMarkLog(userId: string, model: string, criteriaConfig: string, imageFilename: string, result: string, markRecordId: number): void {
+  const stmt = getDb().prepare("INSERT INTO markLog (markRecordId, userId, model, criteriaConfig, imageFilename, result, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)");
+  stmt.run(markRecordId, userId, model, criteriaConfig, imageFilename, result, new Date().toISOString());
 }
 
 export function countConfirmedRecords(userId: string): number {
