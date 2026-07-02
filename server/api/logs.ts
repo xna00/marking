@@ -13,12 +13,17 @@ export async function markLogs(body: { limit?: number; offset?: number }) {
   return getMarkLogs(body.limit, body.offset);
 }
 
-export async function markImage(body: { filename: string }) {
+export async function getMarkImage(body: { filename: string }) {
   const admin = await getCurrentUser();
   if (admin.username !== ADMIN_USERNAME) {
     throw new ApiError(403, "无权限", {}, "API_FORBIDDEN", {});
   }
   const filePath = join(process.cwd(), "data", "mark-images", body.filename);
   const buffer = await readFile(filePath);
-  return new Response(buffer, { headers: { "content-type": "image/webp" } });
+  return new Response(buffer, {
+    headers: {
+      "content-type": "image/webp",
+      "cache-control": "public, max-age=31536000, immutable",
+    },
+  });
 }

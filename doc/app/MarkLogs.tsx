@@ -62,7 +62,7 @@ export const MarkLogs = () => {
 
   const viewImage = async (filename: string) => {
     try {
-      const res = await api.logs.markImage({ filename });
+      const res = await api.logs.getMarkImage({ filename });
       const blob = await (res as unknown as Response).blob();
       setImageModal(URL.createObjectURL(blob));
     } catch (err: unknown) {
