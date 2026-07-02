@@ -95,7 +95,7 @@ async function doChat(body: ChatBody): Promise<AIResultItem[]> {
           Authorization: `Bearer ${API_KEY}`,
         },
         body: JSON.stringify(fetchBody),
-        signal: AbortSignal.timeout(10000),
+        signal: AbortSignal.timeout(30000),
         duplex: "half",
       });
       const ms = Date.now() - start;
