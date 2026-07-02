@@ -6,7 +6,8 @@ import { insertMarkRecord, confirmMarkRecord, countConfirmedRecords, sumCredits,
 import { logger } from "../logger.ts";
 import { CONFIRM_MARK_MARKER_BASE64, type confirmMarkData } from "@marking/shared";
 import { createHash } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { brotliCompress } from "node:zlib";
+import { mkdir, writeFile, unlink } from "node:fs/promises";
 import { join } from "node:path";
 
 type ConfigItem = {
@@ -183,6 +184,13 @@ async function saveImageFile(dataUrl: string): Promise<string> {
   const dir = join(process.cwd(), "data", "mark-images");
   await mkdir(dir, { recursive: true });
   await writeFile(join(dir, filename), buffer);
+  brotliCompress(buffer, (err, compressed) => {
+    if (err) return;
+    writeFile(join(dir, `${filename}.br`), compressed).then(
+      () => unlink(join(dir, filename)).catch(() => {}),
+      () => {},
+    );
+  });
   return filename;
 }
 
