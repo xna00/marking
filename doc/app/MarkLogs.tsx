@@ -34,7 +34,7 @@ const ImagePreview = ({ filename }: { filename: string }) => {
 export const MarkLogs = () => {
   const [adminUsername, setAdminUsername] = useState("");
   const [logs, setLogs] = useState<MarkLogEntry[]>([]);
-  const [limit, setLimit] = useState(20);
+  const [limit, setLimit] = useState(10);
   const [offset, setOffset] = useState(0);
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const [error, setError] = useState("");
