@@ -105,12 +105,12 @@ export const CriteriaTable = ({
               }}
               onInsertAbove={() => {
                 const next = [...config];
-                next.splice(i, 0, { position: "", points: 0, markingCriteria: "" });
+                next.splice(i, 0, { position: "", points: 1, markingCriteria: "" });
                 onChange(next);
               }}
               onInsertBelow={() => {
                 const next = [...config];
-                next.splice(i + 1, 0, { position: "", points: 0, markingCriteria: "" });
+                next.splice(i + 1, 0, { position: "", points: 1, markingCriteria: "" });
                 onChange(next);
               }}
             />
