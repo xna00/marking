@@ -366,7 +366,10 @@ const Main = () => {
                 onClick={async () => {
                   try {
                     const dataUrl = await syncImageSrc()
-                    if (dataUrl) setSettings(s => ({ ...s, [storageKeys.IMAGE_SRC]: dataUrl }))
+                    if (dataUrl) {
+                      setSettings(s => ({ ...s, [storageKeys.IMAGE_SRC]: dataUrl }));
+                      setResult({ tag: "succeed", msg: "" });
+                    }
                   } catch (e) {
                     const msg = e instanceof Error ? e.message : String(e)
                     const ver = navigator.userAgent.match(/(Chrome|Edg|Firefox)\/([\d.]+)/)
