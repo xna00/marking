@@ -1,3 +1,5 @@
+import.meta.glob(["./images/*A.png", "./images/*B.png"], { eager: true });
+
 const imgs = import.meta.glob(["./images/*.png", "!./images/*A.png", "!./images/*B.png"], {
   eager: true,
 });
