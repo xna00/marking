@@ -4,5 +4,6 @@ export type { AIResultItem } from "./ai.ts";
 export { currentUser, login } from "./auth.ts";
 export * as admin from "./admin.ts";
 export * as logs from "./logs.ts";
+export * as wechatPay from "./wechat-pay.ts";
 export { getDebug } from "./debug.ts";
 export type { ApiErrorType } from './utils.ts'

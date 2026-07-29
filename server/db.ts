@@ -44,6 +44,8 @@ export function initDb(): void {
     amountMoney     INTEGER NOT NULL,
     amountCredits   INTEGER NOT NULL,
     description     TEXT,
+    orderNo         TEXT,
+    payMethod       TEXT,
     createdAt       TEXT NOT NULL
   )`);
   d.exec(`CREATE TABLE IF NOT EXISTS markLog (
@@ -191,11 +193,13 @@ export function insertCreditTransaction(
   amountMoney: number,
   amountCredits: number,
   description?: string,
+  orderNo?: string,
+  payMethod?: string,
 ): void {
   const stmt = getDb().prepare(
-    "INSERT INTO creditTransaction (userId, amountMoney, amountCredits, description, createdAt) VALUES (?, ?, ?, ?, ?)"
+    "INSERT INTO creditTransaction (userId, amountMoney, amountCredits, description, orderNo, payMethod, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)"
   );
-  stmt.run(userId, amountMoney, amountCredits, description ?? null, new Date().toISOString());
+  stmt.run(userId, amountMoney, amountCredits, description ?? null, orderNo ?? null, payMethod ?? null, new Date().toISOString());
 }
 
 export function updateUserToken(externalUserId: string, token: string | null): void {
