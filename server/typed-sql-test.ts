@@ -390,9 +390,7 @@ id INTEGER PRIMARY KEY,
 label TEXT NOT NULL,
 val INTEGER
 )` as const;
-type _TestTables = Schema<typeof TEST_TBL_SQL>;
-
-interface TestTables extends _TestTables {}
+type TestTables = Schema<typeof TEST_TBL_SQL>;
 
 describe('TypedDb', () => {
   let db: DatabaseSync;
