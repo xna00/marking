@@ -1,4 +1,6 @@
-// ═══════════════════════════════════════════════
+import { DatabaseSync } from "node:sqlite";
+
+// ═══════════════════════════════════════════════════════
 //  类型级 SQL 解析器
 //
 //  约定：
@@ -16,12 +18,9 @@
 //         WHERE <condition>
 //         GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0
 //     其中 GROUP BY/HAVING/ORDER BY/LIMIT/OFFSET 可替换实际值
-// ═══════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
 
-/**
- * Expand a computed type for IDE display (no aliases, no `&`)
- */
-export type O<T> = { [K in keyof T]: T[K] };
+// ── Column type mapping ──
 
 /**
  * SqlType<"TEXT"> → string
@@ -45,7 +44,7 @@ type SqlType<T extends string> =
 type TypeWord<Words extends string[]> =
   Words extends [infer W extends string, ...infer Rest extends string[]]
   ? W extends 'NOT' | 'NULL' | 'PRIMARY' | 'KEY' | 'UNIQUE' | 'REFERENCES'
-  | 'DEFAULT' | 'CHECK' | 'AUTOINCREMENT' | '' | `\n${string}`
+    | 'DEFAULT' | 'CHECK' | 'AUTOINCREMENT' | '' | `\n${string}`
   ? TypeWord<Rest>
   : W
   : never;
@@ -110,7 +109,6 @@ export type Schema<S extends string> =
   ? Record<Name, O<ParseCols<Cols>>>
   : {};
 
-
 // ── @name parameter scanner ──
 
 /**
@@ -125,14 +123,12 @@ type FirstWord<S extends string> =
   : S extends `${infer W};${infer _}` ? W
   : S;
 
-
 // ── SELECT pattern match ──
 
 type _MatchSelect<S extends string> =
   S extends `SELECT ${'ALL' | 'DISTINCT'} ${infer Cols} FROM ${infer FromClause} WHERE ${infer WhereClause} GROUP BY ${infer _GroupBy} HAVING ${infer Having} ORDER BY ${infer _OrderBy} LIMIT ${infer Limit} OFFSET ${infer Offset}`
   ? { cols: Cols; from: FromClause; where: WhereClause; limit: Limit; offset: Offset }
   : never;
-
 
 // ── DML pattern match ──
 
@@ -151,7 +147,6 @@ type _MatchDelete<S extends string> =
   ? { table: Tbl; where: WhereClause }
   : never;
 
-
 // ── Column resolution ──
 
 type FlatSplit<SS extends string[], Sep extends string, R extends string[] = []> =
@@ -159,10 +154,17 @@ type FlatSplit<SS extends string[], Sep extends string, R extends string[] = []>
   ? FlatSplit<Rest, Sep, [...R, ...Split<First, Sep>]>
   : R;
 
+type _ExtractTableName<T extends string> =
+  T extends `${infer Tbl} ON ${string}` ? Tbl : T;
+
 type _NewTables<FromClause extends string, Tables extends {}> =
-  Pick<Tables, (
-    FlatSplit<FlatSplit<[FromClause], " LEFT JOIN ">, " INNER JOIN ">[number] extends infer T ? T extends `${infer Tbl} ON ${string}` ? Tbl : T : never
-) & keyof Tables>;
+  Pick<Tables,
+    _ExtractTableName<
+      FlatSplit<FlatSplit<[FromClause], " LEFT JOIN ">, " INNER JOIN ">[number]
+    > & keyof Tables
+  >;
+
+type _AggFuncs = 'COUNT' | 'SUM' | 'AVG' | 'MAX' | 'MIN' | 'GROUP_CONCAT';
 
 /**
  * ColType<"user.id", { user: Tables['user'] }> → Tables['user']['id']
@@ -178,12 +180,7 @@ type ColType<Expr extends string, Aliases extends {}> =
       ? Aliases[T][C]
       : never
     : never
-  : Expr extends `${string}COUNT(${string}` ? number
-  : Expr extends `${string}SUM(${string}` ? number
-  : Expr extends `${string}AVG(${string}` ? number
-  : Expr extends `${string}MAX(${string}` ? number
-  : Expr extends `${string}MIN(${string}` ? number
-  : Expr extends `${string}GROUP_CONCAT(${string}` ? number
+  : Expr extends `${string}${_AggFuncs}(${string}` ? number
   : unknown;
 
 type _Col<S extends string, Aliases extends {}> =
@@ -215,15 +212,12 @@ export type SelectResult<S extends string, Tbls extends {}> =
   : never
   : never;
 
-
 // ── Param type resolution ──
 
 type AtParamName<N extends string> = N extends `@${infer M extends string}` ? M : never
 
 type ParamTypes<S extends string, Sep extends string, Tbl extends {}> =
-  {
-    [K in AtParamName<Split<S, Sep>[number]> & keyof Tbl]: Tbl[K]
-  };
+  { [K in AtParamName<Split<S, Sep>[number]> & keyof Tbl]: Tbl[K] };
 
 export type RunParams<S extends string, Tbls extends {}> =
   S extends `INSERT${string}`
@@ -241,22 +235,32 @@ export type RunParams<S extends string, Tbls extends {}> =
   : never;
 
 type WhereParams<W extends string, Tbls extends {}> = Condition<FlatSplit<FlatSplit<[W], ' OR '>, ' AND '>, Tbls>
+
 export type Params<S extends string, Tbls extends {}> =
   _MatchSelect<S> extends infer W extends { where: string; limit: string; offset: string }
   ? WhereParams<W['where'], Tbls> & { [K in AtParamName<W['limit'] | W['offset']>]: number }
   : never;
 
+// ── Condition（WHERE 条件参数提取）──
+
+type TblsPick<Tbls extends {}, Tbl, Column> = Tbls[Tbl & keyof Tbls][Column & keyof Tbls[Tbl & keyof Tbls]];
+
 type Condition<SS extends string[], Tbls extends {}, R extends {} = {}> =
   SS extends [infer First extends string, ...infer Rest extends string[]]
-  ? First extends `${infer Table}.${infer Column} ${infer Op} @${infer Name}`
-    ? Condition<Rest, Tbls, R & (
-        Op extends ("=" | ">=" | "<=" | "!=" | "<>" | ">" | "<")
-        ? { [K in Name]: Tbls[Table & keyof Tbls][Column & keyof Tbls[Table & keyof Tbls]] }
-        : {}
-      )>
-    : {}
+  ? (
+    First extends `${infer Table}.${infer Column} NOT IN (${infer Name})`
+      ? Condition<Rest, Tbls, R & { [K in AtParamName<Split<Name, ", ">[number]>]: TblsPick<Tbls, Table, Column> }>
+    : First extends `${infer Table}.${infer Column} IN (${infer Name})`
+      ? Condition<Rest, Tbls, R & { [K in AtParamName<Split<Name, ", ">[number]>]: TblsPick<Tbls, Table, Column> }>
+    : First extends `${infer Table}.${infer Column} ${infer Op} @${infer Name}`
+      ? Condition<Rest, Tbls, R & (
+          Op extends ("=" | ">=" | "<=" | "!=" | "<>" | ">" | "<")
+          ? { [K in Name]: TblsPick<Tbls, Table, Column> }
+          : {}
+        )>
+    : Condition<Rest, Tbls, R>
+  )
   : R;
-
 
 // ── SQL method result types ──
 
@@ -275,10 +279,9 @@ export type SqlRunResult<S extends string, Tbls extends {}> =
   ? DmlResult
   : never;
 
-
 // ── TypedDb ──
 
-import { DatabaseSync } from "node:sqlite";
+export type O<T> = { [K in keyof T]: T[K] };
 
 export class TypedDb<S extends {}> {
   #db: DatabaseSync;

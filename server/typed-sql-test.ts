@@ -4,9 +4,9 @@ import {
   type SelectResult, type RunParams, type Params,
   type SqlAllResult, type SqlGetResult, type SqlRunResult,
   TypedDb,
-} from './types-sql.ts';
+} from './typed-sql.ts';
 import { DatabaseSync } from 'node:sqlite';
-  import { describe, it, before, beforeEach } from 'node:test';
+import { describe, it, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
 // ── Test helpers ──
@@ -181,11 +181,6 @@ type _IpCt = AssertTrue<
 
 // ── WhereParams (UPDATE) ──
 
-
-
-
-
-
 type _UpToken = AssertTrue<
   'token' extends keyof RunParams<'UPDATE user SET user.token = @token, user.updatedAt = @updatedAt WHERE user.externalUserId = @externalUserId', Tables> ? true : false
 >;
@@ -307,6 +302,37 @@ type _NegInsertNoValues = AssertTrue<
 >;
 type _NegUpdateNoSet = AssertTrue<
   never extends RunParams<'UPDATE user WHERE id = @id', Tables> ? true : false
+>;
+
+// ── IN / NOT IN ──
+
+type _WpIn = AssertTrue<
+  { userId: string; anotherId: string } extends Params<'SELECT ALL * FROM markRecord WHERE markRecord.userId IN (@userId, @anotherId) GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables> ? true : false
+>;
+type _WpNotIn = AssertTrue<
+  { id1: number; id2: number } extends Params<'SELECT ALL * FROM markRecord WHERE markRecord.id NOT IN (@id1, @id2) GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables> ? true : false
+>;
+type _WpInMixedAnd = AssertTrue<
+  { userId: string; id1: number; id2: number } extends Params<'SELECT ALL * FROM markRecord WHERE markRecord.userId = @userId AND markRecord.id IN (@id1, @id2) GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables> ? true : false
+>;
+
+// ── IS NULL / IS NOT NULL ──
+
+type _WpIsNotNull = AssertTrue<
+  keyof Params<'SELECT ALL * FROM markRecord WHERE markRecord.confirmedAt IS NOT NULL GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables> extends never ? true : false
+>;
+type _WpIsNull = AssertTrue<
+  keyof Params<'SELECT ALL * FROM markRecord WHERE markRecord.confirmedAt IS NULL GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables> extends never ? true : false
+>;
+type _WpIsNotNullThenParam = AssertTrue<
+  'userId' extends keyof Params<'SELECT ALL * FROM markRecord WHERE markRecord.confirmedAt IS NOT NULL AND markRecord.userId = @userId GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables> ? true : false
+>;
+
+type _WpMixedIsNotNull = AssertTrue<
+  { userId: string } extends Params<'SELECT ALL * FROM markRecord WHERE markRecord.userId = @userId AND markRecord.confirmedAt IS NOT NULL GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables> ? true : false
+>;
+type _WpMixedIsNull = AssertTrue<
+  { userId: string } extends Params<'SELECT ALL * FROM markRecord WHERE markRecord.userId = @userId AND markRecord.confirmedAt IS NULL GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables> ? true : false
 >;
 
 // ── Params (SELECT 参数推导) ──

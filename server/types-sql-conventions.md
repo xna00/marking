@@ -3,7 +3,7 @@
 ## 数据库
 
 - 原生 `node:sqlite`，零第三方依赖
-- 4 张表定义在 `Tables`（types-sql-test.ts），用 `Schema<T>` 从 CREATE TABLE 推导 TS 类型
+- 4 张表定义在 `Tables`（typed-sql-test.ts），用 `Schema<T>` 从 CREATE TABLE 推导 TS 类型
 
 ## SQL 书写约定
 
@@ -102,6 +102,6 @@ TypeScript 对 `${infer W}${A | B | C}${string}` 会做 **distribution**——�
 
 | 文件 | 职责 |
 |------|------|
-| `server/types-sql.ts` | lib——类型体操（Schema / SelectResult / Params / RunParams）+ TypedDb<Schema> class |
-| `server/types-sql-test.ts` | 运行时类型验证 + Tables 定义 + 编译期断言 |
+| `server/typed-sql.ts` | lib——类型体操（Schema / SelectResult / Params / RunParams）+ TypedDb<Schema> class |
+| `server/typed-sql-test.ts` | 运行时类型验证 + Tables 定义 + 编译期断言 |
 | `server/db.ts` | 数据库连接 + 初始化表 + 运行时 CRUD 函数 |
