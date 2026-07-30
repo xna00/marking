@@ -3,7 +3,7 @@
 ## 数据库
 
 - 原生 `node:sqlite`，零第三方依赖
-- 4 张表定义在 `Tables`（types-sql.ts），用 `Schema<T>` 从 CREATE TABLE 推导 TS 类型
+- 4 张表定义在 `Tables`（types-sql-test.ts），用 `Schema<T>` 从 CREATE TABLE 推导 TS 类型
 
 ## SQL 书写约定
 
@@ -33,7 +33,7 @@
 | 规则 | 原因 |
 |------|------|
 | SQL 字符串 **无前导或尾随空白**（表名后的尾空格是唯一例外） | 类型以 `SELECT`/`INSERT`/`UPDATE` 开头直接匹配 |
-| **表名后必须跟恰好一个空格**，即使 SQL 到此结束（如 `'SELECT * FROM user '`） | `ParseTableName` 用 `${infer Name} ${string}` 取第一个词 |
+| **表名后必须跟恰好一个空格**，即使 SQL 到此结束（如 `'SELECT * FROM user '`） | 类型模板用 `FROM ${infer Name} WHERE` 取表名 |
 | CREATE TABLE **列定义顶格写**（每行 column 0 开始，无缩进） | `ParseCols` 用 `Split<Rest, ",\n">` 拆分列 |
 | SELECT 列列表 **逗号后跟一个空格**：`col1, col2` | `Split<Cols, ', '>` 分隔列名 |
 | `@name` 后紧跟 `,` 或 `)`：`@a,@b` 或 `@a)` | 逗号/paren 直接作为 word terminator |
@@ -56,9 +56,9 @@ runSql('WHERE id = @id AND name = @name', { name: 'foo', id: 1 })
 
 ## 类型推导规则
 
-### 参数类型：`WhereParams<S>`（通用于 SELECT / INSERT / UPDATE）
+### 参数类型：`Params<S>`（SELECT）/ `RunParams<S>`（INSERT/UPDATE/DELETE）
 1. 扫描 SQL 中所有 `@identifier` 引用
-2. 从 SQL 提取表名（统一用 `ParseTableName`）
+2. 从 SQL 提取表名（SELECT 用 `_MatchSelect`，DML 用 `_MatchInsert` / `_MatchUpdate` / `_MatchDelete` 匹配）
 3. 查 `Tables[表名][参数名]` 得到每个参数的具体类型
 4. 合并为 `{ 参数名: 类型 }`
 
@@ -90,18 +90,18 @@ TypeScript 对 `${infer W}${A | B | C}${string}` 会做 **distribution**——�
 - 结果：`"externalUserId" | "externalUserId,"` → ❌
 
 **方案**：用显式链式条件类型，不同场景用不同优先级排序：
-- `FirstWord`：空格优先（当前仅用于 `_ParseAlias` 提取聚合别名：`... as total` → `"total"`）
-- `ParamName`：逗号/paren 优先（`@name` 后取参数名：`@externalUserId,` → `"externalUserId"`）
+- `FirstWord`：空格优先（用于 `_Col` 取别名：`expr AS total` → `"total"`）
+- `AtParamName`：逗号/paren 优先（`@externalUserId,` → `"externalUserId"`）
 
 **教训**：`${infer W}${Union}${string}` 不保证最短匹配，会 production union；
 需要最短匹配时用链式条件 + 正确优先级。
 
-> 注：`ParseTableName` 统一后用 `${infer Name} ${string}` 取表名第一个词，不再需要 `FirstWord`。
+> 注：表名提取用 `_MatchInsert` / `_MatchUpdate` / `_MatchDelete` 或 `_MatchSelect` 模板中的 `FROM ${infer From} WHERE` + `FirstWord`，不再需要单独的 `ParseTableName`。
 
 ## 代码组织
 
 | 文件 | 职责 |
 |------|------|
-| `server/types-sql.ts` | lib——类型体操（Schema / ParseTableName / SelectResult / WhereParams）+ TypedDb<Schema> class |
+| `server/types-sql.ts` | lib——类型体操（Schema / SelectResult / Params / RunParams）+ TypedDb<Schema> class |
 | `server/types-sql-test.ts` | 运行时类型验证 + Tables 定义 + 编译期断言 |
-| `server/db.ts` | 数据库连接 + 定义 `AppTables`（`Tables` 的实际类型），计划接入 `runSql` |
+| `server/db.ts` | 数据库连接 + 初始化表 + 运行时 CRUD 函数 |
