@@ -252,6 +252,8 @@ type Condition<SS extends string[], Tbls extends {}, R extends {} = {}> =
       ? Condition<Rest, Tbls, R & { [K in AtParamName<Split<Name, ", ">[number]>]: TblsPick<Tbls, Table, Column> }>
     : First extends `${infer Table}.${infer Column} IN (${infer Name})`
       ? Condition<Rest, Tbls, R & { [K in AtParamName<Split<Name, ", ">[number]>]: TblsPick<Tbls, Table, Column> }>
+    : First extends `${infer Table}.${infer Column} BETWEEN ${infer A} and ${infer B}`
+      ? Condition<Rest, Tbls, R & { [K in AtParamName<A | B>]: TblsPick<Tbls, Table, Column> }>
     : First extends `${infer Table}.${infer Column} ${infer Op} @${infer Name}`
       ? Condition<Rest, Tbls, R & (
           Op extends ("=" | ">=" | "<=" | "!=" | "<>" | ">" | "<")

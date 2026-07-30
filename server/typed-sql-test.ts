@@ -316,6 +316,18 @@ type _WpInMixedAnd = AssertTrue<
   { userId: string; id1: number; id2: number } extends Params<'SELECT ALL * FROM markRecord WHERE markRecord.userId = @userId AND markRecord.id IN (@id1, @id2) GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables> ? true : false
 >;
 
+// ── BETWEEN ──
+
+type _WpBetween = AssertTrue<
+  { a: number; b: number } extends Params<'SELECT ALL * FROM markRecord WHERE markRecord.id BETWEEN @a and @b GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables> ? true : false
+>;
+type _WpBetweenStr = AssertTrue<
+  { a: string; b: string } extends Params<'SELECT ALL * FROM user WHERE user.username BETWEEN @a and @b GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables> ? true : false
+>;
+type _WpBetweenMixedAnd = AssertTrue<
+  { userId: string; a: number; b: number } extends Params<'SELECT ALL * FROM markRecord WHERE markRecord.userId = @userId AND markRecord.id BETWEEN @a and @b GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables> ? true : false
+>;
+
 // ── IS NULL / IS NOT NULL ──
 
 type _WpIsNotNull = AssertTrue<
