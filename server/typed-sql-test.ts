@@ -1,5 +1,4 @@
 import {
-  type O,
   type Schema,
   type SelectResult, type RunParams, type Params,
   type SqlAllResult, type SqlGetResult, type SqlRunResult,
@@ -114,6 +113,20 @@ type _SrMixedAgg = AssertTrue<Equal<
   { cnt: number; name: string }[]
 >>;
 
+// ── SelectResult（标量函数 → unknown）──
+
+type _SrScalarUnknown = AssertTrue<Equal<
+  SelectResult<'SELECT ALL upper(user.username) AS name FROM user WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  { name: unknown }[]
+>>;
+
+// ── SelectResult（*, COUNT(*) 混合投影 → * 部分退化为 {}）──
+
+type _SrStarMixed = AssertTrue<Equal<
+  SelectResult<'SELECT ALL *, COUNT(*) AS c FROM markRecord WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  { c: number }[]
+>>;
+
 // ── SelectResult (SELECT * with JOIN → intersection) ──
 
 type _SrJoinStar = AssertTrue<Equal<
@@ -205,6 +218,22 @@ type _SarAggTotal = AssertTrue<Equal<
   SqlAllResult<'SELECT ALL SUM(markRecord.costCredits) AS total FROM markRecord WHERE markRecord.userId = @userId GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   { total: number | null }[]
 >>;
+type _SarAggAvg = AssertTrue<Equal<
+  SqlAllResult<'SELECT ALL AVG(markRecord.costCredits) AS avg FROM markRecord WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  { avg: number | null }[]
+>>;
+type _SarAggMax = AssertTrue<Equal<
+  SqlAllResult<'SELECT ALL MAX(markRecord.costCredits) AS max FROM markRecord WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  { max: number | null }[]
+>>;
+type _SarAggMin = AssertTrue<Equal<
+  SqlAllResult<'SELECT ALL MIN(markRecord.costCredits) AS min FROM markRecord WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  { min: number | null }[]
+>>;
+type _SarAggConcat = AssertTrue<Equal<
+  SqlAllResult<'SELECT ALL GROUP_CONCAT(markRecord.userId) AS names FROM markRecord WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  { names: string | null }[]
+>>;
 type _SarDmlNever = AssertTrue<Equal<
   SqlAllResult<'INSERT INTO user (id) VALUES (@id)', Tables>, never
 >>;
@@ -270,6 +299,16 @@ type _NegSchemaPlainTable = AssertTrue<Equal<
   Schema<"CREATE TABLE plainTbl (\nid INTEGER\n)">, {}
 >>;
 
+// ── 列类型映射（BLOB / FLOAT）──
+
+const BLOB_TBL_SQL = `CREATE TABLE IF NOT EXISTS blobTbl (
+data BLOB,
+ratio FLOAT NOT NULL
+)`;
+type _BlobShape = AssertTrue<Equal<
+  Schema<typeof BLOB_TBL_SQL>, { blobTbl: { data: Uint8Array | null; ratio: number } }
+>>;
+
 // ── Negative tests: invalid SQL → never ──
 
 type _NegSelectNoFrom = AssertTrue<Equal<
@@ -291,6 +330,21 @@ type _NegUpdateSetPrefixed = AssertTrue<Equal<
 type _PosUpdateArbitraryName = AssertTrue<Equal<
   RunParams<'UPDATE user SET token = @tok WHERE user.externalUserId = @uid', Tables>,
   { tok: string | null; uid: string }
+>>;
+type _NegUpdateNoWhere = AssertTrue<Equal<
+  RunParams<'UPDATE user SET token = @token', Tables>, never
+>>;
+type _NegInsertNoCols = AssertTrue<Equal<
+  RunParams<'INSERT INTO user VALUES (@a)', Tables>, never
+>>;
+type _NegSelectLowercase = AssertTrue<Equal<
+  SelectResult<'select all * from user where 1=1 group by 1 having 1=1 order by 1 limit -1 offset 0', Tables>, never
+>>;
+type _NegSelectAlias = AssertTrue<Equal<
+  SelectResult<'SELECT ALL * FROM user u WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>, {}[]
+>>;
+type _NegDeleteNoPrefix = AssertTrue<Equal<
+  RunParams<'DELETE FROM markRecord WHERE id = @id', Tables>, {}
 >>;
 
 // ── IN / NOT IN ──
@@ -367,6 +421,10 @@ type _PrWhereEq = AssertTrue<Equal<
   Params<'SELECT ALL * FROM markRecord WHERE markRecord.id = @id GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   { id: number }
 >>;
+type _PrWhereNullable = AssertTrue<Equal<
+  Params<'SELECT ALL * FROM user WHERE user.email = @email GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  { email: string | null }
+>>;
 type _PrWhereAnd = AssertTrue<Equal<
   Params<'SELECT ALL * FROM markRecord WHERE markRecord.id = @id AND markRecord.userId = @userId GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   { id: number; userId: string }
@@ -414,6 +472,12 @@ type _PrNotLike = AssertTrue<Equal<
 type _PrLikeAnd = AssertTrue<Equal<
   Params<'SELECT ALL * FROM user WHERE user.externalUserId = @externalUserId AND user.username LIKE @pattern GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   { externalUserId: string; pattern: string }
+>>;
+
+// ── Params（HAVING 参数被丢弃）──
+
+type _WpHavingDropped = AssertTrue<Equal<
+  Params<'SELECT ALL COUNT(*) AS c FROM markRecord WHERE 1=1 GROUP BY 1 HAVING COUNT(*) > @min ORDER BY 1 LIMIT -1 OFFSET 0', Tables>, {}
 >>;
 
 // ── 短形式（无 GROUP BY/HAVING）──
