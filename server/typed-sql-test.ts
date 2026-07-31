@@ -315,6 +315,13 @@ type _NegUpdateNoSet = AssertTrue<Equal<RunParams<'UPDATE user WHERE id = @id', 
 type _NegInsertMultiline = AssertTrue<Equal<
   RunParams<'INSERT INTO user (externalUserId, username) VALUES\n(@externalUserId, @username)', Tables>, never
 >>;
+type _NegInsertNonColParam = AssertTrue<Equal<
+  RunParams<'INSERT INTO user (username) VALUES (@foo)', Tables>, {}
+>>;
+type _PosUpdateArbitraryName = AssertTrue<Equal<
+  RunParams<'UPDATE user SET token = @tok WHERE user.externalUserId = @uid', Tables>,
+  { tok: string | null; uid: string }
+>>;
 
 // ── IN / NOT IN ──
 
@@ -429,6 +436,18 @@ type _PrWhereNe = AssertTrue<Equal<
 type _PrWhereNe2 = AssertTrue<Equal<
   Params<'SELECT ALL * FROM markRecord WHERE markRecord.id <> @id GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   { id: number }
+>>;
+type _PrLike = AssertTrue<Equal<
+  Params<'SELECT ALL * FROM user WHERE user.username LIKE @pattern GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  { pattern: string }
+>>;
+type _PrNotLike = AssertTrue<Equal<
+  Params<'SELECT ALL * FROM user WHERE user.username NOT LIKE @pattern GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  { pattern: string }
+>>;
+type _PrLikeAnd = AssertTrue<Equal<
+  Params<'SELECT ALL * FROM user WHERE user.externalUserId = @externalUserId AND user.username LIKE @pattern GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  { externalUserId: string; pattern: string }
 >>;
 
 // ── 短形式（无 GROUP BY/HAVING）──

@@ -5,10 +5,11 @@ import { DatabaseSync } from "node:sqlite";
 //
 //  约定：
 //   - 关键字一律大写（SELECT, FROM, WHERE, INSERT...）
-//   - 表名直接写，无需别名：FROM user, UPDATE user
+//   - 表名直接写，必须不写别名：FROM user, UPDATE user
 //   - SELECT 列用 table.col AS name：user.id AS id, COUNT(*) AS cnt
-//   - 参数类型从 `alias.col = @param` 推导，参数名可任意
-//   - @name 后紧跟 , 或 )，不留空格（如 @a,@b / @a)）
+//   - 参数类型从 `表名前缀.col = @param` 推导，参数名可任意（SELECT WHERE / UPDATE SET / UPDATE·DELETE WHERE）
+//   - INSERT VALUES 的参数名必须是目标表列名（非列名会被静默丢弃）
+//   - VALUES / IN 列表内用「逗号+一个空格」分隔参数：(@a, @b)
 //   - 传参用 object（node:sqlite 原生支持命名参数，无需关心顺序）
 //   - SELECT 结果 always T[]（.all() 语义）
 //   - SELECT 列列表逗号后跟一个空格：col1, col2（只在顶层列之间）
@@ -278,7 +279,7 @@ type Condition<SS extends string[], Tbls extends {}, R extends {} = {}> =
       ? Condition<Rest, Tbls, R & { [K in AtParamName<A | B>]: TblsPick<Tbls, Table, Column> }>
     : First extends `${infer Table}.${infer Column} ${infer Op} @${infer Name}`
       ? Condition<Rest, Tbls, R & (
-          Op extends ("=" | ">=" | "<=" | "!=" | "<>" | ">" | "<")
+          Op extends ("=" | ">=" | "<=" | "!=" | "<>" | ">" | "<" | "LIKE" | "NOT LIKE")
           ? { [K in Name]: TblsPick<Tbls, Table, Column> }
           : {}
         )>
