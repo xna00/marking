@@ -39,6 +39,7 @@
 | `@name` 后紧跟 `,` 或 `)`：`@a,@b` 或 `@a)` | 逗号/paren 直接作为 word terminator |
 | `BETWEEN` 中的 `AND` 用小写 `and` | 避免被 WHERE-level ` AND ` 误拆分 |
 | `@` 出现在字面量（如 `'email@example.com'`）会误识别 | 避免在 SQL 参数中使用这种模式 |
+| UPDATE 的 **SET 子句用裸列名**（`token = @token`），WHERE 子句用 `table.col`（`user.externalUserId = @externalUserId`） | SQLite 的 SET 不接受 `table.col` 前缀；`SetParams` 从裸列名 + 表名推导参数类型 |
 
 ### 参数传递：object
 

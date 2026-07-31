@@ -191,10 +191,10 @@ type _UpExtId = AssertTrue<
   'externalUserId' extends keyof RunParams<'UPDATE user SET user.token = @token, user.updatedAt = @updatedAt WHERE user.externalUserId = @externalUserId', Tables> ? true : false
 >;
 type _UpTokenNullable = AssertTrue<
-  null extends RunParams<'UPDATE user SET user.token = @token WHERE user.externalUserId = @externalUserId', Tables>['token'] ? true : false
+  null extends RunParams<'UPDATE user SET token = @token WHERE user.externalUserId = @externalUserId', Tables>['token'] ? true : false
 >;
 
-const _u: RunParams<'UPDATE user SET user.email = @email WHERE user.externalUserId = @externalUserId', Tables> = {
+const _u: RunParams<'UPDATE user SET email = @email WHERE user.externalUserId = @externalUserId', Tables> = {
   'email': null,
   'externalUserId': 'abc',
 };
@@ -425,7 +425,7 @@ describe('TypedDb', () => {
     });
 
     it('returns changes', () => {
-      const r = typedDb.prepare("UPDATE testTbl SET label = @label WHERE id = @id").run({ label: 'c', id: 1 });
+      const r = typedDb.prepare("UPDATE testTbl SET label = @label WHERE testTbl.id = @id").run({ label: 'c', id: 1 });
       assert.equal(r.changes, 1);
     });
   });

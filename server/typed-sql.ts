@@ -38,23 +38,14 @@ type SqlType<T extends string> =
   : T extends `BLOB${string}` ? Uint8Array
   : never;
 
-/**
- * TypeWord<["TEXT", "NOT", "NULL"]> → "TEXT"
- */
-type TypeWord<Words extends string[]> =
-  Words extends [infer W extends string, ...infer Rest extends string[]]
-  ? W extends 'NOT' | 'NULL' | 'PRIMARY' | 'KEY' | 'UNIQUE' | 'REFERENCES'
-    | 'DEFAULT' | 'CHECK' | 'AUTOINCREMENT' | '' | `\n${string}`
-  ? TypeWord<Rest>
-  : W
-  : never;
+type TrimStart<S extends string> = S extends ` ${infer SS}` ? TrimStart<SS> : S;
 
 /**
- * ColNameType<"name TEXT NOT NULL"> → ["name", "TEXT"]
+ * ColNameType<"name TEXT NOT NULL"> → ["name", "TEXT NOT NULL"]
  */
 type ColNameType<S extends string> =
   S extends `${infer Name} ${infer Rest}`
-  ? [Name, TypeWord<Split<Rest, ' '>>]
+  ? [Name, TrimStart<Rest>]
   : never;
 
 type Split<S extends string, Sep extends string, Acc extends string[] = []> =
@@ -79,7 +70,7 @@ type ColNullable<S extends string> =
  */
 type ColToField<S extends string> =
   ColNameType<S> extends [infer N extends string, infer T extends string]
-  ? Record<N, SqlType<T> | ColNullable<S>>
+  ? {[K in N]: SqlType<T> | ColNullable<S>}
   : {};
 
 /**
@@ -87,10 +78,7 @@ type ColToField<S extends string> =
  *
  * Strips leading \n, splits by ,\n, then folds each column into one record.
  */
-type ParseCols<S extends string> =
-  S extends `\n${infer Rest}`
-  ? ParseColsList<Split<Rest, `,\n`>>
-  : {};
+type ParseCols<S extends string> = ParseColsList<Split<S, `,\n`>>;
 
 type ParseColsList<Parts extends string[], Acc extends Record<string, unknown> = {}> =
   Parts extends [infer P extends string, ...infer Rest extends string[]]
@@ -105,8 +93,8 @@ type ParseColsList<Parts extends string[], Acc extends Record<string, unknown> =
  *   → { log: { msg: string | null } }
  */
 export type Schema<S extends string> =
-  S extends `CREATE${string}TABLE ${'IF NOT EXISTS ' | ''}${infer Name} (${infer Cols})${string}`
-  ? Record<Name, O<ParseCols<Cols>>>
+  S extends `CREATE${string}TABLE ${'IF NOT EXISTS ' | ''}${infer Name} (\n${infer Cols}\n)${string}`
+  ? {[K in Name]: ParseCols<Cols>}
   : {};
 
 // ── @name parameter scanner ──
@@ -214,11 +202,15 @@ export type SelectResult<S extends string, Tbls extends {}> =
 
 // ── Param type resolution ──
 
-type AtParamName<N extends string> = N extends `@${infer M extends string}` ? M : never
+type AtParamName<N extends string> = N extends `@${infer M extends string}` ? M : never;
 
 type ParamTypes<S extends string, Sep extends string, Tbl extends {}> =
   { [K in AtParamName<Split<S, Sep>[number]> & keyof Tbl]: Tbl[K] };
 
+type SetParams<SS extends string[], Tbl extends {}, R = {}> =
+  SS extends [`${infer Col} = @${infer Name}`, ...infer Rest extends string[]]
+  ? SetParams<Rest, Tbl, R & { [K in Name]: Tbl[Col & keyof Tbl] }>
+  : R;
 export type RunParams<S extends string, Tbls extends {}> =
   S extends `INSERT${string}`
   ? (_MatchInsert<S> extends infer M extends { table: keyof Tbls, values: string }
@@ -226,7 +218,7 @@ export type RunParams<S extends string, Tbls extends {}> =
       : never)
   : S extends `UPDATE${string}`
     ? (_MatchUpdate<S> extends infer M extends { table: keyof Tbls, set: string, where: string }
-        ? Condition<Split<M["set"], ", ">, Tbls> & WhereParams<M['where'], Tbls>
+        ? SetParams<Split<M["set"], ", ">, Tbls[M['table']] & {}> & WhereParams<M['where'], Tbls>
         : never)
   : S extends `DELETE${string}`
     ? (_MatchDelete<S> extends infer M extends { where: string }
@@ -234,7 +226,8 @@ export type RunParams<S extends string, Tbls extends {}> =
         : never)
   : never;
 
-type WhereParams<W extends string, Tbls extends {}> = Condition<FlatSplit<FlatSplit<[W], ' OR '>, ' AND '>, Tbls>
+type WhereParams<W extends string, Tbls extends {}> =
+  Condition<FlatSplit<FlatSplit<[W], ' OR '>, ' AND '>, Tbls>;
 
 export type Params<S extends string, Tbls extends {}> =
   _MatchSelect<S> extends infer W extends { where: string; limit: string; offset: string }
@@ -243,7 +236,8 @@ export type Params<S extends string, Tbls extends {}> =
 
 // ── Condition（WHERE 条件参数提取）──
 
-type TblsPick<Tbls extends {}, Tbl, Column> = Tbls[Tbl & keyof Tbls][Column & keyof Tbls[Tbl & keyof Tbls]];
+type TblsPick<Tbls extends {}, Tbl, Column> =
+  Tbls[Tbl & keyof Tbls][Column & keyof Tbls[Tbl & keyof Tbls]];
 
 type Condition<SS extends string[], Tbls extends {}, R extends {} = {}> =
   SS extends [infer First extends string, ...infer Rest extends string[]]
