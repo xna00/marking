@@ -231,10 +231,10 @@ type _SarAggTotal = AssertTrue<
   { total: number }[] extends SqlAllResult<'SELECT ALL COALESCE(SUM(markRecord.costCredits), 0) AS total FROM markRecord WHERE markRecord.userId = @userId GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables> ? true : false
 >;
 type _SarDmlNever = AssertTrue<
-  never extends SqlAllResult<'INSERT INTO user (id) VALUES (@id)', Tables> ? true : false
+  SqlAllResult<'INSERT INTO user (id) VALUES (@id)', Tables> extends never ? true : false
 >;
 type _SarUpdateNever = AssertTrue<
-  never extends SqlAllResult<'UPDATE user SET email = @email', Tables> ? true : false
+  SqlAllResult<'UPDATE user SET email = @email', Tables> extends never ? true : false
 >;
 
 // ── SqlGetResult ──
@@ -264,7 +264,7 @@ type _SrrDelete = AssertTrue<
   { lastInsertRowid: number; changes: number } extends SqlRunResult<'DELETE FROM user WHERE user.id = @id', Tables> ? true : false
 >;
 type _SrrSelectNever = AssertTrue<
-  never extends SqlRunResult<'SELECT ALL * FROM user WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables> ? true : false
+  SqlRunResult<'SELECT ALL * FROM user WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables> extends never ? true : false
 >;
 
 // ── TEMP TABLE ──
@@ -292,16 +292,19 @@ type _IfNeKeyNotNull = AssertFalse<null extends ConfigTable['config']['key'] ? t
 // ── Negative tests: invalid SQL → never ──
 
 type _NegSelectNoFrom = AssertTrue<
-  never extends SelectResult<'SELECT ALL * WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables> ? true : false
+  SelectResult<'SELECT ALL * WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables> extends never ? true : false
 >;
 type _NegDeleteNoWhere = AssertTrue<
-  never extends RunParams<'DELETE FROM user', Tables> ? true : false
+  RunParams<'DELETE FROM user', Tables> extends never ? true : false
 >;
 type _NegInsertNoValues = AssertTrue<
-  never extends RunParams<'INSERT INTO user (x) VALUES', Tables> ? true : false
+  RunParams<'INSERT INTO user (x) VALUES', Tables> extends never ? true : false
 >;
 type _NegUpdateNoSet = AssertTrue<
-  never extends RunParams<'UPDATE user WHERE id = @id', Tables> ? true : false
+  RunParams<'UPDATE user WHERE id = @id', Tables> extends never ? true : false
+>;
+type _NegInsertMultiline = AssertTrue<
+  RunParams<'INSERT INTO user (externalUserId, username) VALUES\n(@externalUserId, @username)', Tables> extends never ? true : false
 >;
 
 // ── IN / NOT IN ──

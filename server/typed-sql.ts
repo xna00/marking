@@ -116,24 +116,24 @@ type FirstWord<S extends string> =
 type _MatchSelect<S extends string> =
   S extends `SELECT ${'ALL' | 'DISTINCT'} ${infer Cols} FROM ${infer FromClause} WHERE ${infer WhereClause} GROUP BY ${infer _GroupBy} HAVING ${infer Having} ORDER BY ${infer _OrderBy} LIMIT ${infer Limit} OFFSET ${infer Offset}`
   ? { cols: Cols; from: FromClause; where: WhereClause; limit: Limit; offset: Offset }
-  : never;
+  : unknown;
 
 // ── DML pattern match ──
 
 type _MatchInsert<S extends string> =
   S extends `INSERT${' OR REPLACE' | ''} INTO ${infer Tbl} (${infer Cols}) VALUES (${infer Values})`
   ? { table: Tbl; cols: Cols; values: Values }
-  : never;
+  : unknown;
 
 type _MatchUpdate<S extends string> =
   S extends `UPDATE ${infer Tbl} SET ${infer SetClause} WHERE ${infer WhereClause}`
   ? { table: Tbl; set: SetClause; where: WhereClause }
-  : never;
+  : unknown;
 
 type _MatchDelete<S extends string> =
   S extends `DELETE FROM ${infer Tbl} WHERE ${infer WhereClause}`
   ? { table: Tbl; where: WhereClause }
-  : never;
+  : unknown;
 
 // ── Column resolution ──
 
