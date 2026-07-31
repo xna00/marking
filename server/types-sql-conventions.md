@@ -36,6 +36,7 @@
 | **表名后必须跟恰好一个空格**，即使 SQL 到此结束（如 `'SELECT * FROM user '`） | 类型模板用 `FROM ${infer Name} WHERE` 取表名 |
 | CREATE TABLE **列定义顶格写**（每行 column 0 开始，无缩进） | `ParseCols` 用 `Split<Rest, ",\n">` 拆分列 |
 | SELECT 列列表 **逗号后跟一个空格**：`col1, col2` | `Split<Cols, ', '>` 分隔列名 |
+| SELECT 模板：`SELECT {ALL\|DISTINCT} <cols> FROM <table> WHERE <cond> ORDER BY ... LIMIT ... OFFSET ...`，**GROUP BY/HAVING 可选且成对出现** | `_MatchSelect` 按带/不带 GROUP BY 两个变体匹配；GROUP BY 若被吞进 WHERE 会破坏 `IS NULL` 收窄 |
 | 聚合必须位于**列表达式开头**，不得包在其他函数内（如 `COALESCE(SUM(x),0)`） | `ColType` 只匹配以聚合开头的表达式，包裹后落入 T.C 分支得 `unknown` |
 | `@name` 后紧跟 `,` 或 `)`：`@a,@b` 或 `@a)` | 逗号/paren 直接作为 word terminator |
 | `BETWEEN` 中的 `AND` 用小写 `and` | 避免被 WHERE-level ` AND ` 误拆分 |
@@ -75,6 +76,8 @@ runSql('WHERE id = @id AND name = @name', { name: 'foo', id: 1 })
   - `SUM(x)` / `AVG(x)` / `MAX(x)` / `MIN(x)` → `number | null`
   - `GROUP_CONCAT(x)` → `string | null`
   - 空值用 `?? 0` 等兜底（如 `db.ts` 的 `sumCredits`）
+- 省略 GROUP BY 的聚合查询（全局聚合）空集时恒返回 1 行：`COUNT`→`0`、`SUM/AVG/MAX/MIN`→`null`；
+  带 GROUP BY 的空集返回 0 行（`db.ts` 用 `?? 0` 兜底两种行为）
 
 ## 设计笔记
 

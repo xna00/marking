@@ -431,6 +431,29 @@ type _PrWhereNe2 = AssertTrue<Equal<
   { id: number }
 >>;
 
+// ── 短形式（无 GROUP BY/HAVING）──
+
+type _SfStar = AssertTrue<Equal<
+  SelectResult<'SELECT ALL * FROM user WHERE user.externalUserId = @externalUserId ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  Tables['user'][]
+>>;
+type _SfStarParams = AssertTrue<Equal<
+  Params<'SELECT ALL * FROM user WHERE user.externalUserId = @externalUserId ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  { externalUserId: string }
+>>;
+type _SfAggCount = AssertTrue<Equal<
+  SelectResult<'SELECT ALL COUNT(*) AS count FROM markRecord WHERE 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  { count: number }[]
+>>;
+type _SfIsNotNull = AssertTrue<Equal<
+  SelectResult<'SELECT ALL * FROM markRecord WHERE markRecord.confirmedAt IS NOT NULL ORDER BY 1 LIMIT -1 OFFSET 0', Tables>[number]['confirmedAt'],
+  string
+>>;
+type _SfLimitOffset = AssertTrue<Equal<
+  Params<'SELECT ALL * FROM user WHERE user.externalUserId = @externalUserId ORDER BY 1 LIMIT @limit OFFSET @offset', Tables>,
+  { externalUserId: string; limit: number; offset: number }
+>>;
+
 // ── Runtime tests ──
 
 const TEST_TBL_SQL = `CREATE TABLE testTbl (

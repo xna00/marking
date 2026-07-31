@@ -12,12 +12,15 @@ import { DatabaseSync } from "node:sqlite";
 //   - 传参用 object（node:sqlite 原生支持命名参数，无需关心顺序）
 //   - SELECT 结果 always T[]（.all() 语义）
 //   - SELECT 列列表逗号后跟一个空格：col1, col2（只在顶层列之间）
-//   - SELECT 必须用以下完整模板，缺一不可：
+//   - SELECT 必须用以下模板，缺一不可：
 //       SELECT {ALL|DISTINCT} <cols>
 //         FROM <table>
 //         WHERE <condition>
-//         GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0
-//     其中 GROUP BY/HAVING/ORDER BY/LIMIT/OFFSET 可替换实际值
+//         ORDER BY 1 LIMIT -1 OFFSET 0
+//     其中 ORDER BY/LIMIT/OFFSET 可替换实际值
+//   - GROUP BY/HAVING 可选，仅在需要分组时写：
+//       SELECT ALL COUNT(*) AS cnt FROM user WHERE 1=1 GROUP BY username HAVING COUNT(*) > 1 ORDER BY 1 LIMIT -1 OFFSET 0
+//     不写 GROUP BY 时也不能写 HAVING（两者成对出现）
 // ═══════════════════════════════════════════════════════
 
 // ── Column type mapping ──
@@ -103,6 +106,8 @@ export type Schema<S extends string> =
 
 type _MatchSelect<S extends string> =
   S extends `SELECT ${'ALL' | 'DISTINCT'} ${infer Cols} FROM ${infer FromClause} WHERE ${infer WhereClause} GROUP BY ${infer _GroupBy} HAVING ${infer Having} ORDER BY ${infer _OrderBy} LIMIT ${infer Limit} OFFSET ${infer Offset}`
+  ? { cols: Cols; from: FromClause; where: WhereClause; limit: Limit; offset: Offset }
+  : S extends `SELECT ${'ALL' | 'DISTINCT'} ${infer Cols} FROM ${infer FromClause} WHERE ${infer WhereClause} ORDER BY ${infer _OrderBy} LIMIT ${infer Limit} OFFSET ${infer Offset}`
   ? { cols: Cols; from: FromClause; where: WhereClause; limit: Limit; offset: Offset }
   : unknown;
 
