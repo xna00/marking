@@ -309,6 +309,73 @@ type _BlobShape = AssertTrue<Equal<
   Schema<typeof BLOB_TBL_SQL>, { blobTbl: { data: Uint8Array | null; ratio: number } }
 >>;
 
+// ── 真实 db.ts DDL 镜像（REFERENCES / UNIQUE / AUTOINCREMENT / DEFAULT / 对齐空格）──
+
+const REAL_KF_CURSOR_SQL = `CREATE TABLE IF NOT EXISTS kfCursor (
+openKfId   TEXT PRIMARY KEY,
+cursor     TEXT NOT NULL
+)`;
+const REAL_USER_SQL = `CREATE TABLE IF NOT EXISTS user (
+externalUserId TEXT PRIMARY KEY,
+username       TEXT NOT NULL UNIQUE,
+passwordHash   TEXT NOT NULL,
+email          TEXT,
+phone          TEXT,
+token          TEXT,
+createdAt      TEXT NOT NULL,
+updatedAt      TEXT NOT NULL
+)`;
+const REAL_MARK_RECORD_SQL = `CREATE TABLE IF NOT EXISTS markRecord (
+id          INTEGER PRIMARY KEY AUTOINCREMENT,
+userId      TEXT NOT NULL REFERENCES user(externalUserId),
+costCredits REAL NOT NULL DEFAULT 1.0,
+createdAt   TEXT NOT NULL,
+confirmedAt TEXT
+)`;
+const REAL_CREDIT_TX_SQL = `CREATE TABLE IF NOT EXISTS creditTransaction (
+id             INTEGER PRIMARY KEY AUTOINCREMENT,
+userId         TEXT NOT NULL REFERENCES user(externalUserId),
+amountMoney    INTEGER NOT NULL,
+amountCredits  INTEGER NOT NULL,
+description    TEXT,
+orderNo        TEXT,
+payMethod      TEXT,
+createdAt      TEXT NOT NULL
+)`;
+const REAL_MARK_LOG_SQL = `CREATE TABLE IF NOT EXISTS markLog (
+id             INTEGER PRIMARY KEY AUTOINCREMENT,
+markRecordId   INTEGER NOT NULL,
+userId         TEXT NOT NULL,
+model          TEXT NOT NULL,
+criteriaConfig TEXT NOT NULL,
+imageFilename  TEXT NOT NULL,
+result         TEXT NOT NULL,
+createdAt      TEXT NOT NULL
+)`;
+type RealMarkingDb =
+  & Schema<typeof REAL_KF_CURSOR_SQL>
+  & Schema<typeof REAL_USER_SQL>
+  & Schema<typeof REAL_MARK_RECORD_SQL>
+  & Schema<typeof REAL_CREDIT_TX_SQL>
+  & Schema<typeof REAL_MARK_LOG_SQL>;
+type _RealDbShape = AssertTrue<Equal<RealMarkingDb, {
+  kfCursor: { openKfId: string; cursor: string };
+  user: {
+    externalUserId: string; username: string; passwordHash: string;
+    email: string | null; phone: string | null; token: string | null;
+    createdAt: string; updatedAt: string;
+  };
+  markRecord: { id: number; userId: string; costCredits: number; createdAt: string; confirmedAt: string | null };
+  creditTransaction: {
+    id: number; userId: string; amountMoney: number; amountCredits: number;
+    description: string | null; orderNo: string | null; payMethod: string | null; createdAt: string;
+  };
+  markLog: {
+    id: number; markRecordId: number; userId: string; model: string; criteriaConfig: string;
+    imageFilename: string; result: string; createdAt: string;
+  };
+}>>;
+
 // ── Negative tests: invalid SQL → never ──
 
 type _NegSelectNoFrom = AssertTrue<Equal<

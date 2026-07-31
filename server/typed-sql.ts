@@ -286,8 +286,6 @@ export type SqlRunResult<S extends string, Tbls extends {}> =
 
 // ── TypedDb ──
 
-export type O<T> = { [K in keyof T]: T[K] };
-
 export class TypedDb<S extends {}> {
   #db: DatabaseSync;
 
