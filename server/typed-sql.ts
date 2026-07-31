@@ -11,7 +11,7 @@ import { DatabaseSync } from "node:sqlite";
 //   - @name 后紧跟 , 或 )，不留空格（如 @a,@b / @a)）
 //   - 传参用 object（node:sqlite 原生支持命名参数，无需关心顺序）
 //   - SELECT 结果 always T[]（.all() 语义）
-//   - SELECT 列列表逗号后跟一个空格：col1, col2
+//   - SELECT 列列表逗号后跟一个空格：col1, col2（只在顶层列之间）
 //   - SELECT 必须用以下完整模板，缺一不可：
 //       SELECT {ALL|DISTINCT} <cols>
 //         FROM <table>
@@ -99,18 +99,6 @@ export type Schema<S extends string> =
 
 // ── @name parameter scanner ──
 
-/**
- * FirstWord<"user WHERE id = @id"> → "user"
- *
- * Space-first: for SQL keywords (INSERT/SELECT/UPDATE/... followed by space)
- */
-type FirstWord<S extends string> =
-  S extends `${infer W} ${infer _}` ? W
-  : S extends `${infer W},${infer _}` ? W
-  : S extends `${infer W})${infer _}` ? W
-  : S extends `${infer W};${infer _}` ? W
-  : S;
-
 // ── SELECT pattern match ──
 
 type _MatchSelect<S extends string> =
@@ -152,37 +140,70 @@ type _NewTables<FromClause extends string, Tables extends {}> =
     > & keyof Tables
   >;
 
-type _AggFuncs = 'COUNT' | 'SUM' | 'AVG' | 'MAX' | 'MIN' | 'GROUP_CONCAT';
+type _AggCount = 'COUNT';
+type _AggNumeric = 'SUM' | 'AVG' | 'MAX' | 'MIN';
+type _AggString = 'GROUP_CONCAT';
 
 /**
- * ColType<"user.id", { user: Tables['user'] }> → Tables['user']['id']
+ * ColType<"user.id", { user: Tables['user'] }, "WHERE user.id = @id"> → Tables['user']['id']
  *
  * ColType<"COUNT(*)", ...> → number
  *
+ * ColType<"SUM(markRecord.costCredits)", ...> → number | null
+ *
+ * ColType<"GROUP_CONCAT(x)", ...> → string | null
+ *
  * ColType<"u.age + 10", ...> → unknown
+ *
+ * 若 WHERE 含 `T.C IS NOT NULL` → 去掉 nullable；含 `T.C IS NULL` → 恒为 null
+ *
+ * 聚合必须位于列表达式开头（不得包在 COALESCE 等其他函数内），否则落入
+ * T.C 分支得 unknown，杜绝"聚合藏在函数内部被意外命中"的误判。
  */
-type ColType<Expr extends string, Aliases extends {}> =
-  Expr extends `${infer T}.${infer C}`
-  ? T extends keyof Aliases
-    ? C extends keyof Aliases[T]
-      ? Aliases[T][C]
-      : never
-    : never
-  : Expr extends `${string}${_AggFuncs}(${string}` ? number
-  : unknown;
+type ColType<Expr extends string, Aliases extends {}, WhereClause extends string> =
+  Expr extends `${_AggCount}(${string}` ? number
+  : Expr extends `${_AggNumeric}(${string}` ? number | null
+  : Expr extends `${_AggString}(${string}` ? string | null
+  : Expr extends `${infer T}.${infer C}`
+    ? (
+      T extends keyof Aliases
+        ? (
+          WhereClause extends `${string}${T}.${C} IS NOT NULL${string}` ? NonNullable<TblsPick<Aliases, T, C>>
+          : WhereClause extends `${string}${T}.${C} IS NULL${string}` ? null
+          : TblsPick<Aliases, T, C>
+        )
+        : unknown
+    )
+    : unknown;
 
-type _Col<S extends string, Aliases extends {}> =
+type _Col<S extends string, Aliases extends {}, WhereClause extends string> =
   S extends `${infer Expr} AS ${infer Name}`
-  ? Record<FirstWord<Name>, ColType<Expr, Aliases>>
+  ? { [K in Name]: ColType<Expr, Aliases, WhereClause> }
   : {};
 
-type _Cols<Parts extends string[], Aliases extends {}, Acc = {}> =
+type _Cols<Parts extends string[], Aliases extends {}, WhereClause extends string, Acc = {}> =
   Parts extends [infer F extends string, ...infer R extends string[]]
-  ? _Cols<R, Aliases, Acc & _Col<F, Aliases>>
+  ? _Cols<R, Aliases, WhereClause, Acc & _Col<F, Aliases, WhereClause>>
   : Acc;
 
 type _UnionToIntersection<U> =
   (U extends unknown ? (arg: U) => void : never) extends (arg: infer I) => void ? I : never;
+
+/**
+ * WhereNullCol<["markRecord.userId = @userId", "markRecord.confirmedAt IS NOT NULL"], Tables>
+ *   → { confirmedAt: string }
+ *
+ * 从 WHERE 条件片段（按 OR / AND 切分）中收集 `Tbl.Col IS NULL` / `Tbl.Col IS NOT NULL`
+ * 对 `SELECT *` 结果列的空值收窄。
+ */
+type WhereNullCol<SS extends string[], Tbls extends {}, R = {}> =
+  SS extends [infer F extends string, ...infer Rest extends string[]]
+  ? (
+    F extends `${infer Tbl}.${infer Col} IS NOT NULL` ? WhereNullCol<Rest, Tbls, R & { [K in Col]: NonNullable<TblsPick<Tbls, Tbl, Col>> }>
+    : F extends `${infer Tbl}.${infer Col} IS NULL` ? WhereNullCol<Rest, Tbls, R & { [K in Col]: null }>
+    : WhereNullCol<Rest, Tbls, R>
+  )
+  : R;
 
 /**
  * SelectResult<"SELECT ALL * FROM user WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0", Tables>
@@ -190,13 +211,15 @@ type _UnionToIntersection<U> =
  *
  * SelectResult<"SELECT ALL user.id AS id, user.email AS email FROM user WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0", Tables>
  *   → { id: number; email: string | null }[]
+ *
+ * SELECT * 时会额外用 WHERE 中的 IS NULL / IS NOT NULL 收窄对应列
  */
 export type SelectResult<S extends string, Tbls extends {}> =
-  _MatchSelect<S> extends { cols: infer RawCols extends string; from: infer FromClause extends string }
+  _MatchSelect<S> extends { cols: infer RawCols extends string; from: infer FromClause extends string; where: infer WhereClause extends string }
   ? _NewTables<FromClause, Tbls> extends infer AliasMap extends {}
   ? RawCols extends '*'
-  ? _UnionToIntersection<AliasMap[keyof AliasMap]>[]
-  : _Cols<Split<RawCols, ', '>, AliasMap>[]
+  ? (_UnionToIntersection<AliasMap[keyof AliasMap]> & WhereNullCol<FlatSplit<FlatSplit<[WhereClause], ' OR '>, ' AND '>, Tbls>)[]
+  : _Cols<Split<RawCols, ', '>, AliasMap, WhereClause>[]
   : never
   : never;
 

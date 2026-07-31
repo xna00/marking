@@ -36,6 +36,7 @@
 | **表名后必须跟恰好一个空格**，即使 SQL 到此结束（如 `'SELECT * FROM user '`） | 类型模板用 `FROM ${infer Name} WHERE` 取表名 |
 | CREATE TABLE **列定义顶格写**（每行 column 0 开始，无缩进） | `ParseCols` 用 `Split<Rest, ",\n">` 拆分列 |
 | SELECT 列列表 **逗号后跟一个空格**：`col1, col2` | `Split<Cols, ', '>` 分隔列名 |
+| 聚合必须位于**列表达式开头**，不得包在其他函数内（如 `COALESCE(SUM(x),0)`） | `ColType` 只匹配以聚合开头的表达式，包裹后落入 T.C 分支得 `unknown` |
 | `@name` 后紧跟 `,` 或 `)`：`@a,@b` 或 `@a)` | 逗号/paren 直接作为 word terminator |
 | `BETWEEN` 中的 `AND` 用小写 `and` | 避免被 WHERE-level ` AND ` 误拆分 |
 | `@` 出现在字面量（如 `'email@example.com'`）会误识别 | 避免在 SQL 参数中使用这种模式 |
@@ -67,38 +68,20 @@ runSql('WHERE id = @id AND name = @name', { name: 'foo', id: 1 })
 ### 返回值类型：`SelectResult<S>`
 - `SELECT * FROM 表名` → `Tables[表名][]`
 - `SELECT 列1,列2 FROM 表名` → `Pick<Tables[表名], '列1' | '列2'>[]`
+- WHERE 中的 `Tbl.Col IS NOT NULL` / `Tbl.Col IS NULL` 会进一步收窄对应列（去空 / 恒 `null`），
+  `SELECT *` 与显式列两条路径都生效
+- 聚合列按 SQL 语义建模（空集/全 NULL 时 SUM/AVG/MAX/MIN 返回 NULL）：
+  - `COUNT(*)` → `number`
+  - `SUM(x)` / `AVG(x)` / `MAX(x)` / `MIN(x)` → `number | null`
+  - `GROUP_CONCAT(x)` → `string | null`
+  - 空值用 `?? 0` 等兜底（如 `db.ts` 的 `sumCredits`）
 
 ## 设计笔记
 
-### 为什么 `FirstWord` 不能用 `${infer W}${' ' | ',' | ')' | ';'}${string}`
+### 别名提取用 `{[K in Name]: ...}` 映射类型
 
-```ts
-// ❌ 不可用！
-type FirstWord<S extends string> =
-  S extends `${infer W}${' ' | ',' | ')' | ';'}${string}` ? W : S;
-```
-
-TypeScript 对 `${infer W}${A | B | C}${string}` 会做 **distribution**——每个 delimiter 独立匹配，
-结果取**所有成功匹配的 W 的 union**，而不是选最短的那一个。
-
-例：`FirstWord<"user (externalUserId, username)">`
-- 空格匹配：W = `"user"`（空格在 position 4）
-- 逗号匹配：W = `"user (externalUserId"`（逗号在 position 20）
-- 结果：`"user" | "user (externalUserId"` → `extends "user"` 为 false ❌
-
-例：`FirstWord<"externalUserId, ">`
-- 逗号匹配：W = `"externalUserId"` ✓
-- 空格匹配：W = `"externalUserId,"` ✗
-- 结果：`"externalUserId" | "externalUserId,"` → ❌
-
-**方案**：用显式链式条件类型，不同场景用不同优先级排序：
-- `FirstWord`：空格优先（用于 `_Col` 取别名：`expr AS total` → `"total"`）
-- `AtParamName`：逗号/paren 优先（`@externalUserId,` → `"externalUserId"`）
-
-**教训**：`${infer W}${Union}${string}` 不保证最短匹配，会 production union；
-需要最短匹配时用链式条件 + 正确优先级。
-
-> 注：表名提取用 `_MatchInsert` / `_MatchUpdate` / `_MatchDelete` 或 `_MatchSelect` 模板中的 `FROM ${infer From} WHERE` + `FirstWord`，不再需要单独的 `ParseTableName`。
+`_Col` 解析 `expr AS name` 后直接用 `{[K in Name]: ...}` 生成字段，
+不再需要独立的 `FirstWord`（已删除）。
 
 ## 代码组织
 
