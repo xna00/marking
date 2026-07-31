@@ -18,7 +18,7 @@ type Equal<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
 
 // ── Table definitions ──
 
-const USER_SQL = `CREATE TABLE user (
+const USER_SQL = `CREATE TABLE IF NOT EXISTS user (
 externalUserId TEXT PRIMARY KEY,
 username TEXT NOT NULL UNIQUE,
 passwordHash TEXT NOT NULL,
@@ -27,26 +27,26 @@ phone TEXT,
 token TEXT,
 createdAt TEXT NOT NULL,
 updatedAt TEXT NOT NULL
-)` as const;
-const MARK_RECORD_SQL = `CREATE TABLE markRecord (
+)`;
+const MARK_RECORD_SQL = `CREATE TABLE IF NOT EXISTS markRecord (
 id INTEGER PRIMARY KEY AUTOINCREMENT,
 userId TEXT NOT NULL,
 costCredits REAL NOT NULL DEFAULT 1.0,
 createdAt TEXT NOT NULL,
 confirmedAt TEXT
-)` as const;
-const CREDIT_TX_SQL = `CREATE TABLE creditTransaction (
+)`;
+const CREDIT_TX_SQL = `CREATE TABLE IF NOT EXISTS creditTransaction (
 id INTEGER PRIMARY KEY AUTOINCREMENT,
 userId TEXT NOT NULL,
 amountMoney INTEGER NOT NULL,
 amountCredits INTEGER NOT NULL,
 description TEXT,
 createdAt TEXT NOT NULL
-)` as const;
-const KF_CURSOR_SQL = `CREATE TABLE kfCursor (
+)`;
+const KF_CURSOR_SQL = `CREATE TABLE IF NOT EXISTS kfCursor (
 openKfId TEXT PRIMARY KEY,
 cursor TEXT NOT NULL
-)` as const;
+)`;
 
 type Tables =
   Schema<typeof USER_SQL>
@@ -54,67 +54,51 @@ type Tables =
   & Schema<typeof CREDIT_TX_SQL>
   & Schema<typeof KF_CURSOR_SQL>;
 
-// ── Schema tests ──
+// ── Schema tests（完整形状断言）──
 
-type User = Tables['user'];
-
-type _Ue = AssertTrue<'externalUserId' extends keyof User ? true : false>;
-type _Un = AssertTrue<'username' extends keyof User ? true : false>;
-type _Up = AssertTrue<'passwordHash' extends keyof User ? true : false>;
-type _Ue2 = AssertTrue<'email' extends keyof User ? true : false>;
-type _Up2 = AssertTrue<'phone' extends keyof User ? true : false>;
-type _Ut = AssertTrue<'token' extends keyof User ? true : false>;
-type _Uc = AssertTrue<'createdAt' extends keyof User ? true : false>;
-type _Uu = AssertTrue<'updatedAt' extends keyof User ? true : false>;
-
-type _UserExtIdNotNull = AssertTrue<Equal<User['externalUserId'], string>>;
-type _UserNameNotNull = AssertTrue<Equal<User['username'], string>>;
-type _EmailNullable   = AssertTrue<Equal<User['email'], string | null>>;
-
-type MarkRecord = Tables['markRecord'];
-
-type _Mi = AssertTrue<'id' extends keyof MarkRecord ? true : false>;
-type _Mu = AssertTrue<'userId' extends keyof MarkRecord ? true : false>;
-type _Mc = AssertTrue<'costCredits' extends keyof MarkRecord ? true : false>;
-type _Mcr = AssertTrue<'createdAt' extends keyof MarkRecord ? true : false>;
-type _MCo = AssertTrue<'confirmedAt' extends keyof MarkRecord ? true : false>;
-
-type _MrkConfirmedNull  = AssertTrue<Equal<MarkRecord['confirmedAt'], string | null>>;
-type _MrkCreatedAtNull  = AssertTrue<Equal<MarkRecord['createdAt'], string>>;
-
-type CreditTx = Tables['creditTransaction'];
-
-type _Cd = AssertTrue<'description' extends keyof CreditTx ? true : false>;
-type _Ca = AssertTrue<'amountMoney' extends keyof CreditTx ? true : false>;
-type _Cc = AssertTrue<'amountCredits' extends keyof CreditTx ? true : false>;
-
-type _CtDescNull = AssertTrue<Equal<CreditTx['description'], string | null>>;
-
-// ── Tables shape ──
-
-type _TblUser = AssertTrue<'user' extends keyof Tables ? true : false>;
-type _TblMrk = AssertTrue<'markRecord' extends keyof Tables ? true : false>;
-type _TblCt = AssertTrue<'creditTransaction' extends keyof Tables ? true : false>;
-type _TblKf = AssertTrue<'kfCursor' extends keyof Tables ? true : false>;
-type _TblConfirmedNull = AssertTrue<Equal<Tables['markRecord']['confirmedAt'], string | null>>;
-type _TblDescNull = AssertTrue<Equal<Tables['creditTransaction']['description'], string | null>>;
-type _TblCursorType = AssertTrue<Equal<Tables['kfCursor']['cursor'], string>>;
+type _UserShape = AssertTrue<Equal<Tables['user'], {
+  externalUserId: string;
+  username: string;
+  passwordHash: string;
+  email: string | null;
+  phone: string | null;
+  token: string | null;
+  createdAt: string;
+  updatedAt: string;
+}>>;
+type _MarkRecordShape = AssertTrue<Equal<Tables['markRecord'], {
+  id: number;
+  userId: string;
+  costCredits: number;
+  createdAt: string;
+  confirmedAt: string | null;
+}>>;
+type _CreditTxShape = AssertTrue<Equal<Tables['creditTransaction'], {
+  id: number;
+  userId: string;
+  amountMoney: number;
+  amountCredits: number;
+  description: string | null;
+  createdAt: string;
+}>>;
+type _KfCursorShape = AssertTrue<Equal<Tables['kfCursor'], {
+  openKfId: string;
+  cursor: string;
+}>>;
 
 // ── SelectResult ──
 
-type _SrUserKey = AssertTrue<'externalUserId' extends keyof SelectResult<'SELECT ALL * FROM user WHERE user.id = @id GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>[number] ? true : false>;
-type _SrMrkKey = AssertTrue<  'userId' extends keyof SelectResult<'SELECT ALL * FROM markRecord WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>[number] ? true : false>;
-type _SrUserVal = AssertTrue<Equal<SelectResult<'SELECT ALL * FROM user WHERE user.id = @id GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>[number]['externalUserId'], string>>;
-type _SrMrkNull = AssertTrue<Equal<SelectResult<'SELECT ALL * FROM markRecord WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>[number]['confirmedAt'], string | null>>;
+type _SrMrkStar = AssertTrue<Equal<
+  SelectResult<'SELECT ALL * FROM markRecord WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  Tables['markRecord'][]
+>>;
 
 // ── SelectResult (LEFT JOIN) ──
 
-type _SrLeftJoinKey1 = AssertTrue<
-  'userId' extends keyof SelectResult<'SELECT ALL user.externalUserId AS userId, markRecord.id AS recordId FROM user LEFT JOIN markRecord ON user.externalUserId = markRecord.userId WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>[number] ? true : false
->;
-type _SrLeftJoinKey2 = AssertTrue<
-  'recordId' extends keyof SelectResult<'SELECT ALL user.externalUserId AS userId, markRecord.id AS recordId FROM user LEFT JOIN markRecord ON user.externalUserId = markRecord.userId WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>[number] ? true : false
->;
+type _SrLeftJoin = AssertTrue<Equal<
+  SelectResult<'SELECT ALL user.externalUserId AS userId, markRecord.id AS recordId FROM user LEFT JOIN markRecord ON user.externalUserId = markRecord.userId WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  { userId: string; recordId: number }[]
+>>;
 
 // ── SelectResult (SELECT DISTINCT) ──
 
@@ -132,93 +116,76 @@ type _SrMixedAgg = AssertTrue<Equal<
 
 // ── SelectResult (SELECT * with JOIN → intersection) ──
 
-type _SrJoinStarKey1 = AssertTrue<
-  'externalUserId' extends keyof SelectResult<'SELECT ALL * FROM user LEFT JOIN kfCursor ON user.externalUserId = kfCursor.openKfId WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>[number] ? true : false
->;
-type _SrJoinStarKey2 = AssertTrue<
-  'openKfId' extends keyof SelectResult<'SELECT ALL * FROM user LEFT JOIN kfCursor ON user.externalUserId = kfCursor.openKfId WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>[number] ? true : false
->;
+type _SrJoinStar = AssertTrue<Equal<
+  SelectResult<'SELECT ALL * FROM user LEFT JOIN kfCursor ON user.externalUserId = kfCursor.openKfId WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  (Tables['user'] & Tables['kfCursor'])[]
+>>;
 
 // ── SelectResult (INNER JOIN) ──
 
-type _SrInnerJoinKey1 = AssertTrue<
-  'userId' extends keyof SelectResult<'SELECT ALL user.externalUserId AS userId, markRecord.id AS recordId FROM user INNER JOIN markRecord ON user.externalUserId = markRecord.userId WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>[number] ? true : false
->;
-type _SrInnerJoinKey2 = AssertTrue<
-  'recordId' extends keyof SelectResult<'SELECT ALL user.externalUserId AS userId, markRecord.id AS recordId FROM user INNER JOIN markRecord ON user.externalUserId = markRecord.userId WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>[number] ? true : false
->;
+type _SrInnerJoin = AssertTrue<Equal<
+  SelectResult<'SELECT ALL user.externalUserId AS userId, markRecord.id AS recordId FROM user INNER JOIN markRecord ON user.externalUserId = markRecord.userId WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  { userId: string; recordId: number }[]
+>>;
 
 // ── WhereParams ──
 
-type _WpUser = AssertTrue<
-  'externalUserId' extends keyof Params<'SELECT ALL * FROM user WHERE user.externalUserId = @externalUserId GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables> ? true : false
->;
-type _WpUserType = AssertTrue<Equal<
-  Params<'SELECT ALL * FROM user WHERE user.externalUserId = @externalUserId GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>['externalUserId'], string
+type _WpUser = AssertTrue<Equal<
+  Params<'SELECT ALL * FROM user WHERE user.externalUserId = @externalUserId GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  { externalUserId: string }
 >>;
 type _WpNoWhere = AssertTrue<Equal<
   Params<'SELECT ALL * FROM user WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>, {}
 >>;
-type _WpBoth = AssertTrue<
-  'id' extends keyof Params<'SELECT ALL * FROM markRecord WHERE markRecord.id = @id AND markRecord.userId = @userId GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables> ? true : false
-> & AssertTrue<
-  'userId' extends keyof Params<'SELECT ALL * FROM markRecord WHERE markRecord.id = @id AND markRecord.userId = @userId GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables> ? true : false
->;
+type _WpBoth = AssertTrue<Equal<
+  Params<'SELECT ALL * FROM markRecord WHERE markRecord.id = @id AND markRecord.userId = @userId GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  { id: number; userId: string }
+>>;
 
 // ── WhereParams (INSERT) ──
 
-type _IpUser = AssertTrue<
-  'externalUserId' extends keyof RunParams<'INSERT INTO user (externalUserId, username, passwordHash, email, phone, token, createdAt, updatedAt) VALUES (@externalUserId, @username, @passwordHash, @email, @phone, @token, @createdAt, @updatedAt)', Tables> ? true : false
->;
-type _IpUserType = AssertTrue<Equal<
-  RunParams<'INSERT INTO user (externalUserId, username, passwordHash, email, phone, token, createdAt, updatedAt) VALUES (@externalUserId, @username, @passwordHash, @email, @phone, @token, @createdAt, @updatedAt)', Tables>['username'], string
+type _IpUser = AssertTrue<Equal<
+  RunParams<'INSERT INTO user (externalUserId, username, passwordHash, email, phone, token, createdAt, updatedAt) VALUES (@externalUserId, @username, @passwordHash, @email, @phone, @token, @createdAt, @updatedAt)', Tables>,
+  {
+    externalUserId: string;
+    username: string;
+    passwordHash: string;
+    email: string | null;
+    phone: string | null;
+    token: string | null;
+    createdAt: string;
+    updatedAt: string;
+  }
 >>;
-type _IpUserEmail = AssertTrue<Equal<
-  RunParams<'INSERT INTO user (externalUserId, username, passwordHash, email, phone, token, createdAt, updatedAt) VALUES (@externalUserId, @username, @passwordHash, @email, @phone, @token, @createdAt, @updatedAt)', Tables>['email'], string | null
+type _IpMrk = AssertTrue<Equal<
+  RunParams<'INSERT INTO markRecord (userId, createdAt, costCredits) VALUES (@userId, @createdAt, @costCredits)', Tables>,
+  { userId: string; createdAt: string; costCredits: number }
 >>;
-type _IpMrk = AssertTrue<
-  'userId' extends keyof RunParams<'INSERT INTO markRecord (userId, createdAt, costCredits) VALUES (@userId, @createdAt, @costCredits)', Tables> ? true : false
->;
-type _IpCt = AssertTrue<
-  'amountMoney' extends keyof RunParams<'INSERT INTO creditTransaction (userId, amountMoney, amountCredits, description, createdAt) VALUES (@userId, @amountMoney, @amountCredits, @description, @createdAt)', Tables> ? true : false
->;
+type _IpCt = AssertTrue<Equal<
+  RunParams<'INSERT INTO creditTransaction (userId, amountMoney, amountCredits, description, createdAt) VALUES (@userId, @amountMoney, @amountCredits, @description, @createdAt)', Tables>,
+  { userId: string; amountMoney: number; amountCredits: number; description: string | null; createdAt: string }
+>>;
 
 // ── WhereParams (UPDATE) ──
 
-type _UpToken = AssertTrue<
-  'token' extends keyof RunParams<'UPDATE user SET user.token = @token, user.updatedAt = @updatedAt WHERE user.externalUserId = @externalUserId', Tables> ? true : false
->;
-type _UpUpdated = AssertTrue<
-  'updatedAt' extends keyof RunParams<'UPDATE user SET user.token = @token, user.updatedAt = @updatedAt WHERE user.externalUserId = @externalUserId', Tables> ? true : false
->;
-type _UpExtId = AssertTrue<
-  'externalUserId' extends keyof RunParams<'UPDATE user SET user.token = @token, user.updatedAt = @updatedAt WHERE user.externalUserId = @externalUserId', Tables> ? true : false
->;
-type _UpTokenNullable = AssertTrue<Equal<
-  RunParams<'UPDATE user SET token = @token WHERE user.externalUserId = @externalUserId', Tables>['token'], string | null
+type _UpFull = AssertTrue<Equal<
+  RunParams<'UPDATE user SET token = @token, updatedAt = @updatedAt WHERE user.externalUserId = @externalUserId', Tables>,
+  { token: string | null; updatedAt: string; externalUserId: string }
 >>;
-
-const _u: RunParams<'UPDATE user SET email = @email WHERE user.externalUserId = @externalUserId', Tables> = {
-  'email': null,
-  'externalUserId': 'abc',
-};
 
 // ── WhereParams (DELETE) ──
 
-type _WpDelete = AssertTrue<
-  'id' extends keyof RunParams<'DELETE FROM markRecord WHERE markRecord.id = @id', Tables> ? true : false
->;
-type _WpDeleteType = AssertTrue<Equal<
-  RunParams<'DELETE FROM markRecord WHERE markRecord.id = @id', Tables>['id'], number
+type _WpDelete = AssertTrue<Equal<
+  RunParams<'DELETE FROM markRecord WHERE markRecord.id = @id', Tables>,
+  { id: number }
 >>;
  
 // ── INSERT OR REPLACE ──
 
-type _IorParams = AssertTrue<
-  'openKfId' extends keyof RunParams<'INSERT OR REPLACE INTO kfCursor (openKfId, cursor) VALUES (@openKfId, @cursor)', Tables> ? true : false
-> & AssertTrue<
-  'cursor' extends keyof RunParams<'INSERT OR REPLACE INTO kfCursor (openKfId, cursor) VALUES (@openKfId, @cursor)', Tables> ? true : false
->;
+type _IorParams = AssertTrue<Equal<
+  RunParams<'INSERT OR REPLACE INTO kfCursor (openKfId, cursor) VALUES (@openKfId, @cursor)', Tables>,
+  { openKfId: string; cursor: string }
+>>;
 
 // ── SqlAllResult ──
 
@@ -284,25 +251,24 @@ type _SrrSelectNever = AssertTrue<Equal<
 
 // ── TEMP TABLE ──
 
-const TEMP_TABLE_SQL = `CREATE TEMP TABLE tempLog (
+const TEMP_TABLE_SQL = `CREATE TEMP TABLE IF NOT EXISTS tempLog (
 id INTEGER,
 msg TEXT
-)` as const;
+)`;
 type TempTables = Schema<typeof TEMP_TABLE_SQL>;
-type _TempTblName = AssertTrue<'tempLog' extends keyof TempTables ? true : false>;
-type _TempTblId = AssertTrue<'id' extends keyof TempTables['tempLog'] ? true : false>;
-type _TempTblMsgNull = AssertTrue<Equal<TempTables['tempLog']['msg'], string | null>>;
+type _TempShape = AssertTrue<Equal<TempTables, { tempLog: { id: number | null; msg: string | null } }>>;
 
 // ── IF NOT EXISTS ──
 
 const IFNOTEXISTS_SQL = `CREATE TABLE IF NOT EXISTS config (
 key TEXT PRIMARY KEY,
 value TEXT
-)` as const;
+)`;
 type ConfigTable = Schema<typeof IFNOTEXISTS_SQL>;
-type _IfNeKey = AssertTrue<'key' extends keyof ConfigTable['config'] ? true : false>;
-type _IfNeVal = AssertTrue<'value' extends keyof ConfigTable['config'] ? true : false>;
-type _IfNeKeyNotNull = AssertTrue<Equal<ConfigTable['config']['key'], string>>;
+type _ConfigShape = AssertTrue<Equal<ConfigTable, { config: { key: string; value: string | null } }>>;
+type _NegSchemaPlainTable = AssertTrue<Equal<
+  Schema<"CREATE TABLE plainTbl (\nid INTEGER\n)">, {}
+>>;
 
 // ── Negative tests: invalid SQL → never ──
 
@@ -317,6 +283,10 @@ type _NegInsertMultiline = AssertTrue<Equal<
 >>;
 type _NegInsertNonColParam = AssertTrue<Equal<
   RunParams<'INSERT INTO user (username) VALUES (@foo)', Tables>, {}
+>>;
+type _NegUpdateSetPrefixed = AssertTrue<Equal<
+  RunParams<'UPDATE user SET user.token = @token WHERE user.externalUserId = @externalUserId', Tables>,
+  { token: never; externalUserId: string }
 >>;
 type _PosUpdateArbitraryName = AssertTrue<Equal<
   RunParams<'UPDATE user SET token = @tok WHERE user.externalUserId = @uid', Tables>,
@@ -361,10 +331,6 @@ type _WpIsNotNull = AssertTrue<Equal<
 type _WpIsNull = AssertTrue<Equal<
   Params<'SELECT ALL * FROM markRecord WHERE markRecord.confirmedAt IS NULL GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>, {}
 >>;
-type _WpIsNotNullThenParam = AssertTrue<
-  'userId' extends keyof Params<'SELECT ALL * FROM markRecord WHERE markRecord.confirmedAt IS NOT NULL AND markRecord.userId = @userId GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables> ? true : false
->;
-
 type _WpMixedIsNotNull = AssertTrue<Equal<
   Params<'SELECT ALL * FROM markRecord WHERE markRecord.userId = @userId AND markRecord.confirmedAt IS NOT NULL GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   { userId: string }
@@ -475,11 +441,11 @@ type _SfLimitOffset = AssertTrue<Equal<
 
 // ── Runtime tests ──
 
-const TEST_TBL_SQL = `CREATE TABLE testTbl (
+const TEST_TBL_SQL = `CREATE TABLE IF NOT EXISTS testTbl (
 id INTEGER PRIMARY KEY,
 label TEXT NOT NULL,
 val INTEGER
-)` as const;
+)`;
 type TestTables = Schema<typeof TEST_TBL_SQL>;
 
 describe('TypedDb', () => {

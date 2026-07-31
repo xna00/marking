@@ -4,7 +4,7 @@
 
 - 原生 `node:sqlite`，零第三方依赖
 - 类型级解析器从 SQL 字符串推导参数与返回值类型，`TypedDb<S>` 提供类型安全的 `prepare().all/get/run`
-- 表类型由 `Schema<T>` 从 CREATE TABLE 语句推导；示例表定义在测试文件（typed-sql-test.ts）中
+- 表类型由 `Schema<T>` 从 `CREATE [TEMP] TABLE IF NOT EXISTS` 语句推导；示例表定义在测试文件（typed-sql-test.ts）中
 
 ## API 使用
 
@@ -121,6 +121,7 @@ SELECT 额外把 `LIMIT` / `OFFSET` 中的 `@参数` 类型定为 `number`。
 - **HAVING / ORDER BY 不参与参数提取**：`HAVING COUNT(*) > @min`、`ORDER BY @col` 中的参数会被丢弃
 - **UPDATE/DELETE 无 WHERE**：模板强制 WHERE
 - **UPDATE SET 表达式**（如 `count = count + 1`）：`SetParams` 只认 `列名 = @参数` 形式
+- **CREATE TABLE 必须带 `IF NOT EXISTS`**：只支持 `CREATE [TEMP] TABLE IF NOT EXISTS <name>`，漏写时 `Schema` 返回 `{}`（运行时重复建表也会报 `table already exists`，类型层信号与之一致）
 
 ## 代码组织
 

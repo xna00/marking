@@ -1,28 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 
-// ═══════════════════════════════════════════════════════
-//  类型级 SQL 解析器
-//
-//  约定：
-//   - 关键字一律大写（SELECT, FROM, WHERE, INSERT...）
-//   - 表名直接写，必须不写别名：FROM user, UPDATE user
-//   - SELECT 列用 table.col AS name：user.id AS id, COUNT(*) AS cnt
-//   - 参数类型从 `表名前缀.col = @param` 推导，参数名可任意（SELECT WHERE / UPDATE SET / UPDATE·DELETE WHERE）
-//   - INSERT VALUES 的参数名必须是目标表列名（非列名会被静默丢弃）
-//   - VALUES / IN 列表内用「逗号+一个空格」分隔参数：(@a, @b)
-//   - 传参用 object（node:sqlite 原生支持命名参数，无需关心顺序）
-//   - SELECT 结果 always T[]（.all() 语义）
-//   - SELECT 列列表逗号后跟一个空格：col1, col2（只在顶层列之间）
-//   - SELECT 必须用以下模板，缺一不可：
-//       SELECT {ALL|DISTINCT} <cols>
-//         FROM <table>
-//         WHERE <condition>
-//         ORDER BY 1 LIMIT -1 OFFSET 0
-//     其中 ORDER BY/LIMIT/OFFSET 可替换实际值
-//   - GROUP BY/HAVING 可选，仅在需要分组时写：
-//       SELECT ALL COUNT(*) AS cnt FROM user WHERE 1=1 GROUP BY username HAVING COUNT(*) > 1 ORDER BY 1 LIMIT -1 OFFSET 0
-//     不写 GROUP BY 时也不能写 HAVING（两者成对出现）
-// ═══════════════════════════════════════════════════════
+// 类型级 SQL 解析器。SQL 书写约定见 types-sql-conventions.md。
 
 // ── Column type mapping ──
 
@@ -90,14 +68,16 @@ type ParseColsList<Parts extends string[], Acc extends Record<string, unknown> =
   : Acc;
 
 /**
- * Schema<"CREATE TABLE user (id INTEGER PRIMARY KEY, name TEXT NOT NULL)">
+ * Schema<"CREATE TABLE IF NOT EXISTS user (id INTEGER PRIMARY KEY, name TEXT NOT NULL)">
  *   → { user: { id: number; name: string } }
  *
  * Schema<"CREATE TEMP TABLE IF NOT EXISTS log (msg TEXT)">
  *   → { log: { msg: string | null } }
+ *
+ * 只支持 `CREATE [TEMP] TABLE IF NOT EXISTS <name>`；漏写 IF NOT EXISTS 时返回 {}
  */
 export type Schema<S extends string> =
-  S extends `CREATE${string}TABLE ${'IF NOT EXISTS ' | ''}${infer Name} (\n${infer Cols}\n)${string}`
+  S extends `CREATE${string}TABLE IF NOT EXISTS ${infer Name} (\n${infer Cols}\n)${string}`
   ? {[K in Name]: ParseCols<Cols>}
   : {};
 
