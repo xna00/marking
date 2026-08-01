@@ -67,9 +67,11 @@ type ColToField<S extends string> =
 /**
  * ParseCols<"\nid INTEGER PRIMARY KEY,\nname TEXT NOT NULL"> → { id: number; name: string }
  *
- * Strips leading \n, splits by ,\n, then folds each column into one record.
+ * 先按 `,\n\n`（列区末列逗号 + 空行）截断出列区，空行后的表级约束块整体忽略；
+ * 再按 `,\n` 拆分每列并折叠成一条记录。
  */
-type ParseCols<S extends string> = ParseColsList<Split<S, `,\n`>>;
+type ParseCols<S extends string> =
+  ParseColsList<Split<Split<S, ',\n\n'>[0] & string, `,\n`>>;
 
 type ParseColsList<Parts extends string[], Acc extends Record<string, unknown> = {}> =
   Parts extends [infer P extends string, ...infer Rest extends string[]]
@@ -86,7 +88,7 @@ type ParseColsList<Parts extends string[], Acc extends Record<string, unknown> =
  * 只支持 `CREATE [TEMP] TABLE IF NOT EXISTS <name>`；漏写 IF NOT EXISTS 时返回 {}
  */
 export type Schema<S extends string> =
-  S extends `CREATE${string}TABLE IF NOT EXISTS ${infer Name} (\n${infer Cols}\n)${string}`
+  S extends `CREATE${string}TABLE IF NOT EXISTS ${infer Name} (\n${infer Cols}\n)`
   ? {[K in Name]: ParseCols<Cols>}
   : {};
 

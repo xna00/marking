@@ -108,6 +108,37 @@ type _CheckConstExpr = AssertTrue<Equal<
   { t: { x: number } }
 >>;
 
+// ── Schema tests（表级约束：列区末列逗号 + 空行）──
+
+type _TblConstraintPk = AssertTrue<Equal<
+  Schema<"CREATE TABLE IF NOT EXISTS orderItem (\norderId  INTEGER NOT NULL,\nitemId   INTEGER NOT NULL,\nquantity INTEGER NOT NULL,\n\nPRIMARY KEY (orderId, itemId)\n)">,
+  { orderItem: { orderId: number; itemId: number; quantity: number } }
+>>;
+type _TblConstraintUnique = AssertTrue<Equal<
+  Schema<"CREATE TABLE IF NOT EXISTS t (\na TEXT,\nb TEXT,\n\nUNIQUE (a, b)\n)">,
+  { t: { a: string | null; b: string | null } }
+>>;
+type _TblConstraintCheck = AssertTrue<Equal<
+  Schema<"CREATE TABLE IF NOT EXISTS t (\na INTEGER,\nb INTEGER,\n\nCHECK (a > b)\n)">,
+  { t: { a: number | null; b: number | null } }
+>>;
+type _TblConstraintFk = AssertTrue<Equal<
+  Schema<"CREATE TABLE IF NOT EXISTS child (\nid   INTEGER NOT NULL,\npid  INTEGER NOT NULL,\n\nFOREIGN KEY (pid) REFERENCES parent(id)\n)">,
+  { child: { id: number; pid: number } }
+>>;
+type _TblConstraintMixed = AssertTrue<Equal<
+  Schema<"CREATE TABLE IF NOT EXISTS t (\na INTEGER NOT NULL,\nb INTEGER NOT NULL,\n\nPRIMARY KEY (a, b),\nFOREIGN KEY (a) REFERENCES p(id)\n)">,
+  { t: { a: number; b: number } }
+>>;
+type _TblConstraintMultiBlank = AssertTrue<Equal<
+  Schema<"CREATE TABLE IF NOT EXISTS t (\na INTEGER,\nb INTEGER,\n\nPRIMARY KEY (a, b),\n\nCHECK (a > 0)\n)">,
+  { t: { a: number | null; b: number | null } }
+>>;
+type _TblConstraintEnumCol = AssertTrue<Equal<
+  Schema<"CREATE TABLE IF NOT EXISTS t (\nstatus TEXT NOT NULL CHECK (status IN ('pending', 'confirmed')),\nscore  INTEGER CHECK (score IN (1, 2, 3)),\n\nUNIQUE (status)\n)">,
+  { t: { status: 'pending' | 'confirmed'; score: 1 | 2 | 3 | null } }
+>>;
+
 type Tables =
   Schema<typeof USER_SQL>
   & Schema<typeof MARK_RECORD_SQL>

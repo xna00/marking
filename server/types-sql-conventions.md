@@ -66,11 +66,29 @@ VALUES (@a,@b)                                                       # 逗号后
 |------|------|
 | SQL 字符串 **无前导或尾随空白** | 类型以 `SELECT`/`INSERT`/`UPDATE` 开头直接匹配 |
 | `FROM 表名` 后必须**恰好一个空格**再接 ` WHERE`，无多余空白 | 模板用 `FROM ${FromClause} WHERE` 取表名；表名后多余空格会让 `_NewTables` 查不到表，列全部退化为 `{}` |
-| CREATE TABLE **列定义顶格写**（每行 column 0 开始，无缩进） | `ParseCols` 用 `Split<Rest, ",\n">` 拆分列 |
+| CREATE TABLE **列定义顶格写**（每行 column 0 开始，无缩进） | `ParseCols` 用 `Split<Rest, ",\n">` 拆分列；表级约束用 `,\n\n`（末列逗号 + 空行）截断，见下方「表级约束」 |
 | SELECT 列列表 **逗号后跟一个空格**：`col1, col2` | `Split<Cols, ', '>` 分隔列名 |
 | SELECT 模板：`SELECT {ALL\|DISTINCT} <cols> FROM <table> WHERE <cond> ORDER BY ... LIMIT ... OFFSET ...`，**GROUP BY/HAVING 可选且成对出现** | `_MatchSelect` 按带/不带 GROUP BY 两个变体匹配；GROUP BY 若被吞进 WHERE 会破坏 `IS NULL` 收窄 |
 | 聚合必须位于**列表达式开头**，不得包在其他函数内（如 `COALESCE(SUM(x),0)`） | `ColType` 只匹配以聚合开头的表达式，包裹后落入 T.C 分支得 `unknown` |
 | `BETWEEN` 中的 `AND` 用小写 `and` | 避免被 WHERE-level ` AND ` 误拆分 |
+
+### 表级约束
+
+- 表级约束（`PRIMARY KEY (a, b)` / `UNIQUE (a, b)` / 表级 `CHECK (...)` / `FOREIGN KEY (a) REFERENCES parent(b)`）写在列定义**下方**，用**空行**与列区隔开；**列区最后一行以逗号结尾**（合法分隔符，不是尾逗号）
+- `ParseCols` 按 `,\n\n`（末列逗号 + 空行）截断，约束块**整体忽略**——表级约束不改变列类型（SQLite 中表级 PK/UNIQUE/FK 不影响列可空性，表级 CHECK 不参与枚举推导），忽略即正确
+- 空行必须**真空白**（无空格）；约束块内容整体忽略，内部怎么写（多行、内部再空行）都不影响列区解析
+- 无约束的表照旧：列区最后一行无逗号、无空行，直接 `\n)`（现有 DDL 无需改动）
+
+```sql
+CREATE TABLE IF NOT EXISTS orderItem (
+  orderId    INTEGER NOT NULL,
+  itemId     INTEGER NOT NULL,
+  quantity   INTEGER NOT NULL,
+
+  PRIMARY KEY (orderId, itemId)
+)
+-- → Schema 推导为 { orderItem: { orderId: number; itemId: number; quantity: number } }，无 PRIMARY 幽灵列
+```
 
 ### 查询结果
 
@@ -149,6 +167,7 @@ SELECT 额外把 `LIMIT` / `OFFSET` 中的 `@参数` 类型定为 `number`。
 - **INSERT/UPDATE/DELETE ... RETURNING**：只支持裸列名列表或 `*`；`表名.列` 前缀、`AS` 别名、表达式均不支持（类型退化为 `{}`）
 - **UPDATE SET 表达式**（如 `count = count + 1`）：`SetParams` 只认 `列名 = @参数` 形式
 - **CREATE TABLE 必须带 `IF NOT EXISTS`**：只支持 `CREATE [TEMP] TABLE IF NOT EXISTS <name>`，漏写时 `Schema` 返回 `{}`（运行时重复建表也会报 `table already exists`，类型层信号与之一致）
+- **表级约束不写空行**：必须按「列区末列逗号 + 空行」约定书写；漏写空行（约束直接接在列区后）会被当列解析出 `PRIMARY`/`UNIQUE`/`CHECK`/`FOREIGN` 等幽灵列（警示信号）
 
 ## 代码组织
 
