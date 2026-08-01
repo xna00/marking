@@ -61,7 +61,12 @@ type ColNullable<S extends string> =
  */
 type ColToField<S extends string> =
   ColNameType<S> extends [infer N extends string, infer T extends string]
-  ? {[K in N]: SqlType<N, T> | ColNullable<S>}
+  ? {[K in N]: T extends  `${string} REFERENCES ${infer Rt}(${infer Rc})${string}` ? {
+    def: SqlType<N, T> | ColNullable<S>,
+    ref: [Rt, Rc]
+  } : {
+    def: SqlType<N, T> | ColNullable<S>
+  }}
   : {};
 
 /**
@@ -79,19 +84,48 @@ type ParseColsList<Parts extends string[], Acc extends Record<string, unknown> =
   : Acc;
 
 /**
- * Schema<"CREATE TABLE IF NOT EXISTS user (id INTEGER PRIMARY KEY, name TEXT NOT NULL)">
- *   → { user: { id: number; name: string } }
+ * SchemaFks<"CREATE TABLE IF NOT EXISTS user (id INTEGER PRIMARY KEY, name TEXT NOT NULL)">
+ *   → { user: { id: { def: number }, name: { def: string } } }   // 列是内部 wrapper
  *
- * Schema<"CREATE TEMP TABLE IF NOT EXISTS log (msg TEXT)">
- *   → { log: { msg: string | null } }
+ * SchemaFks<"CREATE TEMP TABLE IF NOT EXISTS log (msg TEXT)">
+ *   → { log: { msg: { def: string | null } } }
  *
- * 只支持 `CREATE [TEMP] TABLE IF NOT EXISTS <name>`；漏写 IF NOT EXISTS 时返回 {}
+ * 解析 `CREATE [TEMP] TABLE IF NOT EXISTS <name>` 的列定义，含列级 `REFERENCES` 时
+ * wrapper 带 `ref: [表, 列]`。只支持带 IF NOT EXISTS；漏写时返回 {}
  */
-export type Schema<S extends string> =
+export type SchemaFks<S extends string> =
   S extends `CREATE${string}TABLE IF NOT EXISTS ${infer Name} (\n${infer Cols}\n)`
   ? {[K in Name]: ParseCols<Cols>}
   : {};
 
+/**
+ * ResolveFks<SchemaFks<A> & SchemaFks<B>>  →  把带 `ref` 的列与目标列类型取交集。
+ *
+ * 子列类型 = (自身 def & 目标 def) | (自身可空 ? null : never)：
+ * - 自身类型/枚举保留；父列可空不传导（`string & (string | null)` = `string`）
+ * - 只传导一层（A→B→C 链时 A 不含 C）；环形外键无递归，两侧取各自 def 交集
+ */
+export type ResolveFks<D extends Record<string, Record<string, {def: unknown} | {def: unknown, ref: [string, string]}>>> = {
+  [K in keyof D]: {
+    [KK in keyof D[K]]: D[K][KK] extends infer V extends {def: unknown}
+      ? V extends {ref: [infer Rt, infer Rc]}
+        ? (V['def'] & TblsPick<D, Rt, Rc>['def']) | (null & V['def'])
+        : V['def']
+      : never
+  }
+}
+
+/**
+ * Schema<"CREATE TABLE IF NOT EXISTS user (id INTEGER PRIMARY KEY, name TEXT NOT NULL)">
+ *   → { user: { id: number; name: string } }
+ *
+ * 无外键的单表 DDL 直接用；含 REFERENCES 的库类型用 `ResolveFks<SchemaFks<...> & ...>`。
+ * 这里只解包 wrapper 的 def，不做外键解析（向后兼容旧 Schema 输出）。
+ */
+export type Schema<S extends string> =
+  SchemaFks<S> extends infer D extends Record<string, Record<string, {def: unknown}>>
+  ? { [K in keyof D]: { [KK in keyof D[K]]: D[K][KK]['def'] } }
+  : never
 // ── @name parameter scanner ──
 
 // ── SELECT pattern match ──

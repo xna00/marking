@@ -5,6 +5,7 @@
 - 原生 `node:sqlite`，零第三方依赖
 - 类型级解析器从 SQL 字符串推导参数与返回值类型，`TypedDb<S>` 提供类型安全的 `prepare().all/get/run`
 - 表类型由 `Schema<T>` 从 `CREATE [TEMP] TABLE IF NOT EXISTS` 语句推导；示例表定义在测试文件（typed-sql-test.ts）中
+- 含外键（`REFERENCES`）的库类型用两段式：`SchemaFks<...>`（解析每段 DDL）+ `ResolveFks<...>`（把引用列与目标列类型取交集），见「外键类型传播」；无外键时 `Schema<S>` 可直接用
 
 ## API 使用
 
@@ -117,6 +118,18 @@ CREATE TABLE IF NOT EXISTS orderItem (
 - 仅支持简单单列 `CHECK (col IN (...))`；范围式（`CHECK (cost > 0)`）、多条件 CHECK 不参与枚举推导，列回落到对应基础类型
 - 只有 `CHECK (本列名 IN (...))` 参与推导；引用其他列（`CHECK (score IN (1,2,3))` 写在 status 上）或常量表达式（`CHECK (1 IN (1,2))`）同样回落基础类型
 
+### 外键类型传播：`REFERENCES tbl(col)`
+
+- 列级 `REFERENCES tbl(col)` 把目标列类型与自身类型**取交集**传给本列：
+  `pid TEXT NOT NULL REFERENCES parent(id)`，而 `parent.id` 是 `TEXT CHECK (id IN ('a', 'b'))` → 子列类型 `'a' | 'b'`（父表无枚举时 `string & string` 恒等，零影响）
+- 多段 DDL 拼成完整库类型：`ResolveFks<SchemaFks<A> & SchemaFks<B> & ...>`；`SchemaFks` 是 raw 解析（列是内部 wrapper），`ResolveFks` 解引用后才是最终 `{ 表: { 列: 类型 } }`。单表无外键时 `Schema<S>` 向后兼容、直接可用
+- **可空性只来自子列自己**：子列可空 → `| null`；父列可空**不传导**（SQLite `MATCH SIMPLE`：子键任一列为 NULL 即满足外键，不需要父表有对应行）
+- 子列自身的类型/枚举保留：`child.pid CHECK (pid IN ('a', 'b')) REFERENCES parent(id)`（父为 `'a'|'b'|'c'`）→ `'a' | 'b'`（自身枚举 ∩ 父类型）
+- 只支持**列级单列** `REFERENCES tbl(col)`；表级 `FOREIGN KEY (...)`、复合外键、`REFERENCES tbl` 省略列不参与类型传播（表级约束块整体忽略）
+- 外键解析**只传导一层**（A→B→C 链时 A 只与 B 取交集，不含 C）——罕见场景，刻意简化
+- **环形外键**（互引用/同表双向，SQLite 合法）不递归：两侧列取各自定义类型的交集，可正常编译
+- 类型是编译期契约：子表插入**不受父表枚举约束**（外键只校验「值在父表现有行中」，见「设计边界」）；父表强迁遗留枚举外值后，子列类型同样可能「说谎」（与父列自身枚举的谎言一致）
+
 ## 类型推导规则
 
 ### 参数类型：`SqlAllParams<S>`（SELECT / INSERT/UPDATE/DELETE ... RETURNING）/ `RunParams<S>`（INSERT/UPDATE/DELETE）
@@ -168,10 +181,11 @@ SELECT 额外把 `LIMIT` / `OFFSET` 中的 `@参数` 类型定为 `number`。
 - **UPDATE SET 表达式**（如 `count = count + 1`）：`SetParams` 只认 `列名 = @参数` 形式
 - **CREATE TABLE 必须带 `IF NOT EXISTS`**：只支持 `CREATE [TEMP] TABLE IF NOT EXISTS <name>`，漏写时 `Schema` 返回 `{}`（运行时重复建表也会报 `table already exists`，类型层信号与之一致）
 - **表级约束不写空行**：必须按「列区末列逗号 + 空行」约定书写；漏写空行（约束直接接在列区后）会被当列解析出 `PRIMARY`/`UNIQUE`/`CHECK`/`FOREIGN` 等幽灵列（警示信号）
+- **外键类型传播仅列级单列**：表级 `FOREIGN KEY (...)`、复合外键、`REFERENCES tbl` 省略列不参与（表级约束块整体忽略）；链式外键只传导一层；`Schema<S>` 不解析外键（用 `SchemaFks` + `ResolveFks`）
 
 ## 代码组织
 
 | 文件 | 职责 |
 |------|------|
-| `typed-sql.ts` | lib——类型体操（Schema / SqlAllResult / SqlAllParams / RunParams）+ TypedDb<Schema> class |
+| `typed-sql.ts` | lib——类型体操（Schema / SchemaFks / ResolveFks / SqlAllResult / SqlAllParams / RunParams）+ TypedDb<Schema> class |
 | `typed-sql-test.ts` | 示例表定义 + 编译期类型断言 + 运行时验证 |

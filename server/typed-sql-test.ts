@@ -1,5 +1,7 @@
 import {
   type Schema,
+  type SchemaFks,
+  type ResolveFks,
   type RunParams,
   type SqlAllResult, type SqlGetResult, type SqlRunResult, type SqlAllParams,
   TypedDb,
@@ -139,11 +141,46 @@ type _TblConstraintEnumCol = AssertTrue<Equal<
   { t: { status: 'pending' | 'confirmed'; score: 1 | 2 | 3 | null } }
 >>;
 
+// ── Schema tests（外键类型传播：SchemaFks + ResolveFks）──
+
+type FkEnumTables =
+  ResolveFks<SchemaFks<"CREATE TABLE IF NOT EXISTS parent (\nid TEXT PRIMARY KEY CHECK (id IN ('a', 'b'))\n)"> & SchemaFks<"CREATE TABLE IF NOT EXISTS child (\npid TEXT NOT NULL REFERENCES parent(id)\n)">>;
+type _FkEnumShape = AssertTrue<Equal<FkEnumTables, {
+  parent: { id: 'a' | 'b' };
+  child: { pid: 'a' | 'b' };
+}>>;
+type _FkEnumInsertParam = AssertTrue<Equal<
+  RunParams<'INSERT OR ABORT INTO child (pid) VALUES (@pid)', FkEnumTables>,
+  { pid: 'a' | 'b' }
+>>;
+type _FkEnumSelect = AssertTrue<Equal<
+  SqlAllResult<'SELECT ALL child.pid AS pid FROM child WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', FkEnumTables>,
+  { pid: 'a' | 'b' }[]
+>>;
+type _FkNullable = AssertTrue<Equal<
+  ResolveFks<SchemaFks<"CREATE TABLE IF NOT EXISTS parent (\nid TEXT PRIMARY KEY\n)"> & SchemaFks<"CREATE TABLE IF NOT EXISTS child (\npid TEXT REFERENCES parent(id)\n)">>,
+  { parent: { id: string }; child: { pid: string | null } }
+>>;
+type _FkEnumNullable = AssertTrue<Equal<
+  ResolveFks<SchemaFks<"CREATE TABLE IF NOT EXISTS parent (\nid TEXT PRIMARY KEY CHECK (id IN ('a', 'b'))\n)"> & SchemaFks<"CREATE TABLE IF NOT EXISTS child (\npid TEXT REFERENCES parent(id)\n)">>,
+  { parent: { id: 'a' | 'b' }; child: { pid: 'a' | 'b' | null } }
+>>;
+type _FkOwnCheck = AssertTrue<Equal<
+  ResolveFks<SchemaFks<"CREATE TABLE IF NOT EXISTS parent (\nid TEXT PRIMARY KEY CHECK (id IN ('a', 'b', 'c'))\n)"> & SchemaFks<"CREATE TABLE IF NOT EXISTS child (\npid TEXT NOT NULL CHECK (pid IN ('a', 'b')) REFERENCES parent(id)\n)">>,
+  { parent: { id: 'a' | 'b' | 'c' }; child: { pid: 'a' | 'b' } }
+>>;
+type _FkSelfRef = AssertTrue<Equal<
+  ResolveFks<SchemaFks<"CREATE TABLE IF NOT EXISTS node (\nid INTEGER PRIMARY KEY,\nparentId INTEGER REFERENCES node(id)\n)">>,
+  { node: { id: number; parentId: number | null } }
+>>;
+
 type Tables =
-  Schema<typeof USER_SQL>
-  & Schema<typeof MARK_RECORD_SQL>
-  & Schema<typeof CREDIT_TX_SQL>
-  & Schema<typeof KF_CURSOR_SQL>;
+  ResolveFks<
+    SchemaFks<typeof USER_SQL>
+    & SchemaFks<typeof MARK_RECORD_SQL>
+    & SchemaFks<typeof CREDIT_TX_SQL>
+    & SchemaFks<typeof KF_CURSOR_SQL>
+  >;
 
 // ── Schema tests（完整形状断言）──
 
@@ -545,12 +582,13 @@ imageFilename  TEXT NOT NULL,
 result         TEXT NOT NULL,
 createdAt      TEXT NOT NULL
 )`;
-type RealMarkingDb =
-  & Schema<typeof REAL_KF_CURSOR_SQL>
-  & Schema<typeof REAL_USER_SQL>
-  & Schema<typeof REAL_MARK_RECORD_SQL>
-  & Schema<typeof REAL_CREDIT_TX_SQL>
-  & Schema<typeof REAL_MARK_LOG_SQL>;
+type RealMarkingDb = ResolveFks<
+  SchemaFks<typeof REAL_KF_CURSOR_SQL>
+  & SchemaFks<typeof REAL_USER_SQL>
+  & SchemaFks<typeof REAL_MARK_RECORD_SQL>
+  & SchemaFks<typeof REAL_CREDIT_TX_SQL>
+  & SchemaFks<typeof REAL_MARK_LOG_SQL>
+>;
 type _RealDbShape = AssertTrue<Equal<RealMarkingDb, {
   kfCursor: { openKfId: string; cursor: string };
   user: {

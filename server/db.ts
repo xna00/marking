@@ -2,7 +2,7 @@ import { DatabaseSync } from "node:sqlite";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
-import { TypedDb, type Schema } from "./typed-sql.ts";
+import { TypedDb, type ResolveFks, type SchemaFks } from "./typed-sql.ts";
 
 const KF_CURSOR_SQL = `CREATE TABLE IF NOT EXISTS kfCursor (
 openKfId   TEXT PRIMARY KEY,
@@ -47,7 +47,7 @@ result         TEXT NOT NULL,
 createdAt      TEXT NOT NULL
 )`;
 
-type MarkingDb = Schema<typeof KF_CURSOR_SQL> & Schema<typeof USER_SQL> & Schema<typeof MARK_RECORD_SQL> & Schema<typeof CREDIT_TX_SQL> & Schema<typeof MARK_LOG_SQL>;
+type MarkingDb = ResolveFks<SchemaFks<typeof KF_CURSOR_SQL> & SchemaFks<typeof USER_SQL> & SchemaFks<typeof MARK_RECORD_SQL> & SchemaFks<typeof CREDIT_TX_SQL> & SchemaFks<typeof MARK_LOG_SQL>>;
 
 const DB_PATH = join(process.cwd(), "data", "marking.db");
 
