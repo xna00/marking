@@ -9,8 +9,8 @@
 ## API 使用
 
 - `prepare<const T extends string>(sql)` 接受字面量 SQL，返回类型安全的语句对象
-  - `.all(params)` → `T[]`（SELECT 全量结果）
-  - `.get(params)` → `T | undefined`（取单行，无行返回 `undefined`）
+  - `.all(params)` → `T[]`（SELECT 全量结果 / INSERT ... RETURNING 插入行）
+  - `.get(params)` → `T | undefined`（取单行 / INSERT ... RETURNING 单行，无行返回 `undefined`）
   - `.run(params)` → `{ lastInsertRowid: number; changes: number }`（INSERT/UPDATE/DELETE）
 - 参数一律传 **object**（命名参数），`node:sqlite` 原生支持，**无需关心属性顺序**
 - `params` 必填：无参数的查询也要传 `{}`（如 `WHERE 1=1`）
@@ -24,7 +24,7 @@ const u = db.prepare('SELECT ALL * FROM user WHERE user.id = @id ORDER BY 1 LIMI
 
 ### 关键字与标识符
 
-- 解析器按**大写字面**匹配关键字，一律大写：`SELECT`, `ALL`, `DISTINCT`, `FROM`, `WHERE`, `GROUP BY`, `HAVING`, `ORDER BY`, `LIMIT`, `OFFSET`, `INSERT`, `OR`, `INTO`, `VALUES`, `UPDATE`, `SET`, `DELETE`, `AND`, `AS`, `IS`, `NOT IN`, `LIKE`, `NOT LIKE`, `IN`, `BETWEEN`, `NOT NULL`, `PRIMARY KEY`
+- 解析器按**大写字面**匹配关键字，一律大写：`SELECT`, `ALL`, `DISTINCT`, `FROM`, `WHERE`, `GROUP BY`, `HAVING`, `ORDER BY`, `LIMIT`, `OFFSET`, `INSERT`, `OR`, `INTO`, `VALUES`, `UPDATE`, `SET`, `DELETE`, `AND`, `AS`, `IS`, `NOT IN`, `LIKE`, `NOT LIKE`, `IN`, `BETWEEN`, `NOT NULL`, `PRIMARY KEY`, `RETURNING`
 - 唯一例外：`BETWEEN` 中的 `and` 用小写
 - `ORDER BY` / `GROUP BY` / `HAVING` 的**内容不被校验**（大小写、列名、表达式任意）
 - **表名直接写，必须不写别名**：`FROM user`, `UPDATE OR ABORT user`（`FROM user u` 会解析失败）
@@ -76,6 +76,15 @@ VALUES (@a,@b)                                                       # 逗号后
 
 - `.all()` 统一返回 `T[]`；取单行用 `.get()` → `T | undefined`
 
+### INSERT ... RETURNING
+
+- 在 INSERT 的 `VALUES (...)` 后追加 `RETURNING <列>`，`.all()` / `.get()` 返回插入后的行（`INSERT OR ABORT INTO user (...) VALUES (...) RETURNING id` → `{ id: string }`）
+- **只写裸列名**，「逗号 + 一个空格」分隔：`RETURNING id, createdAt`；或 `RETURNING *` 返回整行
+- 不支持 `表名.` 前缀、不支持 `AS` 别名、不支持表达式——这类写法类型退化为 `{}`（警示信号）
+- 参数仍来自 VALUES：RETURNING 列只决定返回的列，`@参数` 依旧写进 VALUES（RETURNING 内禁止 `@参数`）
+- `.run()` 不因 RETURNING 改变，仍返回 `{ lastInsertRowid: number; changes: number }`
+- 冲突被 `OR IGNORE` 吞掉（0 行插入）时：`.all()` 返回 `[]`，`.get()` 返回 `undefined`
+
 ### 枚举列：`CHECK (... IN (...))`
 
 - 用列级 `CHECK` 的 `IN` 形式声明枚举，类型层推导为字面量联合：
@@ -89,7 +98,7 @@ VALUES (@a,@b)                                                       # 逗号后
 
 ## 类型推导规则
 
-### 参数类型：`Params<S>`（SELECT）/ `RunParams<S>`（INSERT/UPDATE/DELETE）
+### 参数类型：`SqlAllParams<S>`（SELECT / INSERT ... RETURNING）/ `RunParams<S>`（INSERT/UPDATE/DELETE）
 
 1. 扫描 SQL 中所有 `@identifier` 引用
 2. 从 SQL 提取表名（SELECT 用 `_MatchSelect`，DML 用 `_MatchInsert` / `_MatchUpdate` / `_MatchDelete` 匹配）
@@ -100,9 +109,9 @@ WHERE 支持的操作符：`=`, `>=`, `<=`, `!=`, `<>`, `>`, `<`, `LIKE`, `NOT L
 `LIKE`/`NOT LIKE` 的参数类型按列类型推导（TEXT 列 → `string`）；LIKE 的 `%`/`_` 通配符写在参数值里，不进入 SQL 字符串。
 SELECT 额外把 `LIMIT` / `OFFSET` 中的 `@参数` 类型定为 `number`。
 
-### 返回值类型：`SelectResult<S>`
+### 返回值类型：`SqlAllResult<S>`
 
-- `SELECT * FROM 表名` → `Tables[表名][]`
+- `SELECT * FROM 表名` → `Tables[表名][]`；`INSERT ... RETURNING 列` → 插入行（`{ 列: 类型 }[]`）
 - `SELECT 列1,列2 FROM 表名` → `{ 列1: 类型, 列2: 类型 }[]`
 - 多表 JOIN 时 `*` 返回各表字段的合并（交集）类型
 - WHERE 中的 `Tbl.Col IS NOT NULL` / `Tbl.Col IS NULL` 会进一步收窄对应列（去空 / 恒 `null`），
@@ -134,6 +143,7 @@ SELECT 额外把 `LIMIT` / `OFFSET` 中的 `@参数` 类型定为 `number`。
 - **`GROUP_CONCAT(x, y)` 多参数**：列列表按 `", "` 切分，函数内逗号会被误拆 → 类型退化（仅支持单参）
 - **HAVING / ORDER BY 不参与参数提取**：`HAVING COUNT(*) > @min`、`ORDER BY @col` 中的参数会被丢弃
 - **UPDATE/DELETE 无 WHERE**：模板强制 WHERE
+- **INSERT ... RETURNING**：只支持裸列名列表或 `*`；`表名.列` 前缀、`AS` 别名、表达式均不支持（类型退化为 `{}`）
 - **UPDATE SET 表达式**（如 `count = count + 1`）：`SetParams` 只认 `列名 = @参数` 形式
 - **CREATE TABLE 必须带 `IF NOT EXISTS`**：只支持 `CREATE [TEMP] TABLE IF NOT EXISTS <name>`，漏写时 `Schema` 返回 `{}`（运行时重复建表也会报 `table already exists`，类型层信号与之一致）
 
@@ -141,5 +151,5 @@ SELECT 额外把 `LIMIT` / `OFFSET` 中的 `@参数` 类型定为 `number`。
 
 | 文件 | 职责 |
 |------|------|
-| `typed-sql.ts` | lib——类型体操（Schema / SelectResult / Params / RunParams）+ TypedDb<Schema> class |
+| `typed-sql.ts` | lib——类型体操（Schema / SqlAllResult / SqlAllParams / RunParams）+ TypedDb<Schema> class |
 | `typed-sql-test.ts` | 示例表定义 + 编译期类型断言 + 运行时验证 |

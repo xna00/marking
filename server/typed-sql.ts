@@ -106,9 +106,11 @@ type _MatchSelect<S extends string> =
 type SqlConflict = 'ROLLBACK' | 'ABORT' | 'FAIL' | 'IGNORE' | 'REPLACE';
 
 type _MatchInsert<S extends string> =
-  S extends `INSERT OR ${SqlConflict} INTO ${infer Tbl} (${infer Cols}) VALUES (${infer Values})`
-  ? { table: Tbl; cols: Cols; values: Values }
-  : unknown;
+  S extends `INSERT OR ${SqlConflict} INTO ${infer Tbl} (${infer Cols}) VALUES (${infer Values}) RETURNING ${infer Returning}`
+  ? { table: Tbl; cols: Cols; values: Values; returning: Returning }
+  : S extends `INSERT OR ${SqlConflict} INTO ${infer Tbl} (${infer Cols}) VALUES (${infer Values})`
+    ? { table: Tbl; cols: Cols; values: Values }
+    : unknown;
 
 type _MatchUpdate<S extends string> =
   S extends `UPDATE OR ${SqlConflict} ${infer Tbl} SET ${infer SetClause} WHERE ${infer WhereClause}`
@@ -203,29 +205,24 @@ type WhereNullCol<SS extends string[], Tbls extends {}, R = {}> =
   : R;
 
 /**
- * SelectResult<"SELECT ALL * FROM user WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0", Tables>
- *   → Tables['user'][]
+ * 纯积木：由 SqlAllResult 传入 _MatchSelect 拆出的 列列表 / FROM / WHERE。
  *
- * SelectResult<"SELECT ALL user.id AS id, user.email AS email FROM user WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0", Tables>
- *   → { id: number; email: string | null }[]
- *
- * SELECT * 时会额外用 WHERE 中的 IS NULL / IS NOT NULL 收窄对应列
+ * RawCols='*' → 各表字段合并（交集）类型，额外用 WHERE 的 IS NULL / IS NOT NULL 收窄对应列
+ * RawCols='tbl.col AS name,...' → { name: 列类型 }[]
  */
-export type SelectResult<S extends string, Tbls extends {}> =
-  _MatchSelect<S> extends { cols: infer RawCols extends string; from: infer FromClause extends string; where: infer WhereClause extends string }
-  ? _NewTables<FromClause, Tbls> extends infer AliasMap extends {}
+type _SelectResult<RawCols extends string, FromClause extends string, WhereClause extends string, Tbls extends {}> =
+  _NewTables<FromClause, Tbls> extends infer AliasMap extends {}
   ? RawCols extends '*'
-  ? (_UnionToIntersection<AliasMap[keyof AliasMap]> & WhereNullCol<FlatSplit<FlatSplit<[WhereClause], ' OR '>, ' AND '>, Tbls>)[]
-  : _Cols<Split<RawCols, ', '>, AliasMap, WhereClause>[]
-  : never
+    ? (_UnionToIntersection<AliasMap[keyof AliasMap]> & WhereNullCol<FlatSplit<FlatSplit<[WhereClause], ' OR '>, ' AND '>, Tbls>)[]
+    : _Cols<Split<RawCols, ', '>, AliasMap, WhereClause>[]
   : never;
 
 // ── Param type resolution ──
 
 type AtParamName<N extends string> = N extends `@${infer M extends string}` ? M : never;
 
-type ParamTypes<S extends string, Sep extends string, Tbl extends {}> =
-  { [K in AtParamName<Split<S, Sep>[number]> & keyof Tbl]: Tbl[K] };
+type ValueParams<SS extends string[], Tbl extends {}> =
+  { [K in AtParamName<SS[number]> & keyof Tbl]: Tbl[K] };
 
 type SetParams<SS extends string[], Tbl extends {}, R = {}> =
   SS extends [`${infer Col} = @${infer Name}`, ...infer Rest extends string[]]
@@ -233,7 +230,7 @@ type SetParams<SS extends string[], Tbl extends {}, R = {}> =
   : R;
 export type RunParams<S extends string, Tbls extends {}> =
   _MatchInsert<S> extends infer M extends { table: keyof Tbls, values: string }
-  ? ParamTypes<M['values'], ", ", Tbls[M['table']] & {}>
+  ? ValueParams<Split<M['values'], ", ">, Tbls[M['table']] & {}>
   : _MatchUpdate<S> extends infer M extends { table: keyof Tbls, set: string, where: string }
     ? SetParams<Split<M["set"], ", ">, Tbls[M['table']] & {}> & WhereParams<M['where'], Tbls>
     : _MatchDelete<S> extends infer M extends { where: string }
@@ -242,11 +239,6 @@ export type RunParams<S extends string, Tbls extends {}> =
 
 type WhereParams<W extends string, Tbls extends {}> =
   Condition<FlatSplit<FlatSplit<[W], ' OR '>, ' AND '>, Tbls>;
-
-export type Params<S extends string, Tbls extends {}> =
-  _MatchSelect<S> extends infer W extends { where: string; limit: string; offset: string }
-  ? WhereParams<W['where'], Tbls> & { [K in AtParamName<W['limit'] | W['offset']>]: number }
-  : never;
 
 // ── Condition（WHERE 条件参数提取）──
 
@@ -274,20 +266,31 @@ type Condition<SS extends string[], Tbls extends {}, R extends {} = {}> =
 
 // ── SQL method result types ──
 
-type DmlResult = { lastInsertRowid: number; changes: number };
+type ReturningResult<R extends string, Tbl extends {}> =
+  R extends '*' ? Tbl
+  : { [K in Split<R, ', '>[number] & keyof Tbl]: Tbl[K] };
 
 export type SqlAllResult<S extends string, Tbls extends {}> =
-  S extends `SELECT${string}`
-  ? SelectResult<S, Tbls>
-  : never;
+  _MatchSelect<S> extends infer M extends { cols: string; from: string; where: string }
+  ? _SelectResult<M['cols'], M['from'], M['where'], Tbls>
+  : _MatchInsert<S> extends infer M extends { table: keyof Tbls; values: string; returning: string }
+    ? ReturningResult<M['returning'], Tbls[M['table']] & {}>[]
+    : never;
 
 export type SqlGetResult<S extends string, Tbls extends {}> =
   SqlAllResult<S, Tbls>[number] | undefined;
 
 export type SqlRunResult<S extends string, Tbls extends {}> =
   S extends `${'INSERT' | 'UPDATE' | 'DELETE'}${string}`
-  ? DmlResult
+  ? { lastInsertRowid: number; changes: number }
   : never;
+
+export type SqlAllParams<S extends string, Tbls extends {}> =
+  _MatchSelect<S> extends infer W extends { where: string; limit: string; offset: string }
+  ? WhereParams<W['where'], Tbls> & { [K in AtParamName<W['limit'] | W['offset']>]: number }
+  : _MatchInsert<S> extends infer M extends { table: keyof Tbls, values: string, returning: string }
+    ? ValueParams<Split<M['values'], ", ">, Tbls[M['table']] & {}>
+    : never;
 
 // ── TypedDb ──
 
@@ -301,9 +304,9 @@ export class TypedDb<S extends {}> {
   prepare<const T extends string>(sql: T) {
     const stmt = this.#db.prepare(sql);
     return {
-      all: (params: Params<T, S>): SqlAllResult<T, S> =>
+      all: (params: SqlAllParams<T, S>): SqlAllResult<T, S> =>
         stmt.all(params as any) as SqlAllResult<T, S>,
-      get: (params: Params<T, S>): SqlGetResult<T, S> =>
+      get: (params: SqlAllParams<T, S>): SqlGetResult<T, S> =>
         stmt.get(params as any) as SqlGetResult<T, S>,
       run: (params: RunParams<T, S>): SqlRunResult<T, S> =>
         stmt.run(params as any) as SqlRunResult<T, S>,

@@ -1,7 +1,7 @@
 import {
   type Schema,
-  type SelectResult, type RunParams, type Params,
-  type SqlAllResult, type SqlGetResult, type SqlRunResult,
+  type RunParams,
+  type SqlAllResult, type SqlGetResult, type SqlRunResult, type SqlAllParams,
   TypedDb,
 } from './typed-sql.ts';
 import { DatabaseSync } from 'node:sqlite';
@@ -65,16 +65,23 @@ type _CheckShape = AssertTrue<Equal<CheckTables, {
   }
 }>>;
 type _CheckSelectStar = AssertTrue<Equal<
-  SelectResult<'SELECT ALL * FROM checkTbl WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', CheckTables>[number]['status'],
+  SqlAllResult<'SELECT ALL * FROM checkTbl WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', CheckTables>[number]['status'],
   'pending' | 'confirmed' | 'rejected'
 >>;
 type _CheckWhereParam = AssertTrue<Equal<
-  Params<'SELECT ALL * FROM checkTbl WHERE checkTbl.status = @status GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', CheckTables>,
+  SqlAllParams<'SELECT ALL * FROM checkTbl WHERE checkTbl.status = @status GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', CheckTables>,
   { status: 'pending' | 'confirmed' | 'rejected' }
 >>;
 type _CheckInsertParam = AssertTrue<Equal<
   RunParams<'INSERT OR ABORT INTO checkTbl (status, score) VALUES (@status, @score)', CheckTables>,
   { status: 'pending' | 'confirmed' | 'rejected'; score: 1 | 2 | 3 | 4 | 5 }
+>>;
+type _InsertReturningParams = AssertTrue<Equal<
+  RunParams<'INSERT OR ABORT INTO checkTbl (status, score) VALUES (@status, @score) RETURNING id', CheckTables>,
+  { status: 'pending' | 'confirmed' | 'rejected'; score: 1 | 2 | 3 | 4 | 5 }
+>>;
+type _NegInsertReturningEmpty = AssertTrue<Equal<
+  RunParams<'INSERT OR ABORT INTO user (id) VALUES (@id) RETURNING', Tables>, never
 >>;
 type _CheckUpdateParam = AssertTrue<Equal<
   RunParams<'UPDATE OR ABORT checkTbl SET status = @status WHERE checkTbl.id = @id', CheckTables>,
@@ -131,73 +138,73 @@ type _KfCursorShape = AssertTrue<Equal<Tables['kfCursor'], {
   cursor: string;
 }>>;
 
-// ── SelectResult ──
+// ── SqlAllResult ──
 
 type _SrMrkStar = AssertTrue<Equal<
-  SelectResult<'SELECT ALL * FROM markRecord WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  SqlAllResult<'SELECT ALL * FROM markRecord WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   Tables['markRecord'][]
 >>;
 
-// ── SelectResult (LEFT JOIN) ──
+// ── SqlAllResult (LEFT JOIN) ──
 
 type _SrLeftJoin = AssertTrue<Equal<
-  SelectResult<'SELECT ALL user.externalUserId AS userId, markRecord.id AS recordId FROM user LEFT JOIN markRecord ON user.externalUserId = markRecord.userId WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  SqlAllResult<'SELECT ALL user.externalUserId AS userId, markRecord.id AS recordId FROM user LEFT JOIN markRecord ON user.externalUserId = markRecord.userId WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   { userId: string; recordId: number }[]
 >>;
 
-// ── SelectResult (SELECT DISTINCT) ──
+// ── SqlAllResult (SELECT DISTINCT) ──
 
 type _SrDistinct = AssertTrue<Equal<
-  SelectResult<'SELECT DISTINCT user.username AS username FROM user WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  SqlAllResult<'SELECT DISTINCT user.username AS username FROM user WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   { username: string }[]
 >>;
 
-// ── SelectResult (mixed aggregate + non-aggregate) ──
+// ── SqlAllResult (mixed aggregate + non-aggregate) ──
 
 type _SrMixedAgg = AssertTrue<Equal<
-  SelectResult<'SELECT ALL COUNT(*) AS cnt, user.username AS name FROM user WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  SqlAllResult<'SELECT ALL COUNT(*) AS cnt, user.username AS name FROM user WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   { cnt: number; name: string }[]
 >>;
 
-// ── SelectResult（标量函数 → unknown）──
+// ── SqlAllResult（标量函数 → unknown）──
 
 type _SrScalarUnknown = AssertTrue<Equal<
-  SelectResult<'SELECT ALL upper(user.username) AS name FROM user WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  SqlAllResult<'SELECT ALL upper(user.username) AS name FROM user WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   { name: unknown }[]
 >>;
 
-// ── SelectResult（*, COUNT(*) 混合投影 → * 部分退化为 {}）──
+// ── SqlAllResult（*, COUNT(*) 混合投影 → * 部分退化为 {}）──
 
 type _SrStarMixed = AssertTrue<Equal<
-  SelectResult<'SELECT ALL *, COUNT(*) AS c FROM markRecord WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  SqlAllResult<'SELECT ALL *, COUNT(*) AS c FROM markRecord WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   { c: number }[]
 >>;
 
-// ── SelectResult (SELECT * with JOIN → intersection) ──
+// ── SqlAllResult (SELECT * with JOIN → intersection) ──
 
 type _SrJoinStar = AssertTrue<Equal<
-  SelectResult<'SELECT ALL * FROM user LEFT JOIN kfCursor ON user.externalUserId = kfCursor.openKfId WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  SqlAllResult<'SELECT ALL * FROM user LEFT JOIN kfCursor ON user.externalUserId = kfCursor.openKfId WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   (Tables['user'] & Tables['kfCursor'])[]
 >>;
 
-// ── SelectResult (INNER JOIN) ──
+// ── SqlAllResult (INNER JOIN) ──
 
 type _SrInnerJoin = AssertTrue<Equal<
-  SelectResult<'SELECT ALL user.externalUserId AS userId, markRecord.id AS recordId FROM user INNER JOIN markRecord ON user.externalUserId = markRecord.userId WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  SqlAllResult<'SELECT ALL user.externalUserId AS userId, markRecord.id AS recordId FROM user INNER JOIN markRecord ON user.externalUserId = markRecord.userId WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   { userId: string; recordId: number }[]
 >>;
 
 // ── WhereParams ──
 
 type _WpUser = AssertTrue<Equal<
-  Params<'SELECT ALL * FROM user WHERE user.externalUserId = @externalUserId GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  SqlAllParams<'SELECT ALL * FROM user WHERE user.externalUserId = @externalUserId GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   { externalUserId: string }
 >>;
 type _WpNoWhere = AssertTrue<Equal<
-  Params<'SELECT ALL * FROM user WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>, {}
+  SqlAllParams<'SELECT ALL * FROM user WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>, {}
 >>;
 type _WpBoth = AssertTrue<Equal<
-  Params<'SELECT ALL * FROM markRecord WHERE markRecord.id = @id AND markRecord.userId = @userId GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  SqlAllParams<'SELECT ALL * FROM markRecord WHERE markRecord.id = @id AND markRecord.userId = @userId GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   { id: number; userId: string }
 >>;
 
@@ -286,6 +293,26 @@ type _SarDmlNever = AssertTrue<Equal<
 type _SarUpdateNever = AssertTrue<Equal<
   SqlAllResult<'UPDATE OR ABORT user SET email = @email', Tables>, never
 >>;
+type _SarInsertReturning = AssertTrue<Equal<
+  SqlAllResult<'INSERT OR ABORT INTO user (externalUserId) VALUES (@externalUserId) RETURNING externalUserId, createdAt', Tables>,
+  { externalUserId: string; createdAt: string }[]
+>>;
+type _SarInsertReturningStar = AssertTrue<Equal<
+  SqlAllResult<'INSERT OR ABORT INTO user (id) VALUES (@id) RETURNING *', Tables>,
+  Tables['user'][]
+>>;
+type _SarInsertReturningUnknownCol = AssertTrue<Equal<
+  SqlAllResult<'INSERT OR ABORT INTO user (id) VALUES (@id) RETURNING ghost', Tables>,
+  {}[]
+>>;
+type _SarInsertReturningPrefix = AssertTrue<Equal<
+  SqlAllResult<'INSERT OR ABORT INTO user (id) VALUES (@id) RETURNING user.id', Tables>,
+  {}[]
+>>;
+type _SarInsertReturningAs = AssertTrue<Equal<
+  SqlAllResult<'INSERT OR ABORT INTO user (id) VALUES (@id) RETURNING createdAt AS c', Tables>,
+  {}[]
+>>;
 
 // ── SqlGetResult ──
 
@@ -305,6 +332,10 @@ type _SgrAggCount = AssertTrue<Equal<
   SqlGetResult<'SELECT ALL COUNT(*) AS count FROM markRecord WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   { count: number } | undefined
 >>;
+type _SgrInsertReturning = AssertTrue<Equal<
+  SqlGetResult<'INSERT OR ABORT INTO user (externalUserId) VALUES (@externalUserId) RETURNING externalUserId', Tables>,
+  { externalUserId: string } | undefined
+>>;
 
 // ── SqlRunResult ──
 
@@ -322,6 +353,24 @@ type _SrrDelete = AssertTrue<Equal<
 >>;
 type _SrrSelectNever = AssertTrue<Equal<
   SqlRunResult<'SELECT ALL * FROM user WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>, never
+>>;
+type _SrrInsertReturning = AssertTrue<Equal<
+  SqlRunResult<'INSERT OR ABORT INTO user (id) VALUES (@id) RETURNING id', Tables>,
+  { lastInsertRowid: number; changes: number }
+>>;
+
+// ── SqlAllParams ──
+
+type _SapSelect = AssertTrue<Equal<
+  SqlAllParams<'SELECT ALL * FROM user WHERE user.username = @username GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  { username: string }
+>>;
+type _SapInsertReturning = AssertTrue<Equal<
+  SqlAllParams<'INSERT OR ABORT INTO user (externalUserId) VALUES (@externalUserId) RETURNING externalUserId', Tables>,
+  { externalUserId: string }
+>>;
+type _SapUpdateNever = AssertTrue<Equal<
+  SqlAllParams<'UPDATE OR ABORT user SET email = @email', Tables>, never
 >>;
 
 // ── TEMP TABLE ──
@@ -425,7 +474,7 @@ type _RealDbShape = AssertTrue<Equal<RealMarkingDb, {
 // ── Negative tests: invalid SQL → never ──
 
 type _NegSelectNoFrom = AssertTrue<Equal<
-  SelectResult<'SELECT ALL * WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>, never
+  SqlAllResult<'SELECT ALL * WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>, never
 >>;
 type _NegDeleteNoWhere = AssertTrue<Equal<RunParams<'DELETE FROM user', Tables>, never>>;
 type _NegInsertNoValues = AssertTrue<Equal<RunParams<'INSERT OR ABORT INTO user (x) VALUES', Tables>, never>>;
@@ -451,10 +500,10 @@ type _NegInsertNoCols = AssertTrue<Equal<
   RunParams<'INSERT OR ABORT INTO user VALUES (@a)', Tables>, never
 >>;
 type _NegSelectLowercase = AssertTrue<Equal<
-  SelectResult<'select all * from user where 1=1 group by 1 having 1=1 order by 1 limit -1 offset 0', Tables>, never
+  SqlAllResult<'select all * from user where 1=1 group by 1 having 1=1 order by 1 limit -1 offset 0', Tables>, never
 >>;
 type _NegSelectAlias = AssertTrue<Equal<
-  SelectResult<'SELECT ALL * FROM user u WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>, {}[]
+  SqlAllResult<'SELECT ALL * FROM user u WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>, {}[]
 >>;
 type _NegDeleteNoPrefix = AssertTrue<Equal<
   RunParams<'DELETE FROM markRecord WHERE id = @id', Tables>, {}
@@ -463,156 +512,156 @@ type _NegDeleteNoPrefix = AssertTrue<Equal<
 // ── IN / NOT IN ──
 
 type _WpIn = AssertTrue<Equal<
-  Params<'SELECT ALL * FROM markRecord WHERE markRecord.userId IN (@userId, @anotherId) GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  SqlAllParams<'SELECT ALL * FROM markRecord WHERE markRecord.userId IN (@userId, @anotherId) GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   { userId: string; anotherId: string }
 >>;
 type _WpNotIn = AssertTrue<Equal<
-  Params<'SELECT ALL * FROM markRecord WHERE markRecord.id NOT IN (@id1, @id2) GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  SqlAllParams<'SELECT ALL * FROM markRecord WHERE markRecord.id NOT IN (@id1, @id2) GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   { id1: number; id2: number }
 >>;
 type _WpInMixedAnd = AssertTrue<Equal<
-  Params<'SELECT ALL * FROM markRecord WHERE markRecord.userId = @userId AND markRecord.id IN (@id1, @id2) GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  SqlAllParams<'SELECT ALL * FROM markRecord WHERE markRecord.userId = @userId AND markRecord.id IN (@id1, @id2) GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   { userId: string; id1: number; id2: number }
 >>;
 
 // ── BETWEEN ──
 
 type _WpBetween = AssertTrue<Equal<
-  Params<'SELECT ALL * FROM markRecord WHERE markRecord.id BETWEEN @a and @b GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  SqlAllParams<'SELECT ALL * FROM markRecord WHERE markRecord.id BETWEEN @a and @b GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   { a: number; b: number }
 >>;
 type _WpBetweenStr = AssertTrue<Equal<
-  Params<'SELECT ALL * FROM user WHERE user.username BETWEEN @a and @b GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  SqlAllParams<'SELECT ALL * FROM user WHERE user.username BETWEEN @a and @b GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   { a: string; b: string }
 >>;
 type _WpBetweenMixedAnd = AssertTrue<Equal<
-  Params<'SELECT ALL * FROM markRecord WHERE markRecord.userId = @userId AND markRecord.id BETWEEN @a and @b GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  SqlAllParams<'SELECT ALL * FROM markRecord WHERE markRecord.userId = @userId AND markRecord.id BETWEEN @a and @b GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   { userId: string; a: number; b: number }
 >>;
 
 // ── IS NULL / IS NOT NULL ──
 
 type _WpIsNotNull = AssertTrue<Equal<
-  Params<'SELECT ALL * FROM markRecord WHERE markRecord.confirmedAt IS NOT NULL GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>, {}
+  SqlAllParams<'SELECT ALL * FROM markRecord WHERE markRecord.confirmedAt IS NOT NULL GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>, {}
 >>;
 type _WpIsNull = AssertTrue<Equal<
-  Params<'SELECT ALL * FROM markRecord WHERE markRecord.confirmedAt IS NULL GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>, {}
+  SqlAllParams<'SELECT ALL * FROM markRecord WHERE markRecord.confirmedAt IS NULL GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>, {}
 >>;
 type _WpMixedIsNotNull = AssertTrue<Equal<
-  Params<'SELECT ALL * FROM markRecord WHERE markRecord.userId = @userId AND markRecord.confirmedAt IS NOT NULL GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  SqlAllParams<'SELECT ALL * FROM markRecord WHERE markRecord.userId = @userId AND markRecord.confirmedAt IS NOT NULL GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   { userId: string }
 >>;
 type _WpMixedIsNull = AssertTrue<Equal<
-  Params<'SELECT ALL * FROM markRecord WHERE markRecord.userId = @userId AND markRecord.confirmedAt IS NULL GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  SqlAllParams<'SELECT ALL * FROM markRecord WHERE markRecord.userId = @userId AND markRecord.confirmedAt IS NULL GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   { userId: string }
 >>;
 
-// ── SelectResult（WHERE IS NULL / IS NOT NULL 收窄）──
+// ── SqlAllResult（WHERE IS NULL / IS NOT NULL 收窄）──
 
 type _SrStarIsNotNull = AssertTrue<Equal<
-  SelectResult<'SELECT ALL * FROM markRecord WHERE markRecord.confirmedAt IS NOT NULL GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>[number]['confirmedAt'], string
+  SqlAllResult<'SELECT ALL * FROM markRecord WHERE markRecord.confirmedAt IS NOT NULL GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>[number]['confirmedAt'], string
 >>;
 type _SrStarIsNull = AssertTrue<Equal<
-  SelectResult<'SELECT ALL * FROM markRecord WHERE markRecord.confirmedAt IS NULL GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>[number]['confirmedAt'], null
+  SqlAllResult<'SELECT ALL * FROM markRecord WHERE markRecord.confirmedAt IS NULL GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>[number]['confirmedAt'], null
 >>;
 type _SrColIsNotNull = AssertTrue<Equal<
-  SelectResult<'SELECT ALL markRecord.confirmedAt AS confirmedAt FROM markRecord WHERE markRecord.confirmedAt IS NOT NULL GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>[number]['confirmedAt'], string
+  SqlAllResult<'SELECT ALL markRecord.confirmedAt AS confirmedAt FROM markRecord WHERE markRecord.confirmedAt IS NOT NULL GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>[number]['confirmedAt'], string
 >>;
 type _SrColIsNull = AssertTrue<Equal<
-  SelectResult<'SELECT ALL markRecord.confirmedAt AS confirmedAt FROM markRecord WHERE markRecord.confirmedAt IS NULL GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>[number]['confirmedAt'], null
+  SqlAllResult<'SELECT ALL markRecord.confirmedAt AS confirmedAt FROM markRecord WHERE markRecord.confirmedAt IS NULL GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>[number]['confirmedAt'], null
 >>;
 type _SrColOtherRefined = AssertTrue<Equal<
-  SelectResult<'SELECT ALL markRecord.id AS id, markRecord.confirmedAt AS confirmedAt FROM markRecord WHERE markRecord.userId = @userId AND markRecord.confirmedAt IS NOT NULL GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>[number]['confirmedAt'], string
+  SqlAllResult<'SELECT ALL markRecord.id AS id, markRecord.confirmedAt AS confirmedAt FROM markRecord WHERE markRecord.userId = @userId AND markRecord.confirmedAt IS NOT NULL GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>[number]['confirmedAt'], string
 >>;
 
-// ── Params (SELECT 参数推导) ──
+// ── SqlAllParams (SELECT 参数推导) ──
 
 type _PrNoParams = AssertTrue<Equal<
-  Params<'SELECT ALL * FROM user WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>, {}
+  SqlAllParams<'SELECT ALL * FROM user WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>, {}
 >>;
 type _PrWhereEq = AssertTrue<Equal<
-  Params<'SELECT ALL * FROM markRecord WHERE markRecord.id = @id GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  SqlAllParams<'SELECT ALL * FROM markRecord WHERE markRecord.id = @id GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   { id: number }
 >>;
 type _PrWhereNullable = AssertTrue<Equal<
-  Params<'SELECT ALL * FROM user WHERE user.email = @email GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  SqlAllParams<'SELECT ALL * FROM user WHERE user.email = @email GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   { email: string | null }
 >>;
 type _PrWhereAnd = AssertTrue<Equal<
-  Params<'SELECT ALL * FROM markRecord WHERE markRecord.id = @id AND markRecord.userId = @userId GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  SqlAllParams<'SELECT ALL * FROM markRecord WHERE markRecord.id = @id AND markRecord.userId = @userId GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   { id: number; userId: string }
 >>;
 type _PrWhereMixed = AssertTrue<Equal<
-  Params<'SELECT ALL * FROM user WHERE user.externalUserId = @externalUserId GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT @limit OFFSET @offset', Tables>,
+  SqlAllParams<'SELECT ALL * FROM user WHERE user.externalUserId = @externalUserId GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT @limit OFFSET @offset', Tables>,
   { externalUserId: string; limit: number; offset: number }
 >>;
 type _PrWhereOr = AssertTrue<Equal<
-  Params<'SELECT ALL * FROM user WHERE user.externalUserId = @externalUserId OR user.username = @username GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  SqlAllParams<'SELECT ALL * FROM user WHERE user.externalUserId = @externalUserId OR user.username = @username GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   { externalUserId: string; username: string }
 >>;
 type _PrWhereGte = AssertTrue<Equal<
-  Params<'SELECT ALL * FROM markRecord WHERE markRecord.id >= @id GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  SqlAllParams<'SELECT ALL * FROM markRecord WHERE markRecord.id >= @id GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   { id: number }
 >>;
 type _PrWhereLte = AssertTrue<Equal<
-  Params<'SELECT ALL * FROM markRecord WHERE markRecord.id <= @id GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  SqlAllParams<'SELECT ALL * FROM markRecord WHERE markRecord.id <= @id GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   { id: number }
 >>;
 type _PrWhereGt = AssertTrue<Equal<
-  Params<'SELECT ALL * FROM markRecord WHERE markRecord.id > @id GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  SqlAllParams<'SELECT ALL * FROM markRecord WHERE markRecord.id > @id GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   { id: number }
 >>;
 type _PrWhereLt = AssertTrue<Equal<
-  Params<'SELECT ALL * FROM markRecord WHERE markRecord.id < @id GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  SqlAllParams<'SELECT ALL * FROM markRecord WHERE markRecord.id < @id GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   { id: number }
 >>;
 type _PrWhereNe = AssertTrue<Equal<
-  Params<'SELECT ALL * FROM markRecord WHERE markRecord.id != @id GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  SqlAllParams<'SELECT ALL * FROM markRecord WHERE markRecord.id != @id GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   { id: number }
 >>;
 type _PrWhereNe2 = AssertTrue<Equal<
-  Params<'SELECT ALL * FROM markRecord WHERE markRecord.id <> @id GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  SqlAllParams<'SELECT ALL * FROM markRecord WHERE markRecord.id <> @id GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   { id: number }
 >>;
 type _PrLike = AssertTrue<Equal<
-  Params<'SELECT ALL * FROM user WHERE user.username LIKE @pattern GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  SqlAllParams<'SELECT ALL * FROM user WHERE user.username LIKE @pattern GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   { pattern: string }
 >>;
 type _PrNotLike = AssertTrue<Equal<
-  Params<'SELECT ALL * FROM user WHERE user.username NOT LIKE @pattern GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  SqlAllParams<'SELECT ALL * FROM user WHERE user.username NOT LIKE @pattern GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   { pattern: string }
 >>;
 type _PrLikeAnd = AssertTrue<Equal<
-  Params<'SELECT ALL * FROM user WHERE user.externalUserId = @externalUserId AND user.username LIKE @pattern GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  SqlAllParams<'SELECT ALL * FROM user WHERE user.externalUserId = @externalUserId AND user.username LIKE @pattern GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   { externalUserId: string; pattern: string }
 >>;
 
-// ── Params（HAVING 参数被丢弃）──
+// ── SqlAllParams（HAVING 参数被丢弃）──
 
 type _WpHavingDropped = AssertTrue<Equal<
-  Params<'SELECT ALL COUNT(*) AS c FROM markRecord WHERE 1=1 GROUP BY 1 HAVING COUNT(*) > @min ORDER BY 1 LIMIT -1 OFFSET 0', Tables>, {}
+  SqlAllParams<'SELECT ALL COUNT(*) AS c FROM markRecord WHERE 1=1 GROUP BY 1 HAVING COUNT(*) > @min ORDER BY 1 LIMIT -1 OFFSET 0', Tables>, {}
 >>;
 
 // ── 短形式（无 GROUP BY/HAVING）──
 
 type _SfStar = AssertTrue<Equal<
-  SelectResult<'SELECT ALL * FROM user WHERE user.externalUserId = @externalUserId ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  SqlAllResult<'SELECT ALL * FROM user WHERE user.externalUserId = @externalUserId ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   Tables['user'][]
 >>;
 type _SfStarParams = AssertTrue<Equal<
-  Params<'SELECT ALL * FROM user WHERE user.externalUserId = @externalUserId ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  SqlAllParams<'SELECT ALL * FROM user WHERE user.externalUserId = @externalUserId ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   { externalUserId: string }
 >>;
 type _SfAggCount = AssertTrue<Equal<
-  SelectResult<'SELECT ALL COUNT(*) AS count FROM markRecord WHERE 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
+  SqlAllResult<'SELECT ALL COUNT(*) AS count FROM markRecord WHERE 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>,
   { count: number }[]
 >>;
 type _SfIsNotNull = AssertTrue<Equal<
-  SelectResult<'SELECT ALL * FROM markRecord WHERE markRecord.confirmedAt IS NOT NULL ORDER BY 1 LIMIT -1 OFFSET 0', Tables>[number]['confirmedAt'],
+  SqlAllResult<'SELECT ALL * FROM markRecord WHERE markRecord.confirmedAt IS NOT NULL ORDER BY 1 LIMIT -1 OFFSET 0', Tables>[number]['confirmedAt'],
   string
 >>;
 type _SfLimitOffset = AssertTrue<Equal<
-  Params<'SELECT ALL * FROM user WHERE user.externalUserId = @externalUserId ORDER BY 1 LIMIT @limit OFFSET @offset', Tables>,
+  SqlAllParams<'SELECT ALL * FROM user WHERE user.externalUserId = @externalUserId ORDER BY 1 LIMIT @limit OFFSET @offset', Tables>,
   { externalUserId: string; limit: number; offset: number }
 >>;
 
@@ -648,6 +697,40 @@ describe('TypedDb', () => {
       typedDb.prepare("INSERT OR ABORT INTO testTbl (id, label, val) VALUES (@id, @label, @val)").run({ id: 1, label: 'x', val: 10 });
       const r = typedDb.prepare("INSERT OR REPLACE INTO testTbl (id, label, val) VALUES (@id, @label, @val)").run({ id: 1, label: 'b', val: 2 });
       assert.equal(r.changes, 1);
+    });
+  });
+
+  describe('INSERT ... RETURNING', () => {
+    beforeEach(() => { db.exec("DELETE FROM testTbl"); });
+
+    it('all returns inserted rows', () => {
+      const rows = typedDb.prepare("INSERT OR ABORT INTO testTbl (label, val) VALUES (@label, @val) RETURNING id, label").all({ label: 'a', val: 7 });
+      assert.equal(rows.length, 1);
+      assert.equal(typeof rows[0].id, 'number');
+      assert.equal(rows[0].label, 'a');
+    });
+
+    it('all RETURNING * returns full row', () => {
+      const rows = typedDb.prepare("INSERT OR ABORT INTO testTbl (label, val) VALUES (@label, @val) RETURNING *").all({ label: 'b', val: 8 });
+      assert.equal(rows.length, 1);
+      assert.equal(rows[0].label, 'b');
+      assert.equal(rows[0].val, 8);
+    });
+
+    it('get returns single inserted row', () => {
+      const row = typedDb.prepare("INSERT OR ABORT INTO testTbl (label, val) VALUES (@label, @val) RETURNING id").get({ label: 'c', val: 9 })!;
+      assert.equal(typeof row.id, 'number');
+    });
+
+    it('run still returns changes', () => {
+      const r = typedDb.prepare("INSERT OR ABORT INTO testTbl (label, val) VALUES (@label, @val) RETURNING id").run({ label: 'd', val: 10 });
+      assert.equal(r.changes, 1);
+    });
+
+    it('OR IGNORE conflict returns no rows', () => {
+      typedDb.prepare("INSERT OR ABORT INTO testTbl (id, label, val) VALUES (@id, @label, @val)").run({ id: 1, label: 'x', val: 1 });
+      const rows = typedDb.prepare("INSERT OR IGNORE INTO testTbl (id, label, val) VALUES (@id, @label, @val) RETURNING id").all({ id: 1, label: 'y', val: 2 });
+      assert.equal(rows.length, 0);
     });
   });
 
