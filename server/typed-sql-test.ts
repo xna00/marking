@@ -73,11 +73,11 @@ type _CheckWhereParam = AssertTrue<Equal<
   { status: 'pending' | 'confirmed' | 'rejected' }
 >>;
 type _CheckInsertParam = AssertTrue<Equal<
-  RunParams<'INSERT INTO checkTbl (status, score) VALUES (@status, @score)', CheckTables>,
+  RunParams<'INSERT OR ABORT INTO checkTbl (status, score) VALUES (@status, @score)', CheckTables>,
   { status: 'pending' | 'confirmed' | 'rejected'; score: 1 | 2 | 3 | 4 | 5 }
 >>;
 type _CheckUpdateParam = AssertTrue<Equal<
-  RunParams<'UPDATE checkTbl SET status = @status WHERE checkTbl.id = @id', CheckTables>,
+  RunParams<'UPDATE OR ABORT checkTbl SET status = @status WHERE checkTbl.id = @id', CheckTables>,
   { status: 'pending' | 'confirmed' | 'rejected'; id: number }
 >>;
 type _CheckRangeDegrades = AssertTrue<Equal<
@@ -204,7 +204,7 @@ type _WpBoth = AssertTrue<Equal<
 // ── WhereParams (INSERT) ──
 
 type _IpUser = AssertTrue<Equal<
-  RunParams<'INSERT INTO user (externalUserId, username, passwordHash, email, phone, token, createdAt, updatedAt) VALUES (@externalUserId, @username, @passwordHash, @email, @phone, @token, @createdAt, @updatedAt)', Tables>,
+  RunParams<'INSERT OR ABORT INTO user (externalUserId, username, passwordHash, email, phone, token, createdAt, updatedAt) VALUES (@externalUserId, @username, @passwordHash, @email, @phone, @token, @createdAt, @updatedAt)', Tables>,
   {
     externalUserId: string;
     username: string;
@@ -217,18 +217,18 @@ type _IpUser = AssertTrue<Equal<
   }
 >>;
 type _IpMrk = AssertTrue<Equal<
-  RunParams<'INSERT INTO markRecord (userId, createdAt, costCredits) VALUES (@userId, @createdAt, @costCredits)', Tables>,
+  RunParams<'INSERT OR ABORT INTO markRecord (userId, createdAt, costCredits) VALUES (@userId, @createdAt, @costCredits)', Tables>,
   { userId: string; createdAt: string; costCredits: number }
 >>;
 type _IpCt = AssertTrue<Equal<
-  RunParams<'INSERT INTO creditTransaction (userId, amountMoney, amountCredits, description, createdAt) VALUES (@userId, @amountMoney, @amountCredits, @description, @createdAt)', Tables>,
+  RunParams<'INSERT OR ABORT INTO creditTransaction (userId, amountMoney, amountCredits, description, createdAt) VALUES (@userId, @amountMoney, @amountCredits, @description, @createdAt)', Tables>,
   { userId: string; amountMoney: number; amountCredits: number; description: string | null; createdAt: string }
 >>;
 
 // ── WhereParams (UPDATE) ──
 
 type _UpFull = AssertTrue<Equal<
-  RunParams<'UPDATE user SET token = @token, updatedAt = @updatedAt WHERE user.externalUserId = @externalUserId', Tables>,
+  RunParams<'UPDATE OR ABORT user SET token = @token, updatedAt = @updatedAt WHERE user.externalUserId = @externalUserId', Tables>,
   { token: string | null; updatedAt: string; externalUserId: string }
 >>;
 
@@ -281,10 +281,10 @@ type _SarAggConcat = AssertTrue<Equal<
   { names: string | null }[]
 >>;
 type _SarDmlNever = AssertTrue<Equal<
-  SqlAllResult<'INSERT INTO user (id) VALUES (@id)', Tables>, never
+  SqlAllResult<'INSERT OR ABORT INTO user (id) VALUES (@id)', Tables>, never
 >>;
 type _SarUpdateNever = AssertTrue<Equal<
-  SqlAllResult<'UPDATE user SET email = @email', Tables>, never
+  SqlAllResult<'UPDATE OR ABORT user SET email = @email', Tables>, never
 >>;
 
 // ── SqlGetResult ──
@@ -309,11 +309,11 @@ type _SgrAggCount = AssertTrue<Equal<
 // ── SqlRunResult ──
 
 type _SrrInsert = AssertTrue<Equal<
-  SqlRunResult<'INSERT INTO user (id) VALUES (@id)', Tables>,
+  SqlRunResult<'INSERT OR ABORT INTO user (id) VALUES (@id)', Tables>,
   { lastInsertRowid: number; changes: number }
 >>;
 type _SrrUpdate = AssertTrue<Equal<
-  SqlRunResult<'UPDATE user SET user.email = @email WHERE user.id = @id', Tables>,
+  SqlRunResult<'UPDATE OR ABORT user SET user.email = @email WHERE user.id = @id', Tables>,
   { lastInsertRowid: number; changes: number }
 >>;
 type _SrrDelete = AssertTrue<Equal<
@@ -428,27 +428,27 @@ type _NegSelectNoFrom = AssertTrue<Equal<
   SelectResult<'SELECT ALL * WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', Tables>, never
 >>;
 type _NegDeleteNoWhere = AssertTrue<Equal<RunParams<'DELETE FROM user', Tables>, never>>;
-type _NegInsertNoValues = AssertTrue<Equal<RunParams<'INSERT INTO user (x) VALUES', Tables>, never>>;
-type _NegUpdateNoSet = AssertTrue<Equal<RunParams<'UPDATE user WHERE id = @id', Tables>, never>>;
+type _NegInsertNoValues = AssertTrue<Equal<RunParams<'INSERT OR ABORT INTO user (x) VALUES', Tables>, never>>;
+type _NegUpdateNoSet = AssertTrue<Equal<RunParams<'UPDATE OR ABORT user WHERE id = @id', Tables>, never>>;
 type _NegInsertMultiline = AssertTrue<Equal<
-  RunParams<'INSERT INTO user (externalUserId, username) VALUES\n(@externalUserId, @username)', Tables>, never
+  RunParams<'INSERT OR ABORT INTO user (externalUserId, username) VALUES\n(@externalUserId, @username)', Tables>, never
 >>;
 type _NegInsertNonColParam = AssertTrue<Equal<
-  RunParams<'INSERT INTO user (username) VALUES (@foo)', Tables>, {}
+  RunParams<'INSERT OR ABORT INTO user (username) VALUES (@foo)', Tables>, {}
 >>;
 type _NegUpdateSetPrefixed = AssertTrue<Equal<
-  RunParams<'UPDATE user SET user.token = @token WHERE user.externalUserId = @externalUserId', Tables>,
+  RunParams<'UPDATE OR ABORT user SET user.token = @token WHERE user.externalUserId = @externalUserId', Tables>,
   { token: never; externalUserId: string }
 >>;
 type _PosUpdateArbitraryName = AssertTrue<Equal<
-  RunParams<'UPDATE user SET token = @tok WHERE user.externalUserId = @uid', Tables>,
+  RunParams<'UPDATE OR ABORT user SET token = @tok WHERE user.externalUserId = @uid', Tables>,
   { tok: string | null; uid: string }
 >>;
 type _NegUpdateNoWhere = AssertTrue<Equal<
-  RunParams<'UPDATE user SET token = @token', Tables>, never
+  RunParams<'UPDATE OR ABORT user SET token = @token', Tables>, never
 >>;
 type _NegInsertNoCols = AssertTrue<Equal<
-  RunParams<'INSERT INTO user VALUES (@a)', Tables>, never
+  RunParams<'INSERT OR ABORT INTO user VALUES (@a)', Tables>, never
 >>;
 type _NegSelectLowercase = AssertTrue<Equal<
   SelectResult<'select all * from user where 1=1 group by 1 having 1=1 order by 1 limit -1 offset 0', Tables>, never
@@ -639,13 +639,13 @@ describe('TypedDb', () => {
     beforeEach(() => { db.exec("DELETE FROM testTbl"); });
 
     it('returns lastInsertRowid and changes', () => {
-      const r = typedDb.prepare("INSERT INTO testTbl (label, val) VALUES (@label, @val)").run({ label: 'a', val: 1 });
+      const r = typedDb.prepare("INSERT OR ABORT INTO testTbl (label, val) VALUES (@label, @val)").run({ label: 'a', val: 1 });
       assert.equal(typeof r.lastInsertRowid, 'number');
       assert.equal(r.changes, 1);
     });
 
     it('INSERT OR REPLACE replaces existing row', () => {
-      typedDb.prepare("INSERT INTO testTbl (id, label, val) VALUES (@id, @label, @val)").run({ id: 1, label: 'x', val: 10 });
+      typedDb.prepare("INSERT OR ABORT INTO testTbl (id, label, val) VALUES (@id, @label, @val)").run({ id: 1, label: 'x', val: 10 });
       const r = typedDb.prepare("INSERT OR REPLACE INTO testTbl (id, label, val) VALUES (@id, @label, @val)").run({ id: 1, label: 'b', val: 2 });
       assert.equal(r.changes, 1);
     });
@@ -654,11 +654,11 @@ describe('TypedDb', () => {
   describe('UPDATE', () => {
     beforeEach(() => {
       db.exec("DELETE FROM testTbl");
-      typedDb.prepare("INSERT INTO testTbl (id, label, val) VALUES (@id, @label, @val)").run({ id: 1, label: 'x', val: 10 });
+      typedDb.prepare("INSERT OR ABORT INTO testTbl (id, label, val) VALUES (@id, @label, @val)").run({ id: 1, label: 'x', val: 10 });
     });
 
     it('returns changes', () => {
-      const r = typedDb.prepare("UPDATE testTbl SET label = @label WHERE testTbl.id = @id").run({ label: 'c', id: 1 });
+      const r = typedDb.prepare("UPDATE OR ABORT testTbl SET label = @label WHERE testTbl.id = @id").run({ label: 'c', id: 1 });
       assert.equal(r.changes, 1);
     });
   });
@@ -666,7 +666,7 @@ describe('TypedDb', () => {
   describe('DELETE', () => {
     beforeEach(() => {
       db.exec("DELETE FROM testTbl");
-      typedDb.prepare("INSERT INTO testTbl (id, label, val) VALUES (@id, @label, @val)").run({ id: 1, label: 'x', val: 10 });
+      typedDb.prepare("INSERT OR ABORT INTO testTbl (id, label, val) VALUES (@id, @label, @val)").run({ id: 1, label: 'x', val: 10 });
     });
 
     it('returns changes', () => {
@@ -678,7 +678,7 @@ describe('TypedDb', () => {
   describe('SELECT', () => {
     before(() => {
       db.exec("DELETE FROM testTbl");
-      typedDb.prepare("INSERT INTO testTbl (id, label, val) VALUES (@id, @label, @val)").run({ id: 1, label: 'hello', val: 42 });
+      typedDb.prepare("INSERT OR ABORT INTO testTbl (id, label, val) VALUES (@id, @label, @val)").run({ id: 1, label: 'hello', val: 42 });
     });
 
     it('all returns correct rows', () => {

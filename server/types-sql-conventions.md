@@ -24,10 +24,11 @@ const u = db.prepare('SELECT ALL * FROM user WHERE user.id = @id ORDER BY 1 LIMI
 
 ### 关键字与标识符
 
-- 解析器按**大写字面**匹配关键字，一律大写：`SELECT`, `ALL`, `DISTINCT`, `FROM`, `WHERE`, `GROUP BY`, `HAVING`, `ORDER BY`, `LIMIT`, `OFFSET`, `INSERT`, `INTO`, `VALUES`, `UPDATE`, `SET`, `DELETE`, `AND`, `OR`, `AS`, `IS`, `NOT IN`, `LIKE`, `NOT LIKE`, `IN`, `BETWEEN`, `NOT NULL`, `PRIMARY KEY`
+- 解析器按**大写字面**匹配关键字，一律大写：`SELECT`, `ALL`, `DISTINCT`, `FROM`, `WHERE`, `GROUP BY`, `HAVING`, `ORDER BY`, `LIMIT`, `OFFSET`, `INSERT`, `OR`, `INTO`, `VALUES`, `UPDATE`, `SET`, `DELETE`, `AND`, `AS`, `IS`, `NOT IN`, `LIKE`, `NOT LIKE`, `IN`, `BETWEEN`, `NOT NULL`, `PRIMARY KEY`
 - 唯一例外：`BETWEEN` 中的 `and` 用小写
 - `ORDER BY` / `GROUP BY` / `HAVING` 的**内容不被校验**（大小写、列名、表达式任意）
-- **表名直接写，必须不写别名**：`FROM user`, `UPDATE user`（`FROM user u` 会解析失败）
+- **表名直接写，必须不写别名**：`FROM user`, `UPDATE OR ABORT user`（`FROM user u` 会解析失败）
+- **INSERT / UPDATE 的冲突处理子句必填**：`INSERT OR <处理> INTO ...`、`UPDATE OR <处理> 表名 SET ...`，`<处理>` 为 `ROLLBACK | ABORT | FAIL | IGNORE | REPLACE` 之一（缺写则解析失败、参数类型退化为 `never`）；`ABORT` 是 SQLite 默认行为，需要默认语义就显式写 `OR ABORT`
 - WHERE 子句用 `table.col`：`user.externalUserId = @externalUserId`
 - **UPDATE 的 SET 子句用裸列名**（`token = @token`）——SQLite 的 SET 不接受 `table.col` 前缀
 - SELECT 列用 `table.col AS name` 投影
@@ -46,13 +47,15 @@ const u = db.prepare('SELECT ALL * FROM user WHERE user.id = @id ORDER BY 1 LIMI
 ```
 ✓ 完整合法示例
 SELECT ALL * FROM user WHERE user.externalUserId = @externalUserId ORDER BY 1 LIMIT -1 OFFSET 0
-INSERT INTO user (username, passwordHash) VALUES (@username, @passwordHash)
-UPDATE user SET token = @token WHERE user.externalUserId = @externalUserId
+INSERT OR ABORT INTO user (username, passwordHash) VALUES (@username, @passwordHash)
+UPDATE OR ABORT user SET token = @token WHERE user.externalUserId = @externalUserId
 INSERT OR REPLACE INTO kfCursor (openKfId, cursor) VALUES (@openKfId, @cursor)
 
 ✗ 反例
 SELECT * FROM user WHERE user.externalUserId = @externalUserId        # 缺 ALL、缺 ORDER BY/LIMIT/OFFSET
 SELECT ALL * FROM user WHERE externalUserId = @id ORDER BY 1 LIMIT -1 OFFSET 0   # WHERE 缺 user. 前缀
+INSERT INTO user (username) VALUES (@username)                        # 缺 OR 冲突子句
+UPDATE user SET token = @token WHERE user.externalUserId = @externalUserId  # 缺 OR 冲突子句
 FROM user u                                                          # 表别名
 VALUES (@a,@b)                                                       # 逗号后缺空格
 ```

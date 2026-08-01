@@ -103,13 +103,15 @@ type _MatchSelect<S extends string> =
 
 // ── DML pattern match ──
 
+type SqlConflict = 'ROLLBACK' | 'ABORT' | 'FAIL' | 'IGNORE' | 'REPLACE';
+
 type _MatchInsert<S extends string> =
-  S extends `INSERT${' OR REPLACE' | ''} INTO ${infer Tbl} (${infer Cols}) VALUES (${infer Values})`
+  S extends `INSERT OR ${SqlConflict} INTO ${infer Tbl} (${infer Cols}) VALUES (${infer Values})`
   ? { table: Tbl; cols: Cols; values: Values }
   : unknown;
 
 type _MatchUpdate<S extends string> =
-  S extends `UPDATE ${infer Tbl} SET ${infer SetClause} WHERE ${infer WhereClause}`
+  S extends `UPDATE OR ${SqlConflict} ${infer Tbl} SET ${infer SetClause} WHERE ${infer WhereClause}`
   ? { table: Tbl; set: SetClause; where: WhereClause }
   : unknown;
 

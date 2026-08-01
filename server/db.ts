@@ -84,13 +84,13 @@ export function initDb(): void {
 }
 
 export function insertMarkRecord(userId: string, costCredits: number): number {
-  const stmt = td().prepare("INSERT INTO markRecord (userId, createdAt, costCredits) VALUES (@userId, @createdAt, @costCredits)");
+  const stmt = td().prepare("INSERT OR ABORT INTO markRecord (userId, createdAt, costCredits) VALUES (@userId, @createdAt, @costCredits)");
   const result = stmt.run({ userId, createdAt: new Date().toISOString(), costCredits });
   return Number(result.lastInsertRowid);
 }
 
 export function insertMarkLog(userId: string, model: string, criteriaConfig: string, imageFilename: string, result: string, markRecordId: number): void {
-  const stmt = td().prepare("INSERT INTO markLog (markRecordId, userId, model, criteriaConfig, imageFilename, result, createdAt) VALUES (@markRecordId, @userId, @model, @criteriaConfig, @imageFilename, @result, @createdAt)");
+  const stmt = td().prepare("INSERT OR ABORT INTO markLog (markRecordId, userId, model, criteriaConfig, imageFilename, result, createdAt) VALUES (@markRecordId, @userId, @model, @criteriaConfig, @imageFilename, @result, @createdAt)");
   stmt.run({ markRecordId, userId, model, criteriaConfig, imageFilename, result, createdAt: new Date().toISOString() });
 }
 
@@ -133,7 +133,7 @@ export function getUsageHistory(userId: string): { id: number; createdAt: string
 }
 
 export function confirmMarkRecord(id: number, userId: string): boolean {
-  const stmt = td().prepare("UPDATE markRecord SET confirmedAt = @confirmedAt WHERE markRecord.id = @id AND markRecord.userId = @userId");
+  const stmt = td().prepare("UPDATE OR ABORT markRecord SET confirmedAt = @confirmedAt WHERE markRecord.id = @id AND markRecord.userId = @userId");
   const result = stmt.run({ confirmedAt: new Date().toISOString(), id, userId });
   return result.changes > 0;
 }
@@ -185,7 +185,7 @@ export function createUser(
   const passwordHash = hashPassword(password);
   const token = randomBytes(32).toString("hex");
   const stmt = td().prepare(
-    "INSERT INTO user (externalUserId, username, passwordHash, email, phone, token, createdAt, updatedAt) VALUES (@externalUserId, @username, @passwordHash, @email, @phone, @token, @createdAt, @updatedAt)"
+    "INSERT OR ABORT INTO user (externalUserId, username, passwordHash, email, phone, token, createdAt, updatedAt) VALUES (@externalUserId, @username, @passwordHash, @email, @phone, @token, @createdAt, @updatedAt)"
   );
   stmt.run({
     externalUserId,
@@ -228,13 +228,13 @@ export function insertCreditTransaction(
   payMethod?: string,
 ): void {
   const stmt = td().prepare(
-    "INSERT INTO creditTransaction (userId, amountMoney, amountCredits, description, orderNo, payMethod, createdAt) VALUES (@userId, @amountMoney, @amountCredits, @description, @orderNo, @payMethod, @createdAt)"
+    "INSERT OR ABORT INTO creditTransaction (userId, amountMoney, amountCredits, description, orderNo, payMethod, createdAt) VALUES (@userId, @amountMoney, @amountCredits, @description, @orderNo, @payMethod, @createdAt)"
   );
   stmt.run({ userId, amountMoney, amountCredits, description: description ?? null, orderNo: orderNo ?? null, payMethod: payMethod ?? null, createdAt: new Date().toISOString() });
 }
 
 export function updateUserToken(externalUserId: string, token: string | null): void {
-  const stmt = td().prepare("UPDATE user SET token = @token, updatedAt = @updatedAt WHERE user.externalUserId = @externalUserId");
+  const stmt = td().prepare("UPDATE OR ABORT user SET token = @token, updatedAt = @updatedAt WHERE user.externalUserId = @externalUserId");
   stmt.run({ token, updatedAt: new Date().toISOString(), externalUserId });
 }
 
