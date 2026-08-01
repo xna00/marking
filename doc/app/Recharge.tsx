@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { api } from "./app.js";
-import QRCode from "qrcode";
+import { generate } from "lean-qr";
 import wechatPng from "./wechat.png";
 import usernamePng from "./username.png";
 
@@ -41,7 +41,7 @@ export const Recharge = () => {
     setQrUrl("");
     try {
       const res = await api.wechatPay.createOrder({ credits: selectedCredits });
-      const dataUrl = await QRCode.toDataURL(res.codeUrl, { width: 256 });
+      const dataUrl = generate(res.codeUrl).toDataURL({ scale: 8 });
       setQrUrl(dataUrl);
       setOrderNo(res.outTradeNo);
       setStatus("qr");
