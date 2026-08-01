@@ -80,6 +80,14 @@ type _InsertReturningParams = AssertTrue<Equal<
   RunParams<'INSERT OR ABORT INTO checkTbl (status, score) VALUES (@status, @score) RETURNING id', CheckTables>,
   { status: 'pending' | 'confirmed' | 'rejected'; score: 1 | 2 | 3 | 4 | 5 }
 >>;
+type _CheckReturningEnumAll = AssertTrue<Equal<
+  SqlAllResult<'INSERT OR ABORT INTO checkTbl (status, score) VALUES (@status, @score) RETURNING status, score', CheckTables>,
+  { status: 'pending' | 'confirmed' | 'rejected'; score: 1 | 2 | 3 | 4 | 5 }[]
+>>;
+type _CheckReturningEnumGet = AssertTrue<Equal<
+  SqlGetResult<'INSERT OR ABORT INTO checkTbl (status, score) VALUES (@status, @score) RETURNING status', CheckTables>,
+  { status: 'pending' | 'confirmed' | 'rejected' } | undefined
+>>;
 type _NegInsertReturningEmpty = AssertTrue<Equal<
   RunParams<'INSERT OR ABORT INTO user (id) VALUES (@id) RETURNING', Tables>, never
 >>;
@@ -313,6 +321,26 @@ type _SarInsertReturningAs = AssertTrue<Equal<
   SqlAllResult<'INSERT OR ABORT INTO user (id) VALUES (@id) RETURNING createdAt AS c', Tables>,
   {}[]
 >>;
+type _SarUpdateReturning = AssertTrue<Equal<
+  SqlAllResult<'UPDATE OR ABORT user SET token = @token WHERE user.externalUserId = @externalUserId RETURNING externalUserId, updatedAt', Tables>,
+  { externalUserId: string; updatedAt: string }[]
+>>;
+type _SarUpdateReturningStar = AssertTrue<Equal<
+  SqlAllResult<'UPDATE OR ABORT user SET token = @token WHERE user.externalUserId = @externalUserId RETURNING *', Tables>,
+  Tables['user'][]
+>>;
+type _SarUpdateReturningUnknownCol = AssertTrue<Equal<
+  SqlAllResult<'UPDATE OR ABORT user SET token = @token WHERE user.externalUserId = @externalUserId RETURNING ghost', Tables>,
+  {}[]
+>>;
+type _SarDeleteReturning = AssertTrue<Equal<
+  SqlAllResult<'DELETE FROM markRecord WHERE markRecord.id = @id RETURNING id, costCredits', Tables>,
+  { id: number; costCredits: number }[]
+>>;
+type _SarDeleteReturningStar = AssertTrue<Equal<
+  SqlAllResult<'DELETE FROM markRecord WHERE markRecord.id = @id RETURNING *', Tables>,
+  Tables['markRecord'][]
+>>;
 
 // ── SqlGetResult ──
 
@@ -336,6 +364,14 @@ type _SgrInsertReturning = AssertTrue<Equal<
   SqlGetResult<'INSERT OR ABORT INTO user (externalUserId) VALUES (@externalUserId) RETURNING externalUserId', Tables>,
   { externalUserId: string } | undefined
 >>;
+type _SgrUpdateReturning = AssertTrue<Equal<
+  SqlGetResult<'UPDATE OR ABORT user SET token = @token WHERE user.externalUserId = @externalUserId RETURNING externalUserId', Tables>,
+  { externalUserId: string } | undefined
+>>;
+type _SgrDeleteReturning = AssertTrue<Equal<
+  SqlGetResult<'DELETE FROM markRecord WHERE markRecord.id = @id RETURNING id', Tables>,
+  { id: number } | undefined
+>>;
 
 // ── SqlRunResult ──
 
@@ -358,6 +394,14 @@ type _SrrInsertReturning = AssertTrue<Equal<
   SqlRunResult<'INSERT OR ABORT INTO user (id) VALUES (@id) RETURNING id', Tables>,
   { lastInsertRowid: number; changes: number }
 >>;
+type _SrrUpdateReturning = AssertTrue<Equal<
+  SqlRunResult<'UPDATE OR ABORT user SET token = @token WHERE user.externalUserId = @externalUserId RETURNING externalUserId', Tables>,
+  { lastInsertRowid: number; changes: number }
+>>;
+type _SrrDeleteReturning = AssertTrue<Equal<
+  SqlRunResult<'DELETE FROM markRecord WHERE markRecord.id = @id RETURNING id', Tables>,
+  { lastInsertRowid: number; changes: number }
+>>;
 
 // ── SqlAllParams ──
 
@@ -369,8 +413,31 @@ type _SapInsertReturning = AssertTrue<Equal<
   SqlAllParams<'INSERT OR ABORT INTO user (externalUserId) VALUES (@externalUserId) RETURNING externalUserId', Tables>,
   { externalUserId: string }
 >>;
+type _SapInsertReturningStar = AssertTrue<Equal<
+  SqlAllParams<'INSERT OR ABORT INTO user (externalUserId) VALUES (@externalUserId) RETURNING *', Tables>,
+  { externalUserId: string }
+>>;
 type _SapUpdateNever = AssertTrue<Equal<
   SqlAllParams<'UPDATE OR ABORT user SET email = @email', Tables>, never
+>>;
+type _SapDeleteNever = AssertTrue<Equal<
+  SqlAllParams<'DELETE FROM user WHERE user.externalUserId = @externalUserId', Tables>, never
+>>;
+type _SapUpdateReturning = AssertTrue<Equal<
+  SqlAllParams<'UPDATE OR ABORT user SET token = @token WHERE user.externalUserId = @externalUserId RETURNING externalUserId', Tables>,
+  { token: string | null; externalUserId: string }
+>>;
+type _SapUpdateReturningStar = AssertTrue<Equal<
+  SqlAllParams<'UPDATE OR ABORT user SET token = @token WHERE user.externalUserId = @externalUserId RETURNING *', Tables>,
+  { token: string | null; externalUserId: string }
+>>;
+type _SapDeleteReturning = AssertTrue<Equal<
+  SqlAllParams<'DELETE FROM markRecord WHERE markRecord.id = @id RETURNING id', Tables>,
+  { id: number }
+>>;
+type _SapDeleteReturningStar = AssertTrue<Equal<
+  SqlAllParams<'DELETE FROM markRecord WHERE markRecord.id = @id RETURNING *', Tables>,
+  { id: number }
 >>;
 
 // ── TEMP TABLE ──
@@ -731,6 +798,64 @@ describe('TypedDb', () => {
       typedDb.prepare("INSERT OR ABORT INTO testTbl (id, label, val) VALUES (@id, @label, @val)").run({ id: 1, label: 'x', val: 1 });
       const rows = typedDb.prepare("INSERT OR IGNORE INTO testTbl (id, label, val) VALUES (@id, @label, @val) RETURNING id").all({ id: 1, label: 'y', val: 2 });
       assert.equal(rows.length, 0);
+    });
+
+    it('OR IGNORE conflict get returns undefined', () => {
+      typedDb.prepare("INSERT OR ABORT INTO testTbl (id, label, val) VALUES (@id, @label, @val)").run({ id: 1, label: 'x', val: 1 });
+      const row = typedDb.prepare("INSERT OR IGNORE INTO testTbl (id, label, val) VALUES (@id, @label, @val) RETURNING id").get({ id: 1, label: 'y', val: 2 });
+      assert.equal(row, undefined);
+    });
+  });
+
+  describe('UPDATE ... RETURNING', () => {
+    beforeEach(() => { db.exec("DELETE FROM testTbl"); });
+
+    it('all returns updated rows', () => {
+      typedDb.prepare("INSERT OR ABORT INTO testTbl (id, label, val) VALUES (@id, @label, @val)").run({ id: 1, label: 'x', val: 10 });
+      const rows = typedDb.prepare("UPDATE OR ABORT testTbl SET label = @label, val = @val WHERE testTbl.id = @id RETURNING id, label, val").all({ label: 'b', val: 20, id: 1 });
+      assert.equal(rows.length, 1);
+      assert.deepEqual({ ...rows[0] }, { id: 1, label: 'b', val: 20 });
+    });
+
+    it('all RETURNING * returns full row', () => {
+      typedDb.prepare("INSERT OR ABORT INTO testTbl (id, label, val) VALUES (@id, @label, @val)").run({ id: 1, label: 'x', val: 10 });
+      const rows = typedDb.prepare("UPDATE OR ABORT testTbl SET label = @label WHERE testTbl.id = @id RETURNING *").all({ label: 'c', id: 1 });
+      assert.deepEqual({ ...rows[0] }, { id: 1, label: 'c', val: 10 });
+    });
+
+    it('get returns single updated row', () => {
+      typedDb.prepare("INSERT OR ABORT INTO testTbl (id, label, val) VALUES (@id, @label, @val)").run({ id: 1, label: 'x', val: 10 });
+      const row = typedDb.prepare("UPDATE OR ABORT testTbl SET label = @label WHERE testTbl.id = @id RETURNING id").get({ label: 'd', id: 1 })!;
+      assert.equal(row.id, 1);
+    });
+
+    it('run still returns changes', () => {
+      typedDb.prepare("INSERT OR ABORT INTO testTbl (id, label, val) VALUES (@id, @label, @val)").run({ id: 1, label: 'x', val: 10 });
+      const r = typedDb.prepare("UPDATE OR ABORT testTbl SET label = @label WHERE testTbl.id = @id RETURNING id").run({ label: 'e', id: 1 });
+      assert.equal(r.changes, 1);
+    });
+  });
+
+  describe('DELETE ... RETURNING', () => {
+    beforeEach(() => { db.exec("DELETE FROM testTbl"); });
+
+    it('all returns deleted rows', () => {
+      typedDb.prepare("INSERT OR ABORT INTO testTbl (id, label, val) VALUES (@id, @label, @val)").run({ id: 1, label: 'x', val: 10 });
+      const rows = typedDb.prepare("DELETE FROM testTbl WHERE id = @id RETURNING id, label").all({ id: 1 });
+      assert.equal(rows.length, 1);
+      assert.deepEqual({ ...rows[0] }, { id: 1, label: 'x' });
+    });
+
+    it('get returns single deleted row', () => {
+      typedDb.prepare("INSERT OR ABORT INTO testTbl (id, label, val) VALUES (@id, @label, @val)").run({ id: 1, label: 'x', val: 10 });
+      const row = typedDb.prepare("DELETE FROM testTbl WHERE id = @id RETURNING id").get({ id: 1 })!;
+      assert.equal(row.id, 1);
+    });
+
+    it('run still returns changes', () => {
+      typedDb.prepare("INSERT OR ABORT INTO testTbl (id, label, val) VALUES (@id, @label, @val)").run({ id: 1, label: 'x', val: 10 });
+      const r = typedDb.prepare("DELETE FROM testTbl WHERE id = @id RETURNING id").run({ id: 1 });
+      assert.equal(r.changes, 1);
     });
   });
 

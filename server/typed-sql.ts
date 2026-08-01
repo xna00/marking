@@ -113,14 +113,18 @@ type _MatchInsert<S extends string> =
     : unknown;
 
 type _MatchUpdate<S extends string> =
-  S extends `UPDATE OR ${SqlConflict} ${infer Tbl} SET ${infer SetClause} WHERE ${infer WhereClause}`
-  ? { table: Tbl; set: SetClause; where: WhereClause }
-  : unknown;
+  S extends `UPDATE OR ${SqlConflict} ${infer Tbl} SET ${infer SetClause} WHERE ${infer WhereClause} RETURNING ${infer Returning}`
+  ? { table: Tbl; set: SetClause; where: WhereClause; returning: Returning }
+  : S extends `UPDATE OR ${SqlConflict} ${infer Tbl} SET ${infer SetClause} WHERE ${infer WhereClause}`
+    ? { table: Tbl; set: SetClause; where: WhereClause }
+    : unknown;
 
 type _MatchDelete<S extends string> =
-  S extends `DELETE FROM ${infer Tbl} WHERE ${infer WhereClause}`
-  ? { table: Tbl; where: WhereClause }
-  : unknown;
+  S extends `DELETE FROM ${infer Tbl} WHERE ${infer WhereClause} RETURNING ${infer Returning}`
+  ? { table: Tbl; where: WhereClause; returning: Returning }
+  : S extends `DELETE FROM ${infer Tbl} WHERE ${infer WhereClause}`
+    ? { table: Tbl; where: WhereClause }
+    : unknown;
 
 // ── Column resolution ──
 
@@ -275,7 +279,11 @@ export type SqlAllResult<S extends string, Tbls extends {}> =
   ? _SelectResult<M['cols'], M['from'], M['where'], Tbls>
   : _MatchInsert<S> extends infer M extends { table: keyof Tbls; values: string; returning: string }
     ? ReturningResult<M['returning'], Tbls[M['table']] & {}>[]
-    : never;
+    : _MatchUpdate<S> extends infer M extends { table: keyof Tbls; set: string; where: string; returning: string }
+      ? ReturningResult<M['returning'], Tbls[M['table']] & {}>[]
+      : _MatchDelete<S> extends infer M extends { table: keyof Tbls; where: string; returning: string }
+        ? ReturningResult<M['returning'], Tbls[M['table']] & {}>[]
+        : never;
 
 export type SqlGetResult<S extends string, Tbls extends {}> =
   SqlAllResult<S, Tbls>[number] | undefined;
@@ -290,7 +298,11 @@ export type SqlAllParams<S extends string, Tbls extends {}> =
   ? WhereParams<W['where'], Tbls> & { [K in AtParamName<W['limit'] | W['offset']>]: number }
   : _MatchInsert<S> extends infer M extends { table: keyof Tbls, values: string, returning: string }
     ? ValueParams<Split<M['values'], ", ">, Tbls[M['table']] & {}>
-    : never;
+    : _MatchUpdate<S> extends infer M extends { table: keyof Tbls, set: string, where: string, returning: string }
+      ? SetParams<Split<M['set'], ", ">, Tbls[M['table']] & {}> & WhereParams<M['where'], Tbls>
+      : _MatchDelete<S> extends infer M extends { table: keyof Tbls, where: string, returning: string }
+        ? WhereParams<M['where'], Tbls>
+        : never;
 
 // ── TypedDb ──
 
