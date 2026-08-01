@@ -230,19 +230,13 @@ type SetParams<SS extends string[], Tbl extends {}, R = {}> =
   ? SetParams<Rest, Tbl, R & { [K in Name]: Tbl[Col & keyof Tbl] }>
   : R;
 export type RunParams<S extends string, Tbls extends {}> =
-  S extends `INSERT${string}`
-  ? (_MatchInsert<S> extends infer M extends { table: keyof Tbls, values: string }
-      ? ParamTypes<M['values'], ", ", Tbls[M['table']] & {}>
-      : never)
-  : S extends `UPDATE${string}`
-    ? (_MatchUpdate<S> extends infer M extends { table: keyof Tbls, set: string, where: string }
-        ? SetParams<Split<M["set"], ", ">, Tbls[M['table']] & {}> & WhereParams<M['where'], Tbls>
-        : never)
-  : S extends `DELETE${string}`
-    ? (_MatchDelete<S> extends infer M extends { where: string }
-        ? WhereParams<M['where'], Tbls>
-        : never)
-  : never;
+  _MatchInsert<S> extends infer M extends { table: keyof Tbls, values: string }
+  ? ParamTypes<M['values'], ", ", Tbls[M['table']] & {}>
+  : _MatchUpdate<S> extends infer M extends { table: keyof Tbls, set: string, where: string }
+    ? SetParams<Split<M["set"], ", ">, Tbls[M['table']] & {}> & WhereParams<M['where'], Tbls>
+    : _MatchDelete<S> extends infer M extends { where: string }
+      ? WhereParams<M['where'], Tbls>
+      : never;
 
 type WhereParams<W extends string, Tbls extends {}> =
   Condition<FlatSplit<FlatSplit<[W], ' OR '>, ' AND '>, Tbls>;
