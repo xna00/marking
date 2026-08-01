@@ -73,6 +73,17 @@ VALUES (@a,@b)                                                       # 逗号后
 
 - `.all()` 统一返回 `T[]`；取单行用 `.get()` → `T | undefined`
 
+### 枚举列：`CHECK (... IN (...))`
+
+- 用列级 `CHECK` 的 `IN` 形式声明枚举，类型层推导为字面量联合：
+  `status TEXT NOT NULL CHECK (status IN ('pending', 'confirmed'))` → `'pending' | 'confirmed'`
+- 字符串值用**单引号**，数值裸写（`score INTEGER CHECK (score IN (1, 2, 3))` → `1 | 2 | 3`）
+- 列表用「逗号 + 一个空格」分隔；值内不得含单引号
+- 枚举类型自动传播：`SELECT *` 结果列、WHERE / SET / INSERT VALUES 参数全部收窄
+- 可空列（无 `NOT NULL`）→ `| null`；NULL 恒通过 CHECK（SQLite 语义）
+- 仅支持简单单列 `CHECK (col IN (...))`；范围式（`CHECK (cost > 0)`）、多条件 CHECK 不参与枚举推导，列回落到对应基础类型
+- 只有 `CHECK (本列名 IN (...))` 参与推导；引用其他列（`CHECK (score IN (1,2,3))` 写在 status 上）或常量表达式（`CHECK (1 IN (1,2))`）同样回落基础类型
+
 ## 类型推导规则
 
 ### 参数类型：`Params<S>`（SELECT）/ `RunParams<S>`（INSERT/UPDATE/DELETE）

@@ -5,14 +5,23 @@ import { DatabaseSync } from "node:sqlite";
 // ── Column type mapping ──
 
 /**
- * SqlType<"TEXT"> → string
- *
- * SqlType<"INTEGER"> → number
- *
- * SqlType<"REAL"> → number
+ * ColItem<"1"> → 1；ColItem<"'pending'"> → "pending"
  */
-type SqlType<T extends string> =
-  T extends `INTEGER${string}` ? number
+type ColItem<S extends string> =
+  S extends `'${infer V}'` ? V
+  : S extends `${infer N extends number}` ? N
+  : never;
+
+/**
+ * SqlType<"status", "TEXT NOT NULL CHECK (status IN ('pending', 'confirmed'))"> → "pending" | "confirmed"
+ *
+ * 仅 `CHECK (<本列名> IN (...))` 参与枚举推导；引用他列、常量表达式或范围式
+ * CHECK 不匹配，回落基础类型。字符串值单引号，数值裸写。
+ */
+type SqlType<Col extends string, T extends string> =
+  T extends `${string}CHECK (${Col} IN (${infer Items}))${string}`
+  ? ColItem<Split<Items, ", ">[number]>
+  : T extends `INTEGER${string}` ? number
   : T extends `INT${string}` ? number
   : T extends `REAL${string}` ? number
   : T extends `FLOAT${string}` ? number
@@ -52,7 +61,7 @@ type ColNullable<S extends string> =
  */
 type ColToField<S extends string> =
   ColNameType<S> extends [infer N extends string, infer T extends string]
-  ? {[K in N]: SqlType<T> | ColNullable<S>}
+  ? {[K in N]: SqlType<N, T> | ColNullable<S>}
   : {};
 
 /**

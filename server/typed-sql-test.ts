@@ -47,6 +47,52 @@ openKfId TEXT PRIMARY KEY,
 cursor TEXT NOT NULL
 )`;
 
+// ── CHECK 枚举列 ──
+
+const CHECK_TBL_SQL = `CREATE TABLE IF NOT EXISTS checkTbl (
+id INTEGER PRIMARY KEY,
+status TEXT NOT NULL CHECK (status IN ('pending', 'confirmed', 'rejected')),
+score INTEGER NOT NULL CHECK (score IN (1, 2, 3, 4, 5)),
+nullable TEXT CHECK (nullable IN ('a', 'b'))
+)`;
+type CheckTables = Schema<typeof CHECK_TBL_SQL>;
+type _CheckShape = AssertTrue<Equal<CheckTables, {
+  checkTbl: {
+    id: number;
+    status: 'pending' | 'confirmed' | 'rejected';
+    score: 1 | 2 | 3 | 4 | 5;
+    nullable: 'a' | 'b' | null;
+  }
+}>>;
+type _CheckSelectStar = AssertTrue<Equal<
+  SelectResult<'SELECT ALL * FROM checkTbl WHERE 1=1 GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', CheckTables>[number]['status'],
+  'pending' | 'confirmed' | 'rejected'
+>>;
+type _CheckWhereParam = AssertTrue<Equal<
+  Params<'SELECT ALL * FROM checkTbl WHERE checkTbl.status = @status GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0', CheckTables>,
+  { status: 'pending' | 'confirmed' | 'rejected' }
+>>;
+type _CheckInsertParam = AssertTrue<Equal<
+  RunParams<'INSERT INTO checkTbl (status, score) VALUES (@status, @score)', CheckTables>,
+  { status: 'pending' | 'confirmed' | 'rejected'; score: 1 | 2 | 3 | 4 | 5 }
+>>;
+type _CheckUpdateParam = AssertTrue<Equal<
+  RunParams<'UPDATE checkTbl SET status = @status WHERE checkTbl.id = @id', CheckTables>,
+  { status: 'pending' | 'confirmed' | 'rejected'; id: number }
+>>;
+type _CheckRangeDegrades = AssertTrue<Equal<
+  Schema<"CREATE TABLE IF NOT EXISTS r (\ncost REAL CHECK (cost > 0)\n)">,
+  { r: { cost: number | null } }
+>>;
+type _CheckOtherCol = AssertTrue<Equal<
+  Schema<"CREATE TABLE IF NOT EXISTS t (\nstatus TEXT NOT NULL CHECK (score IN (1, 2, 3))\n)">,
+  { t: { status: string } }
+>>;
+type _CheckConstExpr = AssertTrue<Equal<
+  Schema<"CREATE TABLE IF NOT EXISTS t (\nx INTEGER NOT NULL CHECK (1 IN (1, 2))\n)">,
+  { t: { x: number } }
+>>;
+
 type Tables =
   Schema<typeof USER_SQL>
   & Schema<typeof MARK_RECORD_SQL>
