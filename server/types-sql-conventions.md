@@ -95,6 +95,41 @@ CREATE TABLE IF NOT EXISTS orderItem (
 
 - `.all()` 统一返回 `T[]`；取单行用 `.get()` → `T | undefined`
 
+### 动态排序（ORDER BY 白名单变体）
+
+**为什么 ORDER BY 不能参数化 / 插值：**
+- 绑定参数只能绑**值**，不能绑**标识符**：`ORDER BY ?` / `ORDER BY @col` 实测不排序（返回插入序）；方向更绑不了（`ORDER BY createdAt ?` 是语法错误）
+- CASE 参数化替代在本库不可行：ORDER BY 不参与参数提取（见「设计边界」），`@sortBy`/`@dir` 不会进入 `SqlAllParams` 类型
+- 插值有注入风险：实测 `ORDER BY (SELECT token FROM user ...)` 这种单语句子查询可执行并泄露数据（`; DROP` 多语句被 node:sqlite 挡，但子查询挡不住）
+- 正确做法 = **列白名单 + 预编译静态变体**（业界对动态排序的标准做法）：列/方向全部枚举成静态 SQL，运行时只做键选择
+
+**推荐写法**（参考 typed-sql-test.ts 的 `markListSql`）：
+
+```ts
+const makeSql = <const C extends keyof Tables['markRecord'], const D extends 'asc' | 'desc'>(
+  col: C,
+  dir: D,
+) =>
+  `SELECT ALL * FROM markRecord WHERE 1=1 ORDER BY ${col} ${dir}, id ${dir} LIMIT @limit OFFSET @offset` as const;
+
+const markListSql = {
+  'createdAt.asc': makeSql('createdAt', 'asc'),
+  'createdAt.desc': makeSql('createdAt', 'desc'),
+  'costCredits.asc': makeSql('costCredits', 'asc'),
+  'costCredits.desc': makeSql('costCredits', 'desc'),
+};
+
+// 调用侧：键是字面量联合，写错键编译报错
+const rows = db.prepare(markListSql[key]).all({ limit: 50, offset: 0 });
+```
+
+- `C extends keyof Tables['markRecord']` → 该表所有列自动可排，DDL 新增列无需改 makeSql 签名；方向保持 `'asc' | 'desc'` 字面量
+- 每个键得到**精确的单条 SQL 字面量**，`prepare` 据此推导参数/返回值，全类型、零注入
+- 每加一个排序组合 = 加一行对象字面量；非法键在编译期被掐死
+- **`as const` 是类型安全的前提**：`makeSql` 必须用泛型 `const C/D` 且返回值 `as const`（显式返回类型注解也可，但非必需），缺一会把返回类型宽化成 `string`，`prepare` 参数退化 `never`
+- 不要用 `['a','b'].map` 运行时生成对象——键会退化成 `string` 索引；对象字面量直接写
+- 主排序后的次级排序键（tiebreak）写死即可（如 `id ASC`），保证非法输入也有可预测顺序
+
 ### INSERT/UPDATE/DELETE ... RETURNING
 
 - 在语句末尾追加 `RETURNING <列>`，`.all()` / `.get()` 返回受影响的行：
@@ -175,7 +210,7 @@ SELECT 额外把 `LIMIT` / `OFFSET` 中的 `@参数` 类型定为 `number`。
 - **JOIN 拼写**：仅 `LEFT JOIN` / `INNER JOIN`；`LEFT OUTER JOIN`、`RIGHT`/`FULL`/`CROSS`/`NATURAL` 均不支持
 - **`SELECT *, COUNT(*) AS c` 混合投影**：列列表含 `*` 且非纯 `*` 时，`*` 部分解析为 `{}`（该写法本身无可靠语义，退化即警示）
 - **`GROUP_CONCAT(x, y)` 多参数**：列列表按 `", "` 切分，函数内逗号会被误拆 → 类型退化（仅支持单参）
-- **HAVING / ORDER BY 不参与参数提取**：`HAVING COUNT(*) > @min`、`ORDER BY @col` 中的参数会被丢弃
+- **HAVING / ORDER BY 不参与参数提取**：`HAVING COUNT(*) > @min`、`ORDER BY @col` 中的参数会被丢弃（动态排序的替代方案见「动态排序」小节）
 - **UPDATE/DELETE 无 WHERE**：模板强制 WHERE
 - **INSERT/UPDATE/DELETE ... RETURNING**：只支持裸列名列表或 `*`；`表名.列` 前缀、`AS` 别名、表达式均不支持（类型退化为 `{}`）
 - **UPDATE SET 表达式**（如 `count = count + 1`）：`SetParams` 只认 `列名 = @参数` 形式

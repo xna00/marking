@@ -801,6 +801,43 @@ type _SfLimitOffset = AssertTrue<Equal<
   { externalUserId: string; limit: number; offset: number }
 >>;
 
+// ── 第 0 路：makeSql 返回具体 SQL 字面量 + 对象字面量写死排序变体 ──
+
+const SORT_COLS = ["createdAt", "costCredits"] as const;
+const SORT_DIRS = ["asc", "desc"] as const;
+type SortCol = (typeof SORT_COLS)[number];
+type SortDir = (typeof SORT_DIRS)[number];
+
+type MapGenSql =
+  `SELECT ALL * FROM markRecord WHERE 1=1 ORDER BY ${SortCol} ${SortDir}, id ${SortDir} LIMIT @limit OFFSET @offset`;
+
+const makeSql = <const C extends keyof Tables['markRecord'], const D extends SortDir>(
+  col: C,
+  dir: D,
+) =>
+  `SELECT ALL * FROM markRecord WHERE 1=1 ORDER BY ${col} ${dir}, id ${dir} LIMIT @limit OFFSET @offset` as const;
+
+const markListSql = {
+  'createdAt.asc': makeSql('createdAt', 'asc'),
+  'createdAt.desc': makeSql('createdAt', 'desc'),
+  'costCredits.asc': makeSql('costCredits', 'asc'),
+  'costCredits.desc': makeSql('costCredits', 'desc'),
+};
+
+type _SqlsValue = AssertTrue<Equal<
+  typeof markListSql['createdAt.asc'],
+  `SELECT ALL * FROM markRecord WHERE 1=1 ORDER BY createdAt asc, id asc LIMIT @limit OFFSET @offset`
+>>;
+
+type _MapGenParams = AssertTrue<Equal<
+  SqlAllParams<MapGenSql, Tables>,
+  { limit: number; offset: number }
+>>;
+type _MapGenResult = AssertTrue<Equal<
+  SqlAllResult<MapGenSql, Tables>,
+  Tables['markRecord'][]
+>>;
+
 // ── Runtime tests ──
 
 const TEST_TBL_SQL = `CREATE TABLE IF NOT EXISTS testTbl (
@@ -994,5 +1031,34 @@ describe('TypedDb', () => {
       const row = typedDb.prepare("SELECT ALL label AS label FROM testTbl WHERE id = @id GROUP BY 1 HAVING 1=1 ORDER BY 1 LIMIT -1 OFFSET 0").get({ id: 1 })!;
       assert.equal(row.label, 'hello');
     });
+  });
+});
+
+describe('TypedDb 排序变体（第 0 路：对象字面量）', () => {
+  type MarkTables = Pick<Tables, 'markRecord'>;
+
+  let mdb: DatabaseSync;
+  let mTypedDb: TypedDb<MarkTables>;
+
+  before(() => {
+    mdb = new DatabaseSync(':memory:');
+    mdb.exec(MARK_RECORD_SQL);
+    mTypedDb = new TypedDb<MarkTables>(mdb);
+  });
+
+  it('4 个写死变体均可 prepare 且按列/方向正确排序', () => {
+    mdb.exec("DELETE FROM markRecord");
+    const seed = mTypedDb.prepare("INSERT OR ABORT INTO markRecord (userId, costCredits, createdAt) VALUES (@userId, @costCredits, @createdAt)");
+    seed.run({ userId: 'u1', costCredits: 1.0, createdAt: '2024-01-01' });
+    seed.run({ userId: 'u3', costCredits: 2.0, createdAt: '2024-01-02' });
+    seed.run({ userId: 'u2', costCredits: 3.0, createdAt: '2024-01-03' });
+
+    const rows = (key: keyof typeof markListSql) =>
+      mTypedDb.prepare(markListSql[key]).all({ limit: -1, offset: 0 }).map(r => r.userId);
+
+    assert.deepEqual(rows('createdAt.asc'), ['u1', 'u3', 'u2']);
+    assert.deepEqual(rows('createdAt.desc'), ['u2', 'u3', 'u1']);
+    assert.deepEqual(rows('costCredits.asc'), ['u1', 'u3', 'u2']);
+    assert.deepEqual(rows('costCredits.desc'), ['u2', 'u3', 'u1']);
   });
 });
