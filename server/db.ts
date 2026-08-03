@@ -2,7 +2,7 @@ import { DatabaseSync } from "node:sqlite";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
-import { TypedDb, type ResolveFks, type SchemaFks } from "./typed-sql.ts";
+import { TypedDb, type ResolveFks, type SchemaFks } from "./typed-sql/typed-sql.ts";
 
 const KF_CURSOR_SQL = `CREATE TABLE IF NOT EXISTS kfCursor (
 openKfId   TEXT PRIMARY KEY,
