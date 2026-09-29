@@ -42,21 +42,33 @@ function constructPrompt(config: ConfigItem[]): string {
   return SYSTEM_PROMPT.replace("{{评分标准}}", mdTable);
 }
 
+type ModelDef = { id: string; label: string; input: number; output: number; detail: "low" | "high" };
+
+const AUTO_MODEL = "doubao-seed-2-0-lite-260428";
+
+const MODELS: ModelDef[] = [
+  { id: "doubao-seed-2-1-lite-260915", label: "doubao-seed-2-1-lite-260915", input: 0.8, output: 2.7, detail: "high" },
+  { id: "doubao-seed-1-8-251228", label: "doubao-seed-1-8-251228", input: 0.8, output: 2.0, detail: "high" },
+  { id: "doubao-seed-2-0-pro-260215", label: "doubao-seed-2-0-pro-260215", input: 3.2, output: 16.0, detail: "low" },
+  { id: "doubao-seed-2-0-lite-260428", label: "doubao-seed-2-0-lite-260428", input: 0.6, output: 3.6, detail: "high" },
+  { id: "doubao-seed-2-0-mini-260428", label: "doubao-seed-2-0-mini-260428", input: 0.2, output: 2.0, detail: "high" },
+];
+
+function getModelDef(id: string): ModelDef | undefined {
+  return MODELS.find((m) => m.id === id);
+}
+
 function resolveModel(model: string): string {
-  return model === "auto" ? "doubao-seed-2-0-lite-260428" : model;
+  return model === "auto" ? AUTO_MODEL : model;
 }
 
 function resolveDetail(model: string): "low" | "high" {
-  const resolved = resolveModel(model);
-  return resolved === "doubao-seed-2-0-pro-260215" ? "low" : "high";
+  return getModelDef(resolveModel(model))?.detail ?? "high";
 }
 
-const MODEL_PRICES: Record<string, { input: number; output: number }> = {
-  "doubao-seed-1-8-251228": { input: 0.8, output: 2.0 },
-  "doubao-seed-2-0-pro-260215": { input: 3.2, output: 16.0 },
-  "doubao-seed-2-0-lite-260428": { input: 0.6, output: 3.6 },
-  "doubao-seed-2-0-mini-260428": { input: 0.2, output: 2.0 },
-};
+export async function getModels(): Promise<Pick<ModelDef, "id" | "label">[]> {
+  return MODELS.map(({ id, label }) => ({ id, label }));
+}
 
 async function doChat(body: ChatBody): Promise<AIResultItem[]> {
   const prompt = constructPrompt(body.config);
@@ -116,7 +128,7 @@ async function doChat(body: ChatBody): Promise<AIResultItem[]> {
 
       logger.logWithId('body:', content);
       if (data.usage) {
-        const p = MODEL_PRICES[resolvedModel];
+        const p = getModelDef(resolvedModel);
         const cost = p ? (data.usage.prompt_tokens * p.input + data.usage.completion_tokens * p.output) / 1_000_000 : 0;
         logger.logWithId(`tokens: 输入${data.usage.prompt_tokens} 输出${data.usage.completion_tokens} 总计${data.usage.total_tokens} 费用${cost.toFixed(4)}元`);
       }

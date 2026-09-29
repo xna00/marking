@@ -4,7 +4,6 @@ import {
 } from "../ai.js";
 import type { ConfigItem, ModelName } from "../models.js";
 import { blobToDataUrl, scaleImage } from "../image.js";
-import { modelNames } from "../models.js";
 import { storageKeys, shouldReloadOnMismatch, EXTENSION_VERSION } from "../constants.js";
 import { createRoot } from "react-dom/client";
 import { useEffect, useRef, useState } from "react";
@@ -108,10 +107,13 @@ const defaultSettings: Settings = {
 
 const Main = () => {
   const [settings, setSettings] = useState(defaultSettings);
+  const [models, setModels] = useState<{ id: string; label: string }[]>([]);
   const [imageSize, setImageSize] = useState<{
     width: number;
     height: number;
   } | null>(null);
+
+  useEffect(() => { api.ai.getModels().then(setModels).catch(() => {}); }, []);
 
   useEffect(() => {
     chromeStorageLocalGet(null).then(r => {
@@ -247,12 +249,11 @@ const Main = () => {
         <select
           id="modelSelect"
           value={settings[storageKeys.AI_MODEL]}
-          onChange={(e) => setSettings(s => ({ ...s, [storageKeys.AI_MODEL]: e.target.value as ModelName }))}
+          onChange={(e) => setSettings(s => ({ ...s, [storageKeys.AI_MODEL]: e.target.value }))}
         >
-          {modelNames.map((name) => (
-            <option key={name} value={name}>
-              {name === "auto" ? "自动选择" : name}
-            </option>
+          <option key="auto" value="auto">自动选择</option>
+          {models.map((m) => (
+            <option key={m.id} value={m.id}>{m.label}</option>
           ))}
         </select>
 
