@@ -12,6 +12,10 @@ const USER_SQL = `CREATE TABLE IF NOT EXISTS user (
 externalUserId TEXT PRIMARY KEY,
 username       TEXT NOT NULL UNIQUE,
 passwordHash   TEXT NOT NULL,
+nickname       TEXT,
+avatar         TEXT,
+gender         INTEGER,
+unionid        TEXT,
 email          TEXT,
 phone          TEXT,
 token          TEXT,
@@ -155,6 +159,10 @@ export type User = {
   externalUserId: string;
   username: string;
   passwordHash: string;
+  nickname: string | null;
+  avatar: string | null;
+  gender: number | null;
+  unionid: string | null;
   email: string | null;
   phone: string | null;
   token: string | null;
@@ -201,6 +209,10 @@ export function createUser(
     externalUserId,
     username,
     passwordHash,
+    nickname: null,
+    avatar: null,
+    gender: null,
+    unionid: null,
     email: email ?? null,
     phone: phone ?? null,
     token,
@@ -217,6 +229,11 @@ export function findUserByExternalUserId(externalUserId: string): User | undefin
 export function findUserByUsername(username: string): User | undefined {
   const stmt = td().prepare("SELECT ALL * FROM user WHERE user.username = @username ORDER BY 1 LIMIT -1 OFFSET 0");
   return stmt.get({ username });
+}
+
+export function listAllUsers(): User[] {
+  const stmt = td().prepare("SELECT ALL * FROM user WHERE 1=1 ORDER BY username LIMIT -1 OFFSET 0");
+  return stmt.all({});
 }
 
 export function insertCreditTransaction(
@@ -236,6 +253,20 @@ export function insertCreditTransaction(
 export function updateUserToken(externalUserId: string, token: string | null): void {
   const stmt = td().prepare("UPDATE OR ABORT user SET token = @token, updatedAt = @updatedAt WHERE user.externalUserId = @externalUserId");
   stmt.run({ token, updatedAt: new Date().toISOString(), externalUserId });
+}
+
+export function updateUserWxProfile(
+  externalUserId: string,
+  nickname: string | null,
+  avatar: string | null,
+  gender: number | null,
+  unionid: string | null,
+): boolean {
+  const stmt = td().prepare(
+    "UPDATE OR ABORT user SET nickname = @nickname, avatar = @avatar, gender = @gender, unionid = @unionid, updatedAt = @updatedAt WHERE user.externalUserId = @externalUserId"
+  );
+  const result = stmt.run({ externalUserId, nickname, avatar, gender, unionid, updatedAt: new Date().toISOString() });
+  return result.changes > 0;
 }
 
 export function findUserByToken(token: string): User | undefined {

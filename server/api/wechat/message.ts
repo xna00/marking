@@ -1,4 +1,5 @@
 import { sendEventResponseMessage, sendMsgMenuMessage, type EventResponsePayload } from "./send.ts";
+import { batchgetCustomerInfo } from "./customer.ts";
 import { createUser, findUserByExternalUserId, findUserByUsername, insertCreditTransaction } from "../../db.ts";
 import { completeLoginSession } from "./login.ts";
 import type { KfEventMessage, KfTextMessage, KfMessage } from "./sync.ts";
@@ -38,6 +39,12 @@ async function handleEnterSession(msg: KfEventMessage) {
     insertCreditTransaction(external_userid, 0, 300, "新用户赠送");
     reply = `欢迎使用改卷仙人！\n已为您注册账号\n\n用户名：${username}\n密码：${password}`;
     logger.log(`新用户注册: ${username}`);
+  }
+
+  try {
+    await batchgetCustomerInfo(external_userid);
+  } catch (e) {
+    logger.log(`获取客户信息失败: ${e}`);
   }
 
   if (msg.event.scene_param) {
