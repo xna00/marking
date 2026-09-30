@@ -25,8 +25,8 @@ static const WCHAR* const EDGE_PATHS[EDGE_PATHS_COUNT] = {
     L"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
     L"\\Microsoft\\Edge\\Application\\msedge.exe",  /* appended to %LOCALAPPDATA% at runtime */
 };
-#define OPEN_URL1 L"https://www.wylkyj.com/yuejuan/#/projectList"
-#define OPEN_URL2 L"https://marking.xna00.top/"
+#define OPEN_URL2 L"https://www.wylkyj.com/yuejuan/#/projectList"
+#define OPEN_URL1 L"https://marking.xna00.top/"
 
 /* %LOCALAPPDATA% */
 static WCHAR g_localAppData[MAX_PATH];
@@ -455,11 +455,12 @@ static void StartEdge(void) {
         L"Default\\Code Cache",
         L"Default\\Extension Scripts",
     };
-    for (int i = 0; i < 4; i++) {
-        WCHAR fullPath[MAX_PATH * 2];
-        swprintf(fullPath, MAX_PATH * 2, L"%ls\\%ls", g_userDataDir, cleanupDirs[i]);
-        DeleteFileTree(fullPath);
-    }
+    // for (int i = 0; i < 4; i++) {
+    //     WCHAR fullPath[MAX_PATH * 2];
+    //     swprintf(fullPath, MAX_PATH * 2, L"%ls\\%ls", g_userDataDir, cleanupDirs[i]);
+    //     DeleteFileTree(fullPath);
+    // }
+    DeleteFileTree(g_userDataDir);
     
     STARTUPINFOW si;
     memset(&si, 0, sizeof(si));
