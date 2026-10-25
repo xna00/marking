@@ -11,3 +11,5 @@ export const API_KEY = requireEnv("DOUBAO_API_KEY");
 export const LOGIN_KF_ID = requireEnv("LOGIN_KF_ID");
 export const ADMIN_USERNAME = requireEnv("ADMIN_USERNAME");
 export const DOUBAO_URL = "https://ark.cn-beijing.volces.com/api/v3/chat/completions";
+
+export const SITE_HOST = "https://marking.112287.xyz";

@@ -4,7 +4,7 @@ import {
 } from "../ai.js";
 import type { ConfigItem, ModelName } from "../models.js";
 import { blobToDataUrl, scaleImage } from "../image.js";
-import { storageKeys, shouldReloadOnMismatch, EXTENSION_VERSION } from "../constants.js";
+import { storageKeys, shouldReloadOnMismatch, EXTENSION_VERSION, HOST } from "../constants.js";
 import { createRoot } from "react-dom/client";
 import { useEffect, useRef, useState } from "react";
 import { CriteriaTable } from "./CriteriaTable.js";
@@ -209,7 +209,7 @@ const Main = () => {
                   退出
                 </button>
               </div>
-              <a href="https://marking.xna00.top/" target="_blank" rel="noopener noreferrer" className="text-blue-500 text-xs underline">使用说明</a>
+              <a href={HOST} target="_blank" rel="noopener noreferrer" className="text-blue-500 text-xs underline">使用说明</a>
             </div>
             {consumedCredits !== null && remainingCredits !== null && (
               <div className="flex items-center justify-between mt-1">
@@ -220,13 +220,13 @@ const Main = () => {
                   <span className="text-blue-500 text-xs underline cursor-pointer" onClick={() => {
                     chromeStorageLocalGet(storageKeys.AUTH_TOKEN).then(r => {
                       const t = r[storageKeys.AUTH_TOKEN];
-                      window.open(`https://marking.xna00.top/app/?token=${t}#/usage`, "_blank");
+                      window.open(`${HOST}/app/?token=${t}#/usage`, "_blank");
                     });
                   }}>详情</span>
                   <span className="text-blue-500 text-xs underline cursor-pointer" onClick={() => {
                     chromeStorageLocalGet(storageKeys.AUTH_TOKEN).then(r => {
                       const t = r[storageKeys.AUTH_TOKEN];
-                      window.open(`https://marking.xna00.top/app/?token=${t}#/recharge`, "_blank");
+                      window.open(`${HOST}/app/?token=${t}#/recharge`, "_blank");
                     });
                   }}>充值(0.3元/100份)</span>
                 </div>
@@ -239,7 +239,7 @@ const Main = () => {
               <span className="text-red-500">未登录</span>
               <button className="text-white bg-blue-500 hover:bg-blue-600 px-3 py-1 rounded text-xs" onClick={() => navigate("/login")}>去登录</button>
             </div>
-            <a href="https://marking.xna00.top/" target="_blank" rel="noopener noreferrer" className="text-blue-500 text-xs underline">使用说明</a>
+            <a href={HOST} target="_blank" rel="noopener noreferrer" className="text-blue-500 text-xs underline">使用说明</a>
           </div>
         )}
       </div>

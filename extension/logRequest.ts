@@ -64,12 +64,14 @@ export function getGroupKey(url: string, count: number): string {
 
 const debuggerEnabledUrls = [
   "http://127.0.0.1:8080/dist/doc/test/",
+  "https://marking.112287.xyz/test/",
   "https://marking.xna00.top/test/",
   "https://www.wylkyj.com/",
   "https://wylkyj.com/",
 ];
 const logUrls = [
   "http://127.0.0.1:8080/dist/doc/",
+  "https://marking.112287.xyz/image",
   "https://marking.xna00.top/image",
   "https://data.wylkyj.com/PaperScan/",
   "https://data.wylkyj.com/AnswerSheet/",

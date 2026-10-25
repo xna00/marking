@@ -3,7 +3,7 @@
 // @ts-ignore
 import fs from "fs";
 import manifest from "../extension/manifest.json" with { type: "json" };
-const HOST = "https://marking.xna00.top";
+const HOST = "https://marking.112287.xyz";
 
 fs.copyFileSync(
   "dist/doc/extension.zip",

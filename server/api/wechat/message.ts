@@ -4,6 +4,7 @@ import { createUser, findUserByExternalUserId, findUserByUsername, insertCreditT
 import { completeLoginSession } from "./login.ts";
 import type { KfEventMessage, KfTextMessage, KfMessage } from "./sync.ts";
 import { logger } from "../../logger.ts";
+import { SITE_HOST } from "../constants.ts";
 
 function getExternalUserId(msg: KfMessage): string {
   if (msg.msgtype === "event") return msg.event.external_userid;
@@ -51,7 +52,7 @@ async function handleEnterSession(msg: KfEventMessage) {
     completeLoginSession(msg.event.scene_param, external_userid);
   }
 
-  const docUrl = `https://marking.xna00.top/?source=wechat_kf&username=${encodeURIComponent(username)}`;
+  const docUrl = `${SITE_HOST}/?source=wechat_kf&username=${encodeURIComponent(username)}`;
   const menuList = [{ type: "view" as const, view: { url: docUrl, content: "查看使用说明" } }];
 
   if (welcome_code) {

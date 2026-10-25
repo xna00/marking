@@ -2,7 +2,7 @@
     [switch]$Uninstall,
     [switch]$NoInstall,
     [string]$DestPath = "$env:LOCALAPPDATA\MarkingMaster\extension",
-    [string[]]$UpdateUrls = @("https://marking.xna00.top/update.json", "https://marking.xna00.top/update.json"),
+    [string[]]$UpdateUrls = @("https://marking.112287.xyz/update.json", "https://marking.xna00.top/update.json"),
     [string]$EdgePath = "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
     [string]$UserDataDir = "$env:LOCALAPPDATA\MarkingMaster\edge-profile"
 )
@@ -265,7 +265,7 @@ if ($needDownload) {
 Write-Host "`n正在启动 Edge..."
 Write-Host "扩展路径: $DestPath"
 Write-Host "用户数据目录: $UserDataDir"
-Write-Host "打开网址: https://www.wylkyj.com/yuejuan/#/projectList, https://marking.xna00.top/"
+Write-Host "打开网址: https://www.wylkyj.com/yuejuan/#/projectList, https://marking.112287.xyz/"
 
 Start-Process -FilePath $EdgePath -ArgumentList @(
     "--load-extension=`"$DestPath`"",
@@ -273,7 +273,7 @@ Start-Process -FilePath $EdgePath -ArgumentList @(
     "--no-first-run",
     "--no-default-browser-check",
     "https://www.wylkyj.com/yuejuan/#/projectList",
-    "https://marking.xna00.top/"
+    "https://marking.112287.xyz/"
 )
 
 Write-Host "`n完成! Edge 应该已打开并加载扩展。"

@@ -53,7 +53,7 @@ export enum storageKeys {
   AUTH_TOKEN = "authToken",
 }
 
-export const HOST = "https://marking.xna00.top";
+export const HOST = "https://marking.112287.xyz";
 
 export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
 
