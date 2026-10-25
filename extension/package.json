@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build": "vite build && vite build -c vite.content.config.ts",
+    "postbuild": "node scripts/postbuild.ts"
   },
   "dependencies": {
     "@marking/api": "^1.0.0",

@@ -5,7 +5,7 @@
   "types": "index.ts",
   "type": "module",
   "scripts": {
-    "build": "npx tsc"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
   }

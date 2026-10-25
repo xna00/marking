@@ -1,0 +1,24 @@
+{
+  "name": "@marking/doc",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@marking/api": "^1.0.0",
+    "lean-qr": "^2.7.1",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "uzip": "^0.20201231.0",
+    "wouter": "3.10.0"
+  },
+  "devDependencies": {
+    "@types/react-dom": "^19.2.3",
+    "@types/uzip": "^0.20201231.2",
+    "@vitejs/plugin-react": "^5.1.2",
+    "vite": "^7.3.1"
+  }
+}

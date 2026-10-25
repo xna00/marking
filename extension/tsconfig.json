@@ -7,24 +7,22 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "outDir": "./dist",
-    "rootDir": "./",
-    "declaration": false,
-    "declarationMap": false,
-    "sourceMap": false,
-    "types": ["chrome", "wicg-file-system-access", "vite/client"],
     "verbatimModuleSyntax": true,
     "noEmit": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "types": [
+      "chrome",
+      "wicg-file-system-access",
+      "vite/client"
+    ]
   },
   "include": [
-    "api/**/*",
-    "extension/**/*",
-    "extension/*.json",
-    "doc/**/*"
+    "**/*",
+    "*.json"
   ],
   "exclude": [
-    "node_modules",
-    "dist"
+    "vite.config.ts",
+    "vite.content.config.ts",
+    "scripts"
   ]
 }

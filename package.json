@@ -5,8 +5,9 @@
   "main": "background.js",
   "type": "module",
   "scripts": {
-    "build": "rm dist/**/*.{js,css} ; NODE_ENV=production node ./scripts/vite.build.ts && cd dist/extension && zip -r ../doc/extension.zip . && cd ../.. && node ./scripts/setUpdateUrl.ts && node ./scripts/generate-start-bat.ts && node ./scripts/compress-static.ts",
-    "build:dev": "NODE_ENV=development node ./scripts/vite.build.ts",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "build": "npm run typecheck && npm run build --workspaces --if-present",
+    "postbuild": "node scripts/postbuild.ts",
     "watch": "npm-watch",
     "cp": "./scripts/copyfiles.sh",
     "add-hash": "scripts/add-hash.ts",
@@ -29,10 +30,11 @@
   "author": "",
   "license": "ISC",
   "workspaces": [
+    "shared",
     "server",
     "api",
     "extension",
-    "shared"
+    "doc"
   ],
   "devDependencies": {
     "esbuild": "^0.27.2",

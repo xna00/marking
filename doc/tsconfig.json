@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "verbatimModuleSyntax": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "types": [
+      "wicg-file-system-access",
+      "vite/client"
+    ]
+  },
+  "include": [
+    "**/*",
+    "*.json"
+  ],
+  "exclude": [
+    "dist",
+    "vite.config.ts"
+  ]
+}

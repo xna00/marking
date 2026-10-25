@@ -27,12 +27,6 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Gen server types
-        run: cd server && npm run gen-types
-
-      - name: Type check
-        run: npx tsc --noEmit
-
       - name: Build project
         run: npm run build
 
