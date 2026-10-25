@@ -6,6 +6,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { Readable } from "node:stream";
 import { createGunzip, createInflate, createBrotliDecompress } from "node:zlib";
 import { apiHandler } from "./api/handler.ts";
+import { staticHandler, STATIC_DIR } from "./nodeStaticHandler.ts";
 import { logger } from "./logger.ts";
 import { als, createRequestInfo } from "./request-context.ts";
 
@@ -72,6 +73,9 @@ const handler = async (req: IncomingMessage, res: ServerResponse<IncomingMessage
   })
   if (req.url.startsWith("/api/")) {
     response = await als.run(info, () => apiHandler(webReq));
+  } else {
+    const staticResp = await staticHandler(req.url);
+    if (staticResp) response = staticResp;
   }
   logger.log(`[${info.id}]`, response.status, `${(performance.now() - info.perf.startTime).toFixed(0)}ms`)
   respond(res, response);
@@ -83,3 +87,4 @@ const server = hasSsl
 
 server.listen(port, "::");
 logger.log(base);
+if (STATIC_DIR && !existsSync(STATIC_DIR)) logger.log(`[static] dir not found: ${STATIC_DIR}`);
