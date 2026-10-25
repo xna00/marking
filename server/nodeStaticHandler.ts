@@ -25,6 +25,9 @@ const MIME: Record<string, string> = {
 // scripts/compress-static.ts 生成的旁车文件
 const BROTLI_SUFFIX = ".br";
 
+// doc/vite.config.ts 给内容寻址的资源打的标记，配合 [hash] 保证同名内容不变
+const IMMUTABLE_MARKER = "--imm--";
+
 /**
  * 命中返回 Response；未命中、路径越界或任何异常都返回 null，由调用方兜底 404
  */
@@ -72,6 +75,10 @@ export async function staticHandler(req: Request): Promise<Response | null> {
       headers.set("content-encoding", encoding);
       // nginx/CDN 共享缓存按这个头区分变体
       headers.set("vary", "accept-encoding");
+    }
+    // 只有带 --imm-- 的才永久缓存，html / update.json / 最新版指针都不带
+    if (path.basename(filePath).includes(IMMUTABLE_MARKER)) {
+      headers.set("cache-control", "public, max-age=31536000, immutable");
     }
 
     return new Response(Readable.toWeb(createReadStream(bodyPath)), { headers });

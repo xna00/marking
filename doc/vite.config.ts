@@ -18,8 +18,11 @@ export default defineConfig({
         multi: "test/multi.html",
       },
       output: {
-        assetFileNames: "[name][extname]",
-        // entryFileNames: "[name].js",
+        // --imm-- 是给服务端的标记，真正的保证来自 [hash]：内容不变文件名就不变，
+        // 所以同名文件的字节永远相同，可以永久缓存
+        entryFileNames: "[name]--imm--[hash].js",
+        chunkFileNames: "[name]--imm--[hash].js",
+        assetFileNames: "[name]--imm--[hash][extname]",
       },
     },
   },
