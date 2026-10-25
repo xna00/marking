@@ -74,7 +74,7 @@ const handler = async (req: IncomingMessage, res: ServerResponse<IncomingMessage
   if (req.url.startsWith("/api/")) {
     response = await als.run(info, () => apiHandler(webReq));
   } else {
-    const staticResp = await staticHandler(req.url);
+    const staticResp = await staticHandler(webReq);
     if (staticResp) response = staticResp;
   }
   logger.log(`[${info.id}]`, response.status, `${(performance.now() - info.perf.startTime).toFixed(0)}ms`)

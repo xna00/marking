@@ -1,4 +1,4 @@
-import { createReadStream } from "node:fs";
+import { createReadStream, existsSync, statSync } from "node:fs";
 import { stat } from "node:fs/promises";
 import { Readable } from "node:stream";
 import { fileURLToPath } from "node:url";
@@ -22,16 +22,19 @@ const MIME: Record<string, string> = {
   ".bat": "application/octet-stream",
 };
 
+// scripts/compress-static.ts 生成的旁车文件
+const BROTLI_SUFFIX = ".br";
+
 /**
- * 命中返回 Response；未命中、路径越界或任何异常（ENOENT、URIError）都返回 null，由调用方兜底 404
+ * 命中返回 Response；未命中、路径越界或任何异常都返回 null，由调用方兜底 404
  */
-export async function staticHandler(url: string): Promise<Response | null> {
+export async function staticHandler(req: Request): Promise<Response | null> {
   if (!STATIC_DIR) return null;
 
   try {
     // URL parser 只做 dot-segment 归一化和补编码，不解码 %XX，
     // 所以 %2e%2e%2f 会原样留在 pathname 里，必须自己 decode
-    let rel = decodeURIComponent(new URL(url, "http://x").pathname);
+    let rel = decodeURIComponent(new URL(req.url).pathname);
     if (rel === "/" || rel === "") rel = "/index.html";
     if (rel.includes("\0")) return null;
 
@@ -48,12 +51,30 @@ export async function staticHandler(url: string): Promise<Response | null> {
     }
     if (!st.isFile()) return null;
 
-    return new Response(Readable.toWeb(createReadStream(filePath)), {
-      headers: new Headers({
-        "content-length": String(st.size),
-        "content-type": MIME[path.extname(filePath).toLowerCase()] ?? "application/octet-stream",
-      }),
+    // 有旁车就直接返回压缩字节，省掉请求时的压缩；br;q=0 表示客户端明确拒收
+    let bodyPath = filePath;
+    let encoding: string | undefined;
+    const accept = req.headers.get("accept-encoding") ?? "";
+    if (accept.includes("br") && !accept.includes("br;q=0")) {
+      const brPath = filePath + BROTLI_SUFFIX;
+      if (existsSync(brPath)) {
+        bodyPath = brPath;
+        st = statSync(brPath);
+        encoding = "br";
+      }
+    }
+
+    const headers = new Headers({
+      "content-length": String(st.size),
+      "content-type": MIME[path.extname(filePath).toLowerCase()] ?? "application/octet-stream",
     });
+    if (encoding) {
+      headers.set("content-encoding", encoding);
+      // nginx/CDN 共享缓存按这个头区分变体
+      headers.set("vary", "accept-encoding");
+    }
+
+    return new Response(Readable.toWeb(createReadStream(bodyPath)), { headers });
   } catch (e) {
     // 两种正常的 404 来源：文件不存在、URL 半截 percent（如 /100%）
     if (e instanceof URIError || (e as NodeJS.ErrnoException).code === "ENOENT") return null;
