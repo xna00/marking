@@ -17,8 +17,11 @@ const hasSsl = sslCertPath && sslKeyPath && existsSync(sslCertPath) && existsSyn
 const scheme = hasSsl ? "https" : "http";
 const base = `${scheme}://localhost:${port}`;
 
-export const makeRequest = (req: IncomingMessage): Request => {
+export const makeRequest = (req: IncomingMessage): Request | null => {
   assert(req.url);
+  if (!URL.canParse(req.url, base)) {
+    return null
+  }
   const method = req.method;
 
   const contentEncoding = req.headers["content-encoding"] as string | undefined;
@@ -61,6 +64,11 @@ export const respond = (
 const handler = async (req: IncomingMessage, res: ServerResponse<IncomingMessage> & { req: IncomingMessage }) => {
   assert(req.url);
   const webReq = makeRequest(req);
+  if (!webReq) {
+    logger.log("400 bad request-target", req.url);
+    respond(res, new Response(null, { status: 400 }))
+    return
+  }
   const info = createRequestInfo(webReq);
   const ip = (req.headers["x-forwarded-for"] as string | undefined)
     ?.split(",").at(0)?.trim()
