@@ -18,7 +18,7 @@ static BOOL DeleteFileTree(const WCHAR* path);
 
 #define APP_NAME L"改卷仙人"
 #define APP_DIR_NAME L"MarkingMaster"
-#define DEFAULT_UPDATE_URL L"https://marking.xna00.top/update.json"
+#define DEFAULT_UPDATE_URL L"https://marking.112287.xyz/update.json"
 #define EDGE_PATHS_COUNT 3
 static const WCHAR* const EDGE_PATHS[EDGE_PATHS_COUNT] = {
     L"C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe",
@@ -26,7 +26,7 @@ static const WCHAR* const EDGE_PATHS[EDGE_PATHS_COUNT] = {
     L"\\Microsoft\\Edge\\Application\\msedge.exe",  /* appended to %LOCALAPPDATA% at runtime */
 };
 #define OPEN_URL2 L"https://www.wylkyj.com/yuejuan/#/projectList"
-#define OPEN_URL1 L"https://marking.xna00.top/"
+#define OPEN_URL1 L"https://marking.112287.xyz/"
 
 /* %LOCALAPPDATA% */
 static WCHAR g_localAppData[MAX_PATH];
