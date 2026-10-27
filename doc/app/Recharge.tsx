@@ -6,9 +6,9 @@ import usernamePng from "./username.png";
 
 const PLANS = [
   { credits: 100, price: 0.3 },
-  { credits: 300, price: 0.9 },
   { credits: 500, price: 1.5 },
   { credits: 1000, price: 3 },
+  { credits: 2000, price: 6 },
 ];
 
 export const Recharge = () => {
