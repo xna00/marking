@@ -53,6 +53,8 @@ export async function listUsers(body: { query?: string; limit?: number; offset?:
     const consumedCredits = sumConsumedCredits(u.externalUserId);
     return {
       username: u.username,
+      nickname: u.nickname,
+      avatar: u.avatar,
       createdAt: u.createdAt,
       totalCredits,
       consumedCredits,
