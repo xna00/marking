@@ -122,18 +122,28 @@ export function sumCredits(userId: string): number {
   return stmt.get({ userId })?.total ?? 0;
 }
 
-export function getTransactions(userId: string): { id: number; amountMoney: number; amountCredits: number; description: string | null; createdAt: string }[] {
+export function getTransactions(userId: string, limit = 50, offset = 0): { id: number; amountMoney: number; amountCredits: number; description: string | null; createdAt: string }[] {
   const stmt = td().prepare(
-    "SELECT ALL creditTransaction.id AS id, creditTransaction.amountMoney AS amountMoney, creditTransaction.amountCredits AS amountCredits, creditTransaction.description AS description, creditTransaction.createdAt AS createdAt FROM creditTransaction WHERE creditTransaction.userId = @userId ORDER BY createdAt DESC, id DESC LIMIT 50 OFFSET 0"
+    "SELECT ALL creditTransaction.id AS id, creditTransaction.amountMoney AS amountMoney, creditTransaction.amountCredits AS amountCredits, creditTransaction.description AS description, creditTransaction.createdAt AS createdAt FROM creditTransaction WHERE creditTransaction.userId = @userId ORDER BY createdAt DESC, id DESC LIMIT @limit OFFSET @offset"
   );
-  return stmt.all({ userId });
+  return stmt.all({ userId, limit, offset });
 }
 
-export function getUsageHistory(userId: string): { id: number; createdAt: string; confirmedAt: string; costCredits: number }[] {
+export function getUsageHistory(userId: string, limit = 50, offset = 0): { id: number; createdAt: string; confirmedAt: string; costCredits: number }[] {
   const stmt = td().prepare(
-    "SELECT ALL markRecord.id AS id, markRecord.createdAt AS createdAt, markRecord.confirmedAt AS confirmedAt, markRecord.costCredits AS costCredits FROM markRecord WHERE markRecord.userId = @userId AND markRecord.confirmedAt IS NOT NULL ORDER BY createdAt DESC, id DESC LIMIT 50 OFFSET 0"
+    "SELECT ALL markRecord.id AS id, markRecord.createdAt AS createdAt, markRecord.confirmedAt AS confirmedAt, markRecord.costCredits AS costCredits FROM markRecord WHERE markRecord.userId = @userId AND markRecord.confirmedAt IS NOT NULL ORDER BY createdAt DESC, id DESC LIMIT @limit OFFSET @offset"
   );
-  return stmt.all({ userId });
+  return stmt.all({ userId, limit, offset });
+}
+
+export function countTransactions(userId: string): number {
+  const stmt = td().prepare("SELECT ALL COUNT(*) AS count FROM creditTransaction WHERE creditTransaction.userId = @userId ORDER BY 1 LIMIT -1 OFFSET 0");
+  return stmt.get({ userId })?.count ?? 0;
+}
+
+export function countUsageHistory(userId: string): number {
+  const stmt = td().prepare("SELECT ALL COUNT(*) AS count FROM markRecord WHERE markRecord.userId = @userId AND markRecord.confirmedAt IS NOT NULL ORDER BY 1 LIMIT -1 OFFSET 0");
+  return stmt.get({ userId })?.count ?? 0;
 }
 
 export function confirmMarkRecord(id: number, userId: string): boolean {

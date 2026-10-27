@@ -2,7 +2,7 @@ import { jsonrepair } from "jsonrepair";
 import { DOUBAO_URL, API_KEY } from "./constants.ts";
 import { ApiError } from "./utils.ts";
 import { getCurrentUser, getUserIfLoggedIn } from "./auth.ts";
-import { insertMarkRecord, confirmMarkRecord, countConfirmedRecords, sumCredits, sumConsumedCredits, getTransactions as getDbTransactions, getUsageHistory as getDbUsageHistory, insertMarkLog } from "../db.ts";
+import { insertMarkRecord, confirmMarkRecord, countConfirmedRecords, sumCredits, sumConsumedCredits, getTransactions as getDbTransactions, getUsageHistory as getDbUsageHistory, countTransactions as countDbTransactions, countUsageHistory as countDbUsageHistory, insertMarkLog } from "../db.ts";
 import { logger } from "../logger.ts";
 import { CONFIRM_MARK_MARKER_BASE64, type confirmMarkData } from "@marking/shared";
 import { createHash } from "node:crypto";
@@ -174,14 +174,22 @@ export async function getBalance() {
   return { totalCredits, confirmedCount, consumedCredits, remainingCredits: totalCredits - consumedCredits };
 }
 
-export async function getTransactions() {
+export async function getTransactions(body: { limit?: number; offset?: number } = {}) {
   const user = await getCurrentUser();
-  return getDbTransactions(user.externalUserId);
+  const limit = body.limit ?? 50;
+  const offset = body.offset ?? 0;
+  const rows = getDbTransactions(user.externalUserId, limit, offset);
+  const total = countDbTransactions(user.externalUserId);
+  return { rows, total };
 }
 
-export async function getUsageHistory() {
+export async function getUsageHistory(body: { limit?: number; offset?: number } = {}) {
   const user = await getCurrentUser();
-  return getDbUsageHistory(user.externalUserId);
+  const limit = body.limit ?? 50;
+  const offset = body.offset ?? 0;
+  const rows = getDbUsageHistory(user.externalUserId, limit, offset);
+  const total = countDbUsageHistory(user.externalUserId);
+  return { rows, total };
 }
 
 
