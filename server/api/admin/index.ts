@@ -46,6 +46,7 @@ export async function listUsers(body: { query?: string; limit?: number; offset?:
   const offset = body.offset ?? 0;
   const query = body.query?.trim().toLowerCase() ?? "";
 
+  // listAllUsers 已按注册时间从新到旧排好，filter 保持顺序
   const users = listAllUsers().filter((u) => !query || u.username.toLowerCase().includes(query));
   const total = users.length;
   const rows = users.slice(offset, offset + limit).map((u) => {

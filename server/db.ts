@@ -302,7 +302,7 @@ export function findUserByUsername(username: string): User | undefined {
 }
 
 export function listAllUsers(): User[] {
-  const stmt = td().prepare("SELECT ALL * FROM user WHERE 1=1 ORDER BY username LIMIT -1 OFFSET 0");
+  const stmt = td().prepare("SELECT ALL * FROM user WHERE 1=1 ORDER BY createdAt DESC, username LIMIT -1 OFFSET 0");
   return stmt.all({});
 }
 

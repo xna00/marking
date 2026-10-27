@@ -60,6 +60,12 @@ export const AdminUsers = () => {
   const handlePrev = () => fetchUsers(limit, Math.max(0, offset - limit), activeQuery);
   const handleNext = () => fetchUsers(limit, offset + limit, activeQuery);
 
+  const formatTime = (iso: string) => {
+    const d = new Date(iso);
+    const p = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  };
+
   return (
     <div className="p-5">
       <div className="flex justify-between items-center mb-4">
@@ -116,7 +122,7 @@ export const AdminUsers = () => {
                 <td className="px-3 py-2 text-right">{r.totalCredits}</td>
                 <td className="px-3 py-2 text-right">{r.consumedCredits}</td>
                 <td className="px-3 py-2 text-right">{r.remainingCredits}</td>
-                <td className="px-3 py-2">{new Date(r.createdAt).toLocaleString()}</td>
+                <td className="px-3 py-2">{formatTime(r.createdAt)}</td>
               </tr>
             ))}
             {rows.length === 0 && (
