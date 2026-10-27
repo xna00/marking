@@ -7,6 +7,7 @@ import { Recharge } from "./Recharge.js";
 import { Login } from "./Login.js";
 import { AdminRecharge } from "./AdminRecharge.js";
 import { MarkLogs } from "./MarkLogs.js";
+import "./index.css";
 
 const params = new URLSearchParams(location.search);
 const token = params.get("token") || sessionStorage.getItem("authToken");
