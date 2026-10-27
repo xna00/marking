@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "./app.js";
+import { AdminNav } from "./AdminNav.js";
 
 type MarkLogEntry = {
   id: number;
@@ -97,6 +98,8 @@ export const MarkLogs = () => {
           </button>
         </div>
       </div>
+
+      <AdminNav />
 
       {error && <div style={{ color: "red", marginBottom: "12px", fontSize: "14px" }}>{error}</div>}
 

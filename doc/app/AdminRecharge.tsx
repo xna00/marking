@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "./app.js";
+import { AdminNav } from "./AdminNav.js";
 
 export const AdminRecharge = () => {
   const [adminUsername, setAdminUsername] = useState("");
@@ -62,6 +63,8 @@ export const AdminRecharge = () => {
           </button>
         </div>
       </div>
+
+      <AdminNav />
 
       <form onSubmit={handleSubmit} className="space-y-3">
         <div>

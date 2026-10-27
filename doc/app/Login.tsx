@@ -12,12 +12,13 @@ export const Login = () => {
     setLoading(true);
     setError("");
     try {
-      const res = await api.login({ username, password }) as any;
+      const res = await api.login({ username, password });
       sessionStorage.setItem("authToken", res.token);
       setUsername("");
       setPassword("");
-    } catch (err: any) {
-      setError(err.message || "登录失败");
+      location.hash = "#/admin";
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "登录失败");
     }
     setLoading(false);
   };
@@ -54,9 +55,6 @@ export const Login = () => {
           {loading ? "登录中..." : "登录"}
         </button>
       </form>
-      <p className="text-xs text-gray-400 mt-4 text-center">
-        登录后请手动切换到 #/admin 进行充值
-      </p>
     </div>
   );
 };

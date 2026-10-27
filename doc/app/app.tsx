@@ -7,6 +7,8 @@ import { Recharge } from "./Recharge.js";
 import { Login } from "./Login.js";
 import { AdminRecharge } from "./AdminRecharge.js";
 import { MarkLogs } from "./MarkLogs.js";
+import { AdminUsers } from "./AdminUsers.js";
+import { AdminModels } from "./AdminModels.js";
 import "./index.css";
 
 const params = new URLSearchParams(location.search);
@@ -30,6 +32,8 @@ const App = () => (
       <Route path="/login"><Login /></Route>
       <Route path="/admin"><AdminRecharge /></Route>
       <Route path="/admin/mark-logs"><MarkLogs /></Route>
+      <Route path="/admin/users"><AdminUsers /></Route>
+      <Route path="/admin/models"><AdminModels /></Route>
     </Switch>
   </Router>
 );

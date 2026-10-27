@@ -9,6 +9,7 @@ import {
   findUserByToken, updateUserToken,
   insertCreditTransaction,
   verifyPassword,
+  listModelRows, countModelRows, insertModelRow, updateModelRow, setAllModelNotDefault, setModelDefault,
 } from './db.ts';
 import { DatabaseSync } from 'node:sqlite';
 import { describe, it, before } from 'node:test';
@@ -233,6 +234,50 @@ describe('db', () => {
     it('getMarkLogs respects limit and offset', () => {
       const logs = getMarkLogs(1, 0);
       assert.equal(logs.length, 1);
+    });
+  });
+
+  describe('model', () => {
+    const row1: Parameters<typeof insertModelRow>[0] = {
+      id: 'm1', label: 'model-1', inputPrice: 0.8, outputPrice: 2.7, cacheHitPrice: 0.16,
+      detail: 'high', enabled: 1, isDefault: 0, updatedAt: '2026-01-01T00:00:00.000Z',
+    };
+
+    it('is empty initially', () => {
+      assert.equal(countModelRows(), 0);
+      assert.deepEqual(listModelRows(), []);
+    });
+
+    it('insertModelRow and countModelRows', () => {
+      insertModelRow(row1);
+      assert.equal(countModelRows(), 1);
+      const rows = listModelRows();
+      assert.equal(rows.length, 1);
+      assert.equal(rows[0].id, 'm1');
+      assert.equal(rows[0].inputPrice, 0.8);
+      assert.equal(rows[0].cacheHitPrice, 0.16);
+    });
+
+    it('updateModelRow updates fields', () => {
+      updateModelRow({ ...row1, label: 'model-1-new', inputPrice: 1.0, outputPrice: 3.0, cacheHitPrice: 0.2, detail: 'low', enabled: 0, isDefault: 1, updatedAt: '2026-01-02T00:00:00.000Z' });
+      const rows = listModelRows();
+      assert.equal(rows.length, 1);
+      assert.equal(rows[0].label, 'model-1-new');
+      assert.equal(rows[0].inputPrice, 1.0);
+      assert.equal(rows[0].outputPrice, 3.0);
+      assert.equal(rows[0].cacheHitPrice, 0.2);
+      assert.equal(rows[0].detail, 'low');
+      assert.equal(rows[0].enabled, 0);
+      assert.equal(rows[0].isDefault, 1);
+    });
+
+    it('setAllModelNotDefault and setModelDefault', () => {
+      insertModelRow({ ...row1, id: 'm2', label: 'model-2', inputPrice: 0.2, outputPrice: 2.0, cacheHitPrice: 0.04 });
+      setAllModelNotDefault();
+      setModelDefault('m2');
+      const rows = listModelRows();
+      assert.equal(rows.find((r) => r.id === 'm2')?.isDefault, 1);
+      assert.equal(rows.find((r) => r.id === 'm1')?.isDefault, 0);
     });
   });
 });

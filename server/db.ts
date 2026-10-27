@@ -50,8 +50,19 @@ imageFilename  TEXT NOT NULL,
 result         TEXT NOT NULL,
 createdAt      TEXT NOT NULL
 )`;
+const MODEL_SQL = `CREATE TABLE IF NOT EXISTS model (
+id             TEXT PRIMARY KEY,
+label          TEXT NOT NULL,
+inputPrice     REAL NOT NULL,
+outputPrice    REAL NOT NULL,
+cacheHitPrice  REAL NOT NULL,
+detail         TEXT NOT NULL CHECK (detail IN ('low', 'high')),
+enabled        INTEGER NOT NULL DEFAULT 1,
+isDefault      INTEGER NOT NULL DEFAULT 0,
+updatedAt      TEXT NOT NULL
+)`;
 
-type MarkingDb = ResolveFks<SchemaFks<typeof KF_CURSOR_SQL> & SchemaFks<typeof USER_SQL> & SchemaFks<typeof MARK_RECORD_SQL> & SchemaFks<typeof CREDIT_TX_SQL> & SchemaFks<typeof MARK_LOG_SQL>>;
+type MarkingDb = ResolveFks<SchemaFks<typeof KF_CURSOR_SQL> & SchemaFks<typeof USER_SQL> & SchemaFks<typeof MARK_RECORD_SQL> & SchemaFks<typeof CREDIT_TX_SQL> & SchemaFks<typeof MARK_LOG_SQL> & SchemaFks<typeof MODEL_SQL>>;
 
 const DB_PATH = join(process.cwd(), "data", "marking.db");
 
@@ -85,6 +96,7 @@ export function initDb(): void {
   d.exec(MARK_RECORD_SQL);
   d.exec(CREDIT_TX_SQL);
   d.exec(MARK_LOG_SQL);
+  d.exec(MODEL_SQL);
 }
 
 export function insertMarkRecord(userId: string, costCredits: number): number {
@@ -161,6 +173,54 @@ export function loadCursor(openKfId: string): string | null {
 export function saveCursor(openKfId: string, cursor: string): void {
   const stmt = td().prepare("INSERT OR REPLACE INTO kfCursor (openKfId, cursor) VALUES (@openKfId, @cursor)");
   stmt.run({ openKfId, cursor });
+}
+
+// ── model ──
+
+export type ModelRow = {
+  id: string;
+  label: string;
+  inputPrice: number;
+  outputPrice: number;
+  cacheHitPrice: number;
+  detail: "low" | "high";
+  enabled: number;
+  isDefault: number;
+  updatedAt: string;
+};
+
+export function listModelRows(): ModelRow[] {
+  const stmt = td().prepare("SELECT ALL * FROM model WHERE 1=1 ORDER BY label LIMIT -1 OFFSET 0");
+  return stmt.all({});
+}
+
+export function countModelRows(): number {
+  const stmt = td().prepare("SELECT ALL COUNT(*) AS count FROM model WHERE 1=1 ORDER BY 1 LIMIT -1 OFFSET 0");
+  return stmt.get({})?.count ?? 0;
+}
+
+export function insertModelRow(row: ModelRow): void {
+  const stmt = td().prepare(
+    "INSERT OR ABORT INTO model (id, label, inputPrice, outputPrice, cacheHitPrice, detail, enabled, isDefault, updatedAt) VALUES (@id, @label, @inputPrice, @outputPrice, @cacheHitPrice, @detail, @enabled, @isDefault, @updatedAt)"
+  );
+  stmt.run(row);
+}
+
+export function updateModelRow(row: ModelRow): void {
+  const stmt = td().prepare(
+    "UPDATE OR ABORT model SET label = @label, inputPrice = @inputPrice, outputPrice = @outputPrice, cacheHitPrice = @cacheHitPrice, detail = @detail, enabled = @enabled, isDefault = @isDefault, updatedAt = @updatedAt WHERE model.id = @id"
+  );
+  stmt.run(row);
+}
+
+export function setAllModelNotDefault(): void {
+  const stmt = td().prepare("UPDATE OR ABORT model SET isDefault = 0 WHERE 1=1");
+  stmt.run({});
+}
+
+export function setModelDefault(id: string): void {
+  const stmt = td().prepare("UPDATE OR ABORT model SET isDefault = 1 WHERE model.id = @id");
+  stmt.run({ id });
 }
 
 // ── user ──

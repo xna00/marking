@@ -5,6 +5,7 @@ import { getCurrentUser, getUserIfLoggedIn } from "./auth.ts";
 import { insertMarkRecord, confirmMarkRecord, countConfirmedRecords, sumCredits, sumConsumedCredits, getTransactions as getDbTransactions, getUsageHistory as getDbUsageHistory, countTransactions as countDbTransactions, countUsageHistory as countDbUsageHistory, insertMarkLog } from "../db.ts";
 import { logger } from "../logger.ts";
 import { CONFIRM_MARK_MARKER_BASE64, type confirmMarkData } from "@marking/shared";
+import { getModelDef, resolveModel, resolveDetail, getModels as getModelsFromStore } from "./admin/model-store.ts";
 import { createHash } from "node:crypto";
 import { brotliCompress } from "node:zlib";
 import { mkdir, writeFile, unlink } from "node:fs/promises";
@@ -42,32 +43,10 @@ function constructPrompt(config: ConfigItem[]): string {
   return SYSTEM_PROMPT.replace("{{评分标准}}", mdTable);
 }
 
-type ModelDef = { id: string; label: string; input: number; output: number; detail: "low" | "high" };
-
-const AUTO_MODEL = "doubao-seed-2-0-lite-260428";
-
-const MODELS: ModelDef[] = [
-  { id: "doubao-seed-2-1-lite-260915", label: "doubao-seed-2-1-lite-260915", input: 0.8, output: 2.7, detail: "high" },
-  { id: "doubao-seed-1-8-251228", label: "doubao-seed-1-8-251228", input: 0.8, output: 2.0, detail: "high" },
-  { id: "doubao-seed-2-0-pro-260215", label: "doubao-seed-2-0-pro-260215", input: 3.2, output: 16.0, detail: "low" },
-  { id: "doubao-seed-2-0-lite-260428", label: "doubao-seed-2-0-lite-260428", input: 0.6, output: 3.6, detail: "high" },
-  { id: "doubao-seed-2-0-mini-260428", label: "doubao-seed-2-0-mini-260428", input: 0.2, output: 2.0, detail: "high" },
-];
-
-function getModelDef(id: string): ModelDef | undefined {
-  return MODELS.find((m) => m.id === id);
-}
-
-function resolveModel(model: string): string {
-  return model === "auto" ? AUTO_MODEL : model;
-}
-
-function resolveDetail(model: string): "low" | "high" {
-  return getModelDef(resolveModel(model))?.detail ?? "high";
-}
-
-export async function getModels(): Promise<Pick<ModelDef, "id" | "label">[]> {
-  return MODELS.map(({ id, label }) => ({ id, label }));
+// 模型定义 / 价格 / 默认 / 启用状态统一由 model-store 管理（DB 表 + 内存缓存），
+// 这里只保留给扩展用的 getModels 入口。
+export async function getModels() {
+  return getModelsFromStore();
 }
 
 async function doChat(body: ChatBody): Promise<AIResultItem[]> {
@@ -139,8 +118,11 @@ async function doChat(body: ChatBody): Promise<AIResultItem[]> {
       logger.logWithId('body:', content);
       if (data.usage) {
         const p = getModelDef(resolvedModel);
-        const cost = p ? (data.usage.prompt_tokens * p.input + data.usage.completion_tokens * p.output) / 1_000_000 : 0;
+        // 豆包官方计费：费用 = 输入价×(输入token−命中token) + 命中价×命中token + 输出价×输出token
         const cached = data.usage.prompt_tokens_details?.cached_tokens ?? 0;
+        const cost = p
+          ? ((data.usage.prompt_tokens - cached) * p.inputPrice + cached * p.cacheHitPrice + data.usage.completion_tokens * p.outputPrice) / 1_000_000
+          : 0;
         logger.logWithId(`tokens: 输入${data.usage.prompt_tokens} 缓存命中${cached} 输出${data.usage.completion_tokens} 总计${data.usage.total_tokens} 费用${cost.toFixed(4)}元`);
       }
 
