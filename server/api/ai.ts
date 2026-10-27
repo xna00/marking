@@ -122,7 +122,17 @@ async function doChat(body: ChatBody): Promise<AIResultItem[]> {
         throw new Error(`AI API error ${res.status}: ${JSON.stringify(errorBody)}`);
       }
 
-      const data = await res.json() as any;
+      // 豆包 Ark 响应。res.json() 在 node 下返回 unknown，这里按我们读取的字段
+      // 做最小结构声明（不完整校验 schema，非关键路径，缺失字段都有兜底）
+      const data = await res.json() as {
+        choices?: { message?: { content?: string } }[];
+        usage?: {
+          prompt_tokens: number;
+          completion_tokens: number;
+          total_tokens: number;
+          prompt_tokens_details?: { cached_tokens?: number };
+        };
+      };
       const content = data.choices?.[0]?.message?.content;
       lastContent = content;
 
@@ -130,7 +140,8 @@ async function doChat(body: ChatBody): Promise<AIResultItem[]> {
       if (data.usage) {
         const p = getModelDef(resolvedModel);
         const cost = p ? (data.usage.prompt_tokens * p.input + data.usage.completion_tokens * p.output) / 1_000_000 : 0;
-        logger.logWithId(`tokens: 输入${data.usage.prompt_tokens} 输出${data.usage.completion_tokens} 总计${data.usage.total_tokens} 费用${cost.toFixed(4)}元`);
+        const cached = data.usage.prompt_tokens_details?.cached_tokens ?? 0;
+        logger.logWithId(`tokens: 输入${data.usage.prompt_tokens} 缓存命中${cached} 输出${data.usage.completion_tokens} 总计${data.usage.total_tokens} 费用${cost.toFixed(4)}元`);
       }
 
       if (!content) {
