@@ -66,7 +66,7 @@ const syncImageSrc = async () => {
   });
   if ("error" in res) throw new Error(`图片 URL: ${result}\n${res.error}`);
   if (!res.dataUrl) throw new Error(`图片 URL: ${result}\n无该图片的响应数据`);
-  return await scaleImage(res.dataUrl, 700);
+  return await scaleImage(res.dataUrl);
 };
 
 const pasteImageFromClipboard = async () => {
@@ -77,7 +77,7 @@ const pasteImageFromClipboard = async () => {
         const blob = await item.getType(type);
         if (blob) {
           const _dataUrl = await blobToDataUrl(blob);
-          const dataUrl = await scaleImage(_dataUrl, 700);
+          const dataUrl = await scaleImage(_dataUrl);
           return dataUrl;
         }
       }
