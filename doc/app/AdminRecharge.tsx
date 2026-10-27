@@ -74,7 +74,7 @@ export const AdminRecharge = () => {
           />
         </div>
         <div>
-          <label className="block text-sm text-gray-600 mb-1">充值次数</label>
+          <label className="block text-sm text-gray-600 mb-1">充值数量</label>
           <input
             type="number"
             value={credits}
@@ -106,7 +106,7 @@ export const AdminRecharge = () => {
         {error && <p className="text-red-500 text-sm">{error}</p>}
         {result && (
           <p className="text-green-600 text-sm">
-            充值成功！{result.user}: {result.remainingCredits - result.addedCredits} → {result.remainingCredits} 次，金额 ¥{Number(amountMoney).toFixed(2)}
+            充值成功！{result.user}: {result.remainingCredits - result.addedCredits} → {result.remainingCredits} 份，金额 ¥{Number(amountMoney).toFixed(2)}
           </p>
         )}
         <button

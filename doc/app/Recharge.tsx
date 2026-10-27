@@ -27,7 +27,7 @@ export const Recharge = () => {
         const res = await api.wechatPay.getQuery({ outTradeNo: orderNo });
         if (res.status === "success") {
           setStatus("success");
-          setMessage(`充值 ${selectedCredits} 次成功`);
+          setMessage(`充值 ${selectedCredits} 份成功`);
           clearInterval(timer);
         }
       } catch {}
@@ -100,7 +100,7 @@ export const Recharge = () => {
                   background: selectedCredits === p.credits ? "#eff6ff" : "#fff",
                 }}
               >
-                <div style={{ fontSize: "18px", fontWeight: "bold" }}>{p.credits} 次</div>
+                <div style={{ fontSize: "18px", fontWeight: "bold" }}>{p.credits} 份</div>
                 <div style={{ fontSize: "14px", color: "#666" }}>¥{p.price}</div>
               </div>
             ))}

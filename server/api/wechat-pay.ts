@@ -16,14 +16,14 @@ export async function createOrder(body: { credits: number }) {
   const user = await getCurrentUser();
   const credits = body.credits;
   if (!credits || credits <= 0 || credits % 100 !== 0) {
-    throw new Error("次数必须是 100 的倍数");
+    throw new Error("数量必须是 100 的倍数");
   }
   const amountMoney = (credits / 100) * PRICE_PER_100;
   const outTradeNo = makeOrderNo();
 
   const api = getWechatPayApi();
   const result = await api.native.createOrder({
-    description: `改卷仙人充值 ${credits} 次`,
+    description: `改卷仙人充值 ${credits} 份`,
     out_trade_no: outTradeNo,
     amount: { total: amountMoney },
   });
@@ -88,7 +88,7 @@ export async function _outNotify(req: Request) {
 
     insertCreditTransaction(order.userId, order.amountMoney, order.amountCredits, undefined, tx.out_trade_no, "wechatPay");
     order.status = "success";
-    logger.logWithId(`支付通知: 用户 ${order.userId} 充值 ${order.amountCredits} 次成功`);
+    logger.logWithId(`支付通知: 用户 ${order.userId} 充值 ${order.amountCredits} 份成功`);
 
     return new Response(JSON.stringify({ code: "SUCCESS", message: "成功" }), { status: 200 });
   } catch (err) {

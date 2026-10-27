@@ -102,7 +102,7 @@ export const Usage = () => {
                     ) : (
                       <>
                         <th className="py-2 px-3 font-medium">金额</th>
-                        <th className="py-2 px-3 font-medium">次数</th>
+                        <th className="py-2 px-3 font-medium">数量</th>
                         <th className="py-2 px-3 font-medium">说明</th>
                       </>
                     )}
