@@ -4,12 +4,16 @@ import { api } from "./api.js";
 import { EXTENSION_VERSION, storageKeys } from "./constants.js";
 import "./logRequest.js";
 import { addMarkRecordId } from "./ai.js";
+import { setupSettingsSync } from "./settingsSync.js";
 
 chrome.storage.local.onChanged.addListener((changes) => {
   if (storageKeys.AUTH_TOKEN in changes && changes[storageKeys.AUTH_TOKEN].newValue) {
     chrome.action.setBadgeText({ text: "" });
   }
 });
+
+// 配置云同步：登录拉取 + 改动 debounce 推送
+setupSettingsSync();
 
 addEventListener("getAIResult", getAIResultHandler);
 

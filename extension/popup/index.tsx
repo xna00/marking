@@ -14,6 +14,7 @@ import { Banner } from "./Banner.js";
 import { specialChars } from "./specialChars.js";
 import { Login } from "./Login.js";
 import { api } from "../api.js";
+import { SYNC_KEYS } from "../settingsSync.js";
 import { chromeStorageLocalGet, chromeStorageLocalSet, chromeStorageLocalRemove } from "../storage.js";
 import { Router, Route, Switch } from "wouter";
 import { navigate, useHashLocation } from "wouter/use-hash-location";
@@ -124,6 +125,28 @@ const Main = () => {
         [storageKeys.AI_DELAY]: r[storageKeys.AI_DELAY] ?? defaultSettings[storageKeys.AI_DELAY],
       });
     });
+  }, []);
+
+  // 云同步：登录后 background 拉取并写回本地，popup 需感知并刷新，否则停留默认值。
+  // 与自身写入做深比较，相同则不动，避免 setState → 写本地 → onChanged 死循环。
+  useEffect(() => {
+    const listener = (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
+      if (area !== "local") return;
+      if (!SYNC_KEYS.some((key) => key in changes)) return;
+      chromeStorageLocalGet(null).then(r => {
+        setSettings(prev => {
+          const next = {
+            [storageKeys.AI_MODEL]: r[storageKeys.AI_MODEL] ?? defaultSettings[storageKeys.AI_MODEL],
+            [storageKeys.CRITERIA_CONFIG]: r[storageKeys.CRITERIA_CONFIG] ?? defaultSettings[storageKeys.CRITERIA_CONFIG],
+            [storageKeys.IMAGE_SRC]: r[storageKeys.IMAGE_SRC] ?? defaultSettings[storageKeys.IMAGE_SRC],
+            [storageKeys.AI_DELAY]: r[storageKeys.AI_DELAY] ?? defaultSettings[storageKeys.AI_DELAY],
+          };
+          return JSON.stringify(next) === JSON.stringify(prev) ? prev : next;
+        });
+      });
+    };
+    chrome.storage.onChanged.addListener(listener);
+    return () => chrome.storage.onChanged.removeListener(listener);
   }, []);
   useEffect(() => { chromeStorageLocalSet(settings); }, [settings]);
   const [result, setResult] = useState<{

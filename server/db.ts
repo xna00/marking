@@ -63,7 +63,13 @@ isDefault      INTEGER NOT NULL DEFAULT 0,
 updatedAt      TEXT NOT NULL
 )`;
 
-type MarkingDb = ResolveFks<SchemaFks<typeof KF_CURSOR_SQL> & SchemaFks<typeof USER_SQL> & SchemaFks<typeof MARK_RECORD_SQL> & SchemaFks<typeof CREDIT_TX_SQL> & SchemaFks<typeof MARK_LOG_SQL> & SchemaFks<typeof MODEL_SQL>>;
+const USER_SETTING_SQL = `CREATE TABLE IF NOT EXISTS userSetting (
+userId    TEXT PRIMARY KEY REFERENCES user(externalUserId),
+data      TEXT NOT NULL,
+updatedAt TEXT NOT NULL
+)`;
+
+type MarkingDb = ResolveFks<SchemaFks<typeof KF_CURSOR_SQL> & SchemaFks<typeof USER_SQL> & SchemaFks<typeof MARK_RECORD_SQL> & SchemaFks<typeof CREDIT_TX_SQL> & SchemaFks<typeof MARK_LOG_SQL> & SchemaFks<typeof MODEL_SQL> & SchemaFks<typeof USER_SETTING_SQL>>;
 
 const DB_PATH = join(process.cwd(), "data", "marking.db");
 
@@ -98,6 +104,7 @@ export function initDb(): void {
   d.exec(CREDIT_TX_SQL);
   d.exec(MARK_LOG_SQL);
   d.exec(MODEL_SQL);
+  d.exec(USER_SETTING_SQL);
 }
 
 export function insertMarkRecord(userId: string, costCredits: number): number {
@@ -350,4 +357,23 @@ export function updateUserWxProfile(
 export function findUserByToken(token: string): User | undefined {
   const stmt = td().prepare("SELECT ALL * FROM user WHERE user.token = @token ORDER BY 1 LIMIT -1 OFFSET 0");
   return stmt.get({ token });
+}
+
+export type UserSetting = {
+  userId: string;
+  data: string;
+  updatedAt: string;
+};
+
+export function getUserSetting(userId: string): UserSetting | undefined {
+  const stmt = td().prepare("SELECT ALL * FROM userSetting WHERE userSetting.userId = @userId ORDER BY 1 LIMIT -1 OFFSET 0");
+  return stmt.get({ userId });
+}
+
+export function upsertUserSetting(userId: string, data: string, updatedAt: string): void {
+  // TypedDb 的 _MatchInsert 只识别 INSERT OR REPLACE（见 typed-sql.ts），不支持 ON CONFLICT DO UPDATE
+  const stmt = td().prepare(
+    "INSERT OR REPLACE INTO userSetting (userId, data, updatedAt) VALUES (@userId, @data, @updatedAt)"
+  );
+  stmt.run({ userId, data, updatedAt });
 }
