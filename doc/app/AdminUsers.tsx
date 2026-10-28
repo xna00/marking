@@ -7,6 +7,7 @@ type UserRow = {
   nickname: string | null;
   avatar: string | null;
   createdAt: string;
+  lastActiveAt: string | null;
   totalCredits: number;
   consumedCredits: number;
   remainingCredits: number;
@@ -105,6 +106,7 @@ export const AdminUsers = () => {
               <th className="text-right px-3 py-2 border-b">已用</th>
               <th className="text-right px-3 py-2 border-b">剩余</th>
               <th className="text-left px-3 py-2 border-b">注册时间</th>
+              <th className="text-left px-3 py-2 border-b">最后活跃</th>
             </tr>
           </thead>
           <tbody>
@@ -123,11 +125,12 @@ export const AdminUsers = () => {
                 <td className="px-3 py-2 text-right">{r.consumedCredits}</td>
                 <td className="px-3 py-2 text-right">{r.remainingCredits}</td>
                 <td className="px-3 py-2">{formatTime(r.createdAt)}</td>
+                <td className="px-3 py-2">{r.lastActiveAt ? formatTime(r.lastActiveAt) : "—"}</td>
               </tr>
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-3 py-4 text-center text-gray-400">
+                <td colSpan={8} className="px-3 py-4 text-center text-gray-400">
                   无用户
                 </td>
               </tr>

@@ -57,6 +57,7 @@ export async function listUsers(body: { query?: string; limit?: number; offset?:
       nickname: u.nickname,
       avatar: u.avatar,
       createdAt: u.createdAt,
+      lastActiveAt: u.lastActiveAt,
       totalCredits,
       consumedCredits,
       remainingCredits: totalCredits - consumedCredits,

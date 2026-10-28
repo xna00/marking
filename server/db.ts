@@ -19,6 +19,7 @@ unionid        TEXT,
 email          TEXT,
 phone          TEXT,
 token          TEXT,
+lastActiveAt   TEXT,
 createdAt      TEXT NOT NULL,
 updatedAt      TEXT NOT NULL
 )`;
@@ -236,6 +237,7 @@ export type User = {
   email: string | null;
   phone: string | null;
   token: string | null;
+  lastActiveAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -286,6 +288,7 @@ export function createUser(
     email: email ?? null,
     phone: phone ?? null,
     token,
+    lastActiveAt: null,
     createdAt: now,
     updatedAt: now,
   };
@@ -323,6 +326,11 @@ export function insertCreditTransaction(
 export function updateUserToken(externalUserId: string, token: string | null): void {
   const stmt = td().prepare("UPDATE OR ABORT user SET token = @token, updatedAt = @updatedAt WHERE user.externalUserId = @externalUserId");
   stmt.run({ token, updatedAt: new Date().toISOString(), externalUserId });
+}
+
+export function updateUserLastActive(externalUserId: string, lastActiveAt: string): void {
+  const stmt = td().prepare("UPDATE OR ABORT user SET lastActiveAt = @lastActiveAt WHERE user.externalUserId = @externalUserId");
+  stmt.run({ lastActiveAt, externalUserId });
 }
 
 export function updateUserWxProfile(
