@@ -55,6 +55,16 @@ export enum storageKeys {
 
 export const HOST = "https://marking.112287.xyz";
 
+// 改卷页面 URL（与 manifest.json content_scripts.matches 保持一致，勿单边改动）。
+// 用于 popup 的"同步"按钮定位目标改卷页面 tab。
+export const MARKING_PAGE_URLS = [
+  "https://marking.112287.xyz/test/*",
+  "https://www.wylkyj.com/yuejuan/*",
+  "https://wylkyj.com/yuejuan/*",
+  "http://127.0.0.1:8080/*/test/*",
+  "https://marking.xna00.top/test/*",
+];
+
 export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
 
 export const EXTENSION_VERSION = import.meta.env.VITE_EXTENSION_VERSION;

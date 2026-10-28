@@ -103,22 +103,25 @@ const detachDebugger = async (tabId: number) => {
 };
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (changeInfo.status !== 'complete') {
+  const url = tab.url;
+  // 仅当改卷页 tab 自己重新加载时清空响应缓存；popup 等无关 tab 加载不应误清，
+  // 否则改卷页图片的响应缓存被清掉导致"同步"取不到图片。
+  if (changeInfo.status !== 'complete' && url && debuggerEnabledUrls.some((u) => url.includes(u))) {
     tabImageCount.delete(tabId);
     urlResponseMap.clear();
     imageMap.clear();
   }
   if (
     changeInfo.status === "complete" &&
-    tab.url &&
-    debuggerEnabledUrls.some((url) => tab.url!.includes(url))
+    url &&
+    debuggerEnabledUrls.some((u) => url.includes(u))
   ) {
     attachAndEnableNetwork(tabId, tab);
   }
   else if (
     attachedTabs.get(tabId) &&
-    tab.url &&
-    !debuggerEnabledUrls.some((url) => tab.url!.includes(url))
+    url &&
+    !debuggerEnabledUrls.some((u) => url.includes(u))
   ) {
     detachDebugger(tabId);
   }

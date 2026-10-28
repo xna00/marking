@@ -4,7 +4,7 @@ import {
 } from "../ai.js";
 import type { ConfigItem, ModelName } from "../models.js";
 import { blobToDataUrl, scaleImage } from "../image.js";
-import { storageKeys, shouldReloadOnMismatch, EXTENSION_VERSION, HOST } from "../constants.js";
+import { storageKeys, shouldReloadOnMismatch, EXTENSION_VERSION, HOST, MARKING_PAGE_URLS } from "../constants.js";
 import { createRoot } from "react-dom/client";
 import { useEffect, useRef, useState } from "react";
 import { CriteriaTable } from "./CriteriaTable.js";
@@ -49,25 +49,52 @@ export type InputRef = {
   e: HTMLTextAreaElement | HTMLInputElement;
   setValue: (value: string) => void;
 };
-const syncImageSrc = async () => {
-  const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tabs[0]?.id) throw new Error("没有找到活动标签页");
+// 读取单个 tab 的答题卡图片 src；注入失败或页面无该元素都算"这个不行"。
+const readImgSrc = async (tabId: number): Promise<string | null> => {
   const [{ result }] = await chrome.scripting.executeScript({
-    target: { tabId: tabs[0].id },
+    target: { tabId },
+    world: "ISOLATED",
     func: () => {
       const img = document.querySelector('.imgSection.clear>img') as HTMLImageElement;
       return img?.src ?? null;
     },
-    world: "ISOLATED",
   });
-  if (!result) throw new Error("未在页面中找到图片 (.imgSection.clear>img)");
-  const res = await sendMessage({
-    action: "getResponse",
-    data: { url: result },
-  });
-  if ("error" in res) throw new Error(`图片 URL: ${result}\n${res.error}`);
-  if (!res.dataUrl) throw new Error(`图片 URL: ${result}\n无该图片的响应数据`);
-  return await scaleImage(res.dataUrl);
+  return typeof result === "string" && result ? result : null;
+};
+
+const syncImageSrc = async () => {
+  // 候选：当前窗口的改卷页面，无则全局兜底
+  const inWin = await chrome.tabs.query({ currentWindow: true, url: MARKING_PAGE_URLS });
+  const pool = inWin.length ? inWin : await chrome.tabs.query({ url: MARKING_PAGE_URLS });
+  if (pool.length === 0) throw new Error("未找到改卷页面，请先打开试卷页面再同步");
+  // 其余候选从右到左（index 降序，最近开的改卷页通常在右边）
+  const ordered = [...pool].sort((a, b) => b.index - a.index);
+  // 当前正在看的改卷页优先（哪怕它在更左）
+  const [active] = await chrome.tabs.query({ active: true, currentWindow: true, url: MARKING_PAGE_URLS });
+  const candidates = [
+    ...(active?.id ? ordered.filter((t) => t.id === active.id) : []),
+    ...ordered.filter((t) => t.id !== active?.id),
+  ];
+  // 逐个试，哪个成功用哪个（成功 = 读到非空图片 src 且取到响应并缩放成功）
+  let sawImage = false; // 读到过图片 src
+  let responseMissing = false; // 读到过 src 但 getResponse 无响应
+  for (const tab of candidates) {
+    if (tab.id == null) continue;
+    try {
+      const url = await readImgSrc(tab.id);
+      if (!url) continue; // 该页没有答题卡图片（加载中/非做题页）→ 试下一个
+      sawImage = true;
+      const res = await sendMessage({ action: "getResponse", data: { url } });
+      if ("error" in res) continue; // 该页图片无缓存响应 → 试下一个
+      if (!res.dataUrl) { responseMissing = true; continue; }
+      return await scaleImage(res.dataUrl);
+    } catch {
+      // 注入失败（如 popup 自身 chrome-extension 页、tab 已关闭）→ 试下一个
+    }
+  }
+  if (responseMissing) throw new Error("已找到改卷页面，但图片响应未抓到，请先刷新改卷页面加载图片后重试");
+  if (sawImage) throw new Error("改卷页面未显示答题卡图片，请刷新改卷页面后重试");
+  throw new Error("未找到可用的改卷页面，请先打开试卷页面再同步");
 };
 
 const pasteImageFromClipboard = async () => {
@@ -233,12 +260,6 @@ const Main = () => {
                 </button>
               </div>
               <div className="flex items-center gap-4">
-                <span
-                  className="text-blue-500 text-xs underline cursor-pointer"
-                  onClick={() => chrome.tabs.create({ url: chrome.runtime.getURL("popup.html") })}
-                >
-                  在新标签页打开
-                </span>
                 <a href={HOST} target="_blank" rel="noopener noreferrer" className="text-blue-500 text-xs underline">使用说明</a>
               </div>
             </div>
@@ -271,12 +292,6 @@ const Main = () => {
               <button className="text-white bg-blue-500 hover:bg-blue-600 px-3 py-1 rounded text-xs" onClick={() => navigate("/login")}>去登录</button>
             </div>
             <div className="flex items-center gap-4">
-              <span
-                className="text-blue-500 text-xs underline cursor-pointer"
-                onClick={() => chrome.tabs.create({ url: chrome.runtime.getURL("popup.html") })}
-              >
-                在新标签页打开
-              </span>
               <a href={HOST} target="_blank" rel="noopener noreferrer" className="text-blue-500 text-xs underline">使用说明</a>
             </div>
           </div>
