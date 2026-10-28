@@ -209,13 +209,15 @@ const Main = () => {
                   退出
                 </button>
               </div>
-              <button
-                className="text-blue-500 text-xs underline cursor-pointer"
-                onClick={() => chrome.tabs.create({ url: chrome.runtime.getURL("popup.html") })}
-              >
-                在新标签页打开
-              </button>
-              <a href={HOST} target="_blank" rel="noopener noreferrer" className="text-blue-500 text-xs underline">使用说明</a>
+              <div className="flex items-center gap-4">
+                <span
+                  className="text-blue-500 text-xs underline cursor-pointer"
+                  onClick={() => chrome.tabs.create({ url: chrome.runtime.getURL("popup.html") })}
+                >
+                  在新标签页打开
+                </span>
+                <a href={HOST} target="_blank" rel="noopener noreferrer" className="text-blue-500 text-xs underline">使用说明</a>
+              </div>
             </div>
             {consumedCredits !== null && remainingCredits !== null && (
               <div className="flex items-center justify-between mt-1">
@@ -245,13 +247,15 @@ const Main = () => {
               <span className="text-red-500">未登录</span>
               <button className="text-white bg-blue-500 hover:bg-blue-600 px-3 py-1 rounded text-xs" onClick={() => navigate("/login")}>去登录</button>
             </div>
-            <button
-              className="text-blue-500 text-xs underline cursor-pointer"
-              onClick={() => chrome.tabs.create({ url: chrome.runtime.getURL("popup.html") })}
-            >
-              在新标签页打开
-            </button>
-            <a href={HOST} target="_blank" rel="noopener noreferrer" className="text-blue-500 text-xs underline">使用说明</a>
+            <div className="flex items-center gap-4">
+              <span
+                className="text-blue-500 text-xs underline cursor-pointer"
+                onClick={() => chrome.tabs.create({ url: chrome.runtime.getURL("popup.html") })}
+              >
+                在新标签页打开
+              </span>
+              <a href={HOST} target="_blank" rel="noopener noreferrer" className="text-blue-500 text-xs underline">使用说明</a>
+            </div>
           </div>
         )}
       </div>
