@@ -228,6 +228,12 @@ export async function markImage(body: ChatBody): Promise<{
       logger.logWithId(error)
     }
   }
+  // 余额不足禁止改卷：无论普通改卷还是确认标记，doChat + 扣费前统一检查
+  const total = sumCredits(user.externalUserId);
+  const consumed = sumConsumedCredits(user.externalUserId);
+  if (total - consumed <= 0) {
+    throw new ApiError(402, "余额不足，请充值", {}, "API_INSUFFICIENT_CREDITS", {});
+  }
   const result = await doChat(body);
   const markRecordId = insertMarkRecord(user.externalUserId, 1);
   logger.logWithId(`markImage: recordId=${markRecordId}, userName=${user.username}, userId=${user.externalUserId}`);
@@ -239,8 +245,8 @@ export async function markImage(body: ChatBody): Promise<{
     logger.logWithId('markLog error:', e);
   }
   const confirmedCount = countConfirmedRecords(user.externalUserId);
-  const consumedCredits = sumConsumedCredits(user.externalUserId);
-  const totalCredits = sumCredits(user.externalUserId);
+  const consumedCredits = sumConsumedCredits(user.externalUserId); // 重读：确认状态已变
+  const totalCredits = total; // 复用检查点读的值（充值不改卷中不变）
   const remainingCredits = totalCredits - consumedCredits;
   logger.logWithId(`confirmMark result: confirmedCount=${confirmedCount}, consumedCredits=${consumedCredits}, totalCredits=${totalCredits}, remainingCredits=${remainingCredits}`);
   return { result, markRecordId, usage: { confirmedCount, consumedCredits, totalCredits, remainingCredits } };

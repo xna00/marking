@@ -10,6 +10,7 @@ type ErrorCodeExtraDataMap = {
   "API_BAD_REQUEST": {},
   "API_FORBIDDEN": {},
   "API_UNAUTHORIZED": {},
+  "API_INSUFFICIENT_CREDITS": {},
 }
 
 type ApiErrorC<K> = K extends keyof ErrorCodeExtraDataMap ? { errorCode: K, message: string } & ErrorCodeExtraDataMap[K] : never
