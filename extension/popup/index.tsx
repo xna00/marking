@@ -146,10 +146,7 @@ const Main = () => {
   useEffect(() => {
     chromeStorageLocalGet(null).then(r => {
       setSettings({
-        [storageKeys.AI_MODEL]: r[storageKeys.AI_MODEL] ?? defaultSettings[storageKeys.AI_MODEL],
-        [storageKeys.CRITERIA_CONFIG]: r[storageKeys.CRITERIA_CONFIG] ?? defaultSettings[storageKeys.CRITERIA_CONFIG],
-        [storageKeys.IMAGE_SRC]: r[storageKeys.IMAGE_SRC] ?? defaultSettings[storageKeys.IMAGE_SRC],
-        [storageKeys.AI_DELAY]: r[storageKeys.AI_DELAY] ?? defaultSettings[storageKeys.AI_DELAY],
+        ...defaultSettings, ...r
       });
     });
   }, []);
@@ -175,7 +172,15 @@ const Main = () => {
     chrome.storage.onChanged.addListener(listener);
     return () => chrome.storage.onChanged.removeListener(listener);
   }, []);
-  useEffect(() => { chromeStorageLocalSet(settings); }, [settings]);
+  // 用户编辑：同步 state + 写 local。挂载读回/云同步刷新走 setSettings 直写，
+  // 不经过这里，避免 mount 用默认值覆盖 local 里的用户配置。
+  const updateSettings = (updater: (prev: Settings) => Settings) => {
+    setSettings(prev => {
+      const next = updater(prev);
+      chromeStorageLocalSet(next);
+      return next;
+    });
+  };
   const [result, setResult] = useState<{
     tag: "succeed" | "error";
     msg: string;
@@ -227,7 +232,7 @@ const Main = () => {
       "paste",
       () => {
         pasteImageFromClipboard().then((dataUrl) => {
-          dataUrl && setSettings(s => ({ ...s, [storageKeys.IMAGE_SRC]: dataUrl }));
+          dataUrl && updateSettings(s => ({ ...s, [storageKeys.IMAGE_SRC]: dataUrl }));
         });
       },
       {
@@ -303,7 +308,7 @@ const Main = () => {
         <select
           id="modelSelect"
           value={settings[storageKeys.AI_MODEL]}
-          onChange={(e) => setSettings(s => ({ ...s, [storageKeys.AI_MODEL]: e.target.value }))}
+          onChange={(e) => updateSettings(s => ({ ...s, [storageKeys.AI_MODEL]: e.target.value }))}
         >
           <option key="auto" value="auto">自动选择</option>
           {models.map((m) => (
@@ -322,7 +327,7 @@ const Main = () => {
               value={settings[storageKeys.AI_DELAY][0]}
               onChange={e => {
                 const val = Math.max(0, Number(e.target.value));
-                setSettings(s => ({ ...s, [storageKeys.AI_DELAY]: [val, Math.max(val, s[storageKeys.AI_DELAY][1])] }));
+                updateSettings(s => ({ ...s, [storageKeys.AI_DELAY]: [val, Math.max(val, s[storageKeys.AI_DELAY][1])] }));
               }}
             />
           </label>
@@ -335,7 +340,7 @@ const Main = () => {
               value={settings[storageKeys.AI_DELAY][1]}
               onChange={e => {
                 const val = Math.max(0, Number(e.target.value));
-                setSettings(s => ({ ...s, [storageKeys.AI_DELAY]: [Math.min(s[storageKeys.AI_DELAY][0], val), val] }));
+                updateSettings(s => ({ ...s, [storageKeys.AI_DELAY]: [Math.min(s[storageKeys.AI_DELAY][0], val), val] }));
               }}
             />
           </label>
@@ -344,14 +349,14 @@ const Main = () => {
           <label className="!inline !mb-0">评分标准</label>
           <button
             className="small-btn"
-            onClick={() => setSettings(s => ({ ...s, [storageKeys.CRITERIA_CONFIG]: defaultSettings[storageKeys.CRITERIA_CONFIG] }))}
+            onClick={() => updateSettings(s => ({ ...s, [storageKeys.CRITERIA_CONFIG]: defaultSettings[storageKeys.CRITERIA_CONFIG] }))}
           >
             重置
           </button>
         </div>
         <CriteriaTable
           config={settings[storageKeys.CRITERIA_CONFIG]}
-          onChange={(v) => setSettings(s => ({ ...s, [storageKeys.CRITERIA_CONFIG]: v }))}
+          onChange={(v) => updateSettings(s => ({ ...s, [storageKeys.CRITERIA_CONFIG]: v }))}
           setInputRef={setInputRef}
         />
         <div className="fixed right-0 top-2/3">
@@ -422,7 +427,7 @@ const Main = () => {
                   try {
                     const dataUrl = await syncImageSrc()
                     if (dataUrl) {
-                      setSettings(s => ({ ...s, [storageKeys.IMAGE_SRC]: dataUrl }));
+                      updateSettings(s => ({ ...s, [storageKeys.IMAGE_SRC]: dataUrl }));
                       setResult({ tag: "succeed", msg: "" });
                     }
                   } catch (e) {
@@ -439,7 +444,7 @@ const Main = () => {
                 className="small-btn"
                 onClick={() => {
                   pasteImageFromClipboard().then((dataUrl) => {
-                    dataUrl && setSettings(s => ({ ...s, [storageKeys.IMAGE_SRC]: dataUrl }));
+                    dataUrl && updateSettings(s => ({ ...s, [storageKeys.IMAGE_SRC]: dataUrl }));
                   });
                 }}
               >
@@ -447,7 +452,7 @@ const Main = () => {
               </button>
               <button
                 className="small-btn"
-                onClick={() => setSettings(s => ({ ...s, [storageKeys.IMAGE_SRC]: defaultImageUrl }))}
+                onClick={() => updateSettings(s => ({ ...s, [storageKeys.IMAGE_SRC]: defaultImageUrl }))}
               >
                 重置
               </button>
