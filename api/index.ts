@@ -38,10 +38,10 @@ export const createHandler = (base: string, options?: {
 
       let finalBody: BodyInit | undefined;
       if (bodyStr) {
-        const encoded = new TextEncoder().encode(bodyStr);
-        if (encoded.byteLength >= COMPRESS_THRESHOLD) {
+        const bodyBlob = new Blob([bodyStr]);
+        if (bodyBlob.size >= COMPRESS_THRESHOLD) {
           finalBody = await new Response(
-            new Blob([encoded]).stream().pipeThrough(new CompressionStream("gzip"))
+            bodyBlob.stream().pipeThrough(new CompressionStream("gzip"))
           ).arrayBuffer();
           headers.set("content-encoding", "gzip");
         } else {
