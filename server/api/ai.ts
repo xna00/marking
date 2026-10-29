@@ -1,5 +1,5 @@
 import { jsonrepair } from "jsonrepair";
-import { DOUBAO_URL, API_KEY } from "./constants.ts";
+import { DOUBAO_URL, API_KEY, SITE_HOST } from "./constants.ts";
 import { ApiError } from "./utils.ts";
 import { getCurrentUser, getUserIfLoggedIn } from "./auth.ts";
 import { insertMarkRecord, confirmMarkRecord, countConfirmedRecords, sumCredits, sumConsumedCredits, getTransactions as getDbTransactions, getUsageHistory as getDbUsageHistory, countTransactions as countDbTransactions, countUsageHistory as countDbUsageHistory, insertMarkLog } from "../db.ts";
@@ -232,7 +232,13 @@ export async function markImage(body: ChatBody): Promise<{
   const total = sumCredits(user.externalUserId);
   const consumed = sumConsumedCredits(user.externalUserId);
   if (total - consumed <= 0) {
-    throw new ApiError(402, "余额不足，请充值", {}, "API_INSUFFICIENT_CREDITS", {});
+    throw new ApiError(
+      402,
+      `余额不足，请<a href="${SITE_HOST}/app/#/recharge" target="_blank" rel="noopener noreferrer">充值</a>`,
+      {},
+      "API_INSUFFICIENT_CREDITS",
+      {},
+    );
   }
   const result = await doChat(body);
   const markRecordId = insertMarkRecord(user.externalUserId, 1);
