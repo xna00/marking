@@ -11,14 +11,28 @@ import { AdminUsers } from "./AdminUsers.js";
 import { AdminModels } from "./AdminModels.js";
 import "./index.css";
 
-const params = new URLSearchParams(location.search);
-const token = params.get("token") || sessionStorage.getItem("authToken");
-if (token) sessionStorage.setItem("authToken", token);
-history.replaceState(null, "", location.pathname + location.hash);
+const KEY = "authToken";
+
+// token 由 content script 写入 sessionStorage，这里用模块级 deferred 等它就绪
+let resolveToken: (() => void) | undefined;
+const tokenReady = new Promise<void>((r) => {
+  resolveToken = r;
+});
+
+window.addEventListener("message", (e) => {
+  if (e.data?.type !== "MARKING_TOKEN_READY") return;
+  resolveToken?.();
+});
+
+// 主动请求 content script 注入 token（content script 的监听必然已就绪）
+window.postMessage({ type: "MARKING_REQUEST_TOKEN" }, "*");
+// 兜底：没装扩展时也要 resolve，否则所有请求会永久挂起
+setTimeout(() => resolveToken?.(), 1000);
 
 export const api = createHandler("/api", {
   fetcher: async (req, init) => {
-    const t = sessionStorage.getItem("authToken");
+    await tokenReady;
+    const t = sessionStorage.getItem(KEY);
     if (t) req.headers.set("Authorization", `Bearer ${t}`);
     return fetch(req, init);
   },

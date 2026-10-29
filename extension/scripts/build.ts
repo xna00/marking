@@ -66,3 +66,22 @@ await build({
     },
   },
 });
+
+// 第三次：doc token 注入脚本（同样必须单 entry 自包含）
+await build({
+  configFile: false,
+  root,
+  build: {
+    outDir,
+    emptyOutDir: false,
+    minify: true,
+    rollupOptions: {
+      input: {
+        docToken: "docToken.ts",
+      },
+      output: {
+        entryFileNames: "[name].js",
+      },
+    },
+  },
+});

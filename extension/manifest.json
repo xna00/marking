@@ -35,6 +35,11 @@
     {
       "matches": ["https://marking.112287.xyz/test/*", "https://www.wylkyj.com/yuejuan/*", "https://wylkyj.com/yuejuan/*", "http://127.0.0.1:8080/*/test/*", "https://marking.xna00.top/test/*"],
       "js": ["content.js"]
+    },
+    {
+      "matches": ["https://marking.112287.xyz/app/*", "https://marking.xna00.top/app/*"],
+      "js": ["docToken.js"],
+      "run_at": "document_start"
     }
   ],
   "icons": {

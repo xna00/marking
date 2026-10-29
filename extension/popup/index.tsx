@@ -275,16 +275,10 @@ const Main = () => {
                 </span>
                 <div className="flex gap-3">
                   <span className="text-blue-500 text-xs underline cursor-pointer" onClick={() => {
-                    chromeStorageLocalGet(storageKeys.AUTH_TOKEN).then(r => {
-                      const t = r[storageKeys.AUTH_TOKEN];
-                      window.open(`${HOST}/app/?token=${t}#/usage`, "_blank");
-                    });
+                    window.open(`${HOST}/app/#/usage`, "_blank");
                   }}>详情</span>
                   <span className="text-blue-500 text-xs underline cursor-pointer" onClick={() => {
-                    chromeStorageLocalGet(storageKeys.AUTH_TOKEN).then(r => {
-                      const t = r[storageKeys.AUTH_TOKEN];
-                      window.open(`${HOST}/app/?token=${t}#/recharge`, "_blank");
-                    });
+                    window.open(`${HOST}/app/#/recharge`, "_blank");
                   }}>充值(0.3元/100份)</span>
                 </div>
               </div>
