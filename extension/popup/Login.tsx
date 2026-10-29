@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { generate } from "lean-qr";
 import { BACKEND_URL } from "../constants";
 import { api } from "../api";
-import { callWithFetchOption } from "@marking/api";
 import { navigate } from "wouter/use-hash-location";
 
 type Props = {
@@ -21,7 +20,7 @@ export function Login({ onLogin }: Props) {
 
     const controller = new AbortController();
 
-    callWithFetchOption(api.wechat.qr, [{ sceneParam: uuid }], { signal: controller.signal })
+    api.wechat.qr.withOptions({ signal: controller.signal })({ sceneParam: uuid })
       .then((data) => {
         if (data.url && canvasRef.current) {
           generate(data.url).toCanvas(canvasRef.current);
@@ -31,7 +30,7 @@ export function Login({ onLogin }: Props) {
 
     const interval = setInterval(async () => {
       try {
-        const data = await callWithFetchOption(api.wechat.poll, [{uuid}], {signal: controller.signal})
+        const data = await api.wechat.poll.withOptions({ signal: controller.signal })({ uuid })
         if (data.status === "completed" && data.token) {
           clearInterval(interval);
           setDone(true);

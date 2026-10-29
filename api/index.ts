@@ -17,11 +17,18 @@ const COMPRESS_THRESHOLD = 1024;
 const isGetMethod = (path: string) =>
   !!path.split("/").pop()?.startsWith("get");
 
+type FetchOptions = Omit<RequestInit, "body" | "method" | "headers">;
+
 export const createHandler = (base: string, options?: {
-  fetcher?: (req: Request) => Promise<Response>;
+  fetcher?: (req: Request, init?: FetchOptions) => Promise<Response>;
+  fetchOptions?: FetchOptions;
 }): Promisify<Api> => {
   return new Proxy(() => { }, {
     get(_target, p: string, _receiver) {
+      if (p === "withOptions") {
+        return (fetchOptions: FetchOptions) =>
+          createHandler(base, { ...options, fetchOptions });
+      }
       let ret = createHandler(`${base}/${p as string}`, options);
       if (p === "makeRequest") {
         ret = createHandler(`${base}`, options);
@@ -60,7 +67,9 @@ export const createHandler = (base: string, options?: {
         }
       );
       if (target.isMakeRequest) return req;
-      const r = options?.fetcher ? await options.fetcher(req) : await fetch(req);
+      const r = options?.fetcher
+        ? await options.fetcher(req, options.fetchOptions)
+        : await fetch(req, options?.fetchOptions);
       if (r.status === 401) {
         // location.href = "/login";
       }
@@ -86,27 +95,8 @@ type Promisify<T> = {
     ...params: P
   ) => Promise<Awaited<R>>) & {
     makeRequest: (...params: P) => Promise<Request>;
+    withOptions: (fetchOptions: FetchOptions) => (...params: P) => Promise<Awaited<R>>;
   }
   : Promisify<T[K]>;
 };
-
-
-export const callWithFetchOption = async <
-  const F extends ((...args: any) => any) & { makeRequest: (...args: Parameters<F>) => Promise<Request> }
->(
-  fn: F,
-  params: Parameters<F>,
-  options: { signal?: AbortSignal }
-): Promise<Awaited<ReturnType<F>>> => {
-  const req = await fn.makeRequest(...params);
-  const res = await fetch(req, options);
-  if (!res.ok) {
-    const isJson = res.headers.get("content-type")?.toLowerCase().startsWith("application/json");
-    const body = isJson
-      ? await res.json().catch(() => undefined)
-      : { message: await res.text().catch(() => undefined) };
-    throw new ApiError(res.status, body);
-  }
-  return res.json();
-}
 
