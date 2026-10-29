@@ -21,8 +21,6 @@
     "*.json"
   ],
   "exclude": [
-    "vite.config.ts",
-    "vite.content.config.ts",
     "scripts"
   ]
 }
