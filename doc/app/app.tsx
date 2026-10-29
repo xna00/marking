@@ -17,10 +17,10 @@ if (token) sessionStorage.setItem("authToken", token);
 history.replaceState(null, "", location.pathname + location.hash);
 
 export const api = createHandler("/api", {
-  beforeRequest: async (req) => {
+  fetcher: async (req) => {
     const t = sessionStorage.getItem("authToken");
     if (t) req.headers.set("Authorization", `Bearer ${t}`);
-    return req;
+    return fetch(req);
   },
 });
 
