@@ -8,7 +8,7 @@ import {
   createUser, findUserByExternalUserId, findUserByUsername,
   findUserByToken, updateUserToken,
   insertCreditTransaction,
-  listCreditTransactions, countCreditTransactions,
+  listCreditTransactions, summarizeCreditTransactions,
   verifyPassword,
   listModelRows, countModelRows, insertModelRow, updateModelRow, setAllModelNotDefault, setModelDefault,
 } from './db.ts';
@@ -213,7 +213,7 @@ describe('db', () => {
       assert.equal(all[0].payMethod, 'alipay');
       assert.equal(all[1].amountMoney, 100);
       assert.equal(all[1].description, null);
-      assert.equal(countCreditTransactions(), 2);
+      assert.deepEqual(summarizeCreditTransactions(), { count: 2, amountMoney: 300, amountCredits: 200 });
 
       const page = listCreditTransactions(1, 1);
       assert.equal(page.length, 1);
@@ -227,8 +227,8 @@ describe('db', () => {
       assert.ok(fromNewest.every((r) => r.createdAt >= newest.createdAt));
 
       assert.deepEqual(listCreditTransactions(10, 0, '0000', '0001'), []);
-      assert.equal(countCreditTransactions('0000', '0001'), 0);
-      assert.equal(countCreditTransactions(newest.createdAt, '9999'), fromNewest.length);
+      assert.deepEqual(summarizeCreditTransactions('0000', '0001'), { count: 0, amountMoney: 0, amountCredits: 0 });
+      assert.equal(summarizeCreditTransactions(newest.createdAt, '9999').count, fromNewest.length);
     });
   });
 

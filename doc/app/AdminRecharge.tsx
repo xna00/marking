@@ -41,6 +41,7 @@ const toIsoRange = (from: string, to: string): DateRange => {
 export const AdminRecharge = () => {
   const [rows, setRows] = useState<RechargeRow[]>([]);
   const [total, setTotal] = useState(0);
+  const [amountMoney, setAmountMoney] = useState(0);
   const [limit, setLimit] = useState(20);
   const [offset, setOffset] = useState(0);
   const [from, setFrom] = useState("");
@@ -56,6 +57,7 @@ export const AdminRecharge = () => {
       const data = await api.admin.listRecharges({ limit: l, offset: o, ...r });
       setRows(data.rows);
       setTotal(data.total);
+      setAmountMoney(data.amountMoney);
       setLimit(l);
       setOffset(o);
     } catch (err: unknown) {
@@ -134,7 +136,9 @@ export const AdminRecharge = () => {
           </button>
         </span>
 
-        <span className="ml-auto text-sm text-gray-500">共 {total} 条记录</span>
+        <span className="ml-auto text-sm text-gray-500">
+          共 {total} 条记录 · 合计 {formatMoney(amountMoney)}
+        </span>
         <button
           onClick={() => {
             setNotice("");

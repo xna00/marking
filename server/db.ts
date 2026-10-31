@@ -213,15 +213,20 @@ OFFSET @offset
   return stmt.all({ limit, offset, start, end });
 }
 
-export function countCreditTransactions(start = "0000", end = "9999"): number {
+export function summarizeCreditTransactions(start = "0000", end = "9999"): { count: number; amountMoney: number; amountCredits: number } {
   const stmt = td().prepare(`
-SELECT ALL COUNT(*) AS count FROM creditTransaction
+SELECT ALL COUNT(*) AS count, SUM(creditTransaction.amountMoney) AS amountMoney, SUM(creditTransaction.amountCredits) AS amountCredits FROM creditTransaction
 WHERE creditTransaction.createdAt >= @start AND creditTransaction.createdAt < @end
 ORDER BY 1
 LIMIT -1
 OFFSET 0
 `);
-  return stmt.get({ start, end })?.count ?? 0;
+  const row = stmt.get({ start, end });
+  return {
+    count: row?.count ?? 0,
+    amountMoney: row?.amountMoney ?? 0,
+    amountCredits: row?.amountCredits ?? 0,
+  };
 }
 
 export function countUsageHistory(userId: string): number {
