@@ -1,5 +1,5 @@
 import { getCurrentUser } from "../auth.ts";
-import { findUserByUsername, insertCreditTransaction, sumCredits, sumConsumedCredits, listAllUsers } from "../../db.ts";
+import { findUserByUsername, insertCreditTransaction, sumCredits, sumConsumedCredits, listAllUsers, listCreditTransactions, countCreditTransactions } from "../../db.ts";
 import { getAllModels, saveModel, setDefaultModel as storeSetDefaultModel, type ModelPatch } from "./model-store.ts";
 import { ADMIN_USERNAME } from "../constants.ts";
 import { ApiError } from "../utils.ts";
@@ -37,6 +37,14 @@ export async function recharge(body: { targetUsername: string; credits: number; 
     totalCredits,
     remainingCredits: totalCredits - consumedCredits,
   };
+}
+
+export async function listRecharges(body: { limit?: number; offset?: number } = {}) {
+  await requireAdmin();
+
+  const limit = Math.min(Math.max(body.limit ?? 20, 1), 100);
+  const offset = Math.max(body.offset ?? 0, 0);
+  return { rows: listCreditTransactions(limit, offset), total: countCreditTransactions() };
 }
 
 export async function listUsers(body: { query?: string; limit?: number; offset?: number } = {}) {

@@ -201,6 +201,29 @@ OFFSET 0
   return stmt.get({ userId })?.count ?? 0;
 }
 
+export function listCreditTransactions(limit = 50, offset = 0) {
+  // JOIN 必须和 FROM 写在同一行：typed-sql 按 " INNER JOIN " 切 FROM 子句，换行会解析不到表
+  const stmt = td().prepare(`
+SELECT ALL creditTransaction.id AS id, user.username AS username, creditTransaction.amountMoney AS amountMoney, creditTransaction.amountCredits AS amountCredits, creditTransaction.description AS description, creditTransaction.payMethod AS payMethod, creditTransaction.createdAt AS createdAt FROM creditTransaction INNER JOIN user ON user.externalUserId = creditTransaction.userId
+WHERE 1=1
+ORDER BY creditTransaction.createdAt DESC, creditTransaction.id DESC
+LIMIT @limit
+OFFSET @offset
+`);
+  return stmt.all({ limit, offset });
+}
+
+export function countCreditTransactions(): number {
+  const stmt = td().prepare(`
+SELECT ALL COUNT(*) AS count FROM creditTransaction
+WHERE 1=1
+ORDER BY 1
+LIMIT -1
+OFFSET 0
+`);
+  return stmt.get({})?.count ?? 0;
+}
+
 export function countUsageHistory(userId: string): number {
   const stmt = td().prepare(`
 SELECT ALL COUNT(*) AS count FROM markRecord

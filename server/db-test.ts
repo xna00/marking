@@ -8,6 +8,7 @@ import {
   createUser, findUserByExternalUserId, findUserByUsername,
   findUserByToken, updateUserToken,
   insertCreditTransaction,
+  listCreditTransactions, countCreditTransactions,
   verifyPassword,
   listModelRows, countModelRows, insertModelRow, updateModelRow, setAllModelNotDefault, setModelDefault,
 } from './db.ts';
@@ -202,6 +203,21 @@ describe('db', () => {
       assert.equal(raw[0].payMethod, null);
       assert.equal(raw[1].orderNo, 'ord-1');
       assert.equal(raw[1].payMethod, 'alipay');
+    });
+
+    it('listCreditTransactions joins username and respects limit/offset', () => {
+      const all = listCreditTransactions();
+      assert.equal(all.length, 2);
+      assert.equal(all[0].username, 'ctuser');
+      assert.equal(all[0].amountCredits, 150);
+      assert.equal(all[0].payMethod, 'alipay');
+      assert.equal(all[1].amountMoney, 100);
+      assert.equal(all[1].description, null);
+      assert.equal(countCreditTransactions(), 2);
+
+      const page = listCreditTransactions(1, 1);
+      assert.equal(page.length, 1);
+      assert.equal(page[0].amountCredits, 50);
     });
   });
 
