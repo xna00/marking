@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "./app.js";
 import { Modal } from "./Modal.js";
+import { formatTime } from "./utils.js";
 
 type RechargeRow = {
   id: number;
@@ -13,12 +14,6 @@ type RechargeRow = {
 };
 
 type DateRange = { start?: string; end?: string };
-
-const formatTime = (iso: string) => {
-  const d = new Date(iso);
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
-};
 
 // amountMoney 统一存分
 const formatMoney = (cents: number) => `¥${(cents / 100).toFixed(2)}`;

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "./app.js";
+import { formatTime } from "./utils.js";
 
 type Transaction = {
   id: number;
@@ -18,12 +19,6 @@ type UsageRecord = {
 
 const Tabs = ["使用记录", "充值记录"];
 const PAGE_SIZES = [10, 20, 50];
-
-function fmt(d: string) {
-  const date = new Date(d);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
-}
 
 export const Usage = () => {
   const [tab, setTab] = useState<0 | 1>(0);
@@ -112,13 +107,13 @@ export const Usage = () => {
                   {tab === 0
                     ? usageHistory.map((r) => (
                         <tr key={r.id} className="border-t border-gray-100 odd:bg-white even:bg-gray-50 hover:bg-blue-50">
-                          <td className="py-2 px-3 whitespace-nowrap">{fmt(r.createdAt)}</td>
+                          <td className="py-2 px-3 whitespace-nowrap">{formatTime(r.createdAt, { seconds: true })}</td>
                           <td className="py-2 px-3">{r.costCredits}</td>
                         </tr>
                       ))
                     : transactions.map((t) => (
                         <tr key={t.id} className="border-t border-gray-100 odd:bg-white even:bg-gray-50 hover:bg-blue-50">
-                          <td className="py-2 px-3 whitespace-nowrap">{fmt(t.createdAt)}</td>
+                          <td className="py-2 px-3 whitespace-nowrap">{formatTime(t.createdAt, { seconds: true })}</td>
                           <td className="py-2 px-3">¥{(t.amountMoney / 100).toFixed(2)}</td>
                           <td className="py-2 px-3">{t.amountCredits}</td>
                           <td className="py-2 px-3">{t.description ?? ""}</td>

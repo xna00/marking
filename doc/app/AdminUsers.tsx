@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "./app.js";
+import { formatTime } from "./utils.js";
 
 type UserRow = {
   username: string;
@@ -47,12 +48,6 @@ export const AdminUsers = () => {
 
   const handlePrev = () => fetchUsers(limit, Math.max(0, offset - limit), activeQuery);
   const handleNext = () => fetchUsers(limit, offset + limit, activeQuery);
-
-  const formatTime = (iso: string) => {
-    const d = new Date(iso);
-    const p = (n: number) => String(n).padStart(2, "0");
-    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
-  };
 
   return (
     <>

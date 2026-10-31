@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "./app.js";
+import { formatTime } from "./utils.js";
 
 type MarkLogEntry = {
   id: number;
@@ -126,7 +127,7 @@ export const MarkLogs = () => {
                 <td style={tdStyle}>
                   <div style={{ maxWidth: "300px", overflowX: "auto" }}>{formatResult(log.result)}</div>
                 </td>
-                <td style={tdStyle}>{log.createdAt}</td>
+                <td style={tdStyle}>{formatTime(log.createdAt, { seconds: true })}</td>
               </tr>
             ))}
           </tbody>
