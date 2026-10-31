@@ -1,20 +1,23 @@
-const TABS = [
-  { href: "#/admin", label: "充值管理" },
-  { href: "#/admin/mark-logs", label: "评分日志" },
-  { href: "#/admin/users", label: "用户管理" },
-  { href: "#/admin/models", label: "模型管理" },
-];
+import { Link, useLocation } from "wouter";
+
+// to 是相对 /admin 的路径：嵌套路由里 useLocation() 返回的是去掉 /admin 后的部分
+export const ADMIN_TABS = [
+  { to: "/", label: "充值管理" },
+  { to: "/mark-logs", label: "评分日志" },
+  { to: "/users", label: "用户管理" },
+  { to: "/models", label: "模型管理" },
+] as const;
 
 export const AdminNav = () => {
-  const hash = window.location.hash;
+  const [path] = useLocation();
   return (
     <nav className="flex gap-1 mb-4 border-b pb-2">
-      {TABS.map((t) => {
-        const active = hash === t.href;
+      {ADMIN_TABS.map((t) => {
+        const active = path === t.to;
         return (
-          <a
-            key={t.href}
-            href={t.href}
+          <Link
+            key={t.to}
+            href={t.to}
             className={
               active
                 ? "px-3 py-1.5 text-sm rounded bg-blue-600 text-white"
@@ -22,7 +25,7 @@ export const AdminNav = () => {
             }
           >
             {t.label}
-          </a>
+          </Link>
         );
       })}
     </nav>

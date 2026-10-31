@@ -1,10 +1,11 @@
 import { createRoot } from "react-dom/client";
-import { Router, Route, Switch } from "wouter";
+import { Router, Route, Switch, Redirect } from "wouter";
 import { useHashLocation } from "wouter/use-hash-location";
 import { createHandler } from "@marking/api";
 import { Usage } from "./Usage.js";
 import { Recharge } from "./Recharge.js";
 import { Login } from "./Login.js";
+import { AdminLayout } from "./AdminLayout.js";
 import { AdminRecharge } from "./AdminRecharge.js";
 import { MarkLogs } from "./MarkLogs.js";
 import { AdminUsers } from "./AdminUsers.js";
@@ -43,11 +44,26 @@ const App = () => (
     <Switch>
       <Route path="/usage"><Usage /></Route>
       <Route path="/recharge"><Recharge /></Route>
-      <Route path="/login"><Login /></Route>
-      <Route path="/admin"><AdminRecharge /></Route>
-      <Route path="/admin/mark-logs"><MarkLogs /></Route>
-      <Route path="/admin/users"><AdminUsers /></Route>
-      <Route path="/admin/models"><AdminModels /></Route>
+      {/* 旧链接兼容：登录页挪到 /admin 下 */}
+      <Route path="/login"><Redirect to="/admin/login" /></Route>
+
+      <Route path="/admin" nest>
+        <Switch>
+          {/* 登录页在 /admin 下但不套 AdminLayout（没有导航/用户名） */}
+          <Route path="/login"><Login /></Route>
+          <Route>
+            <AdminLayout>
+              <Switch>
+                <Route path="/"><AdminRecharge /></Route>
+                <Route path="/mark-logs"><MarkLogs /></Route>
+                <Route path="/users"><AdminUsers /></Route>
+                <Route path="/models"><AdminModels /></Route>
+                <Route><Redirect to="~/admin" /></Route>
+              </Switch>
+            </AdminLayout>
+          </Route>
+        </Switch>
+      </Route>
     </Switch>
   </Router>
 );

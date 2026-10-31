@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { api } from "./app.js";
-import { AdminNav } from "./AdminNav.js";
 
 type UserRow = {
   username: string;
@@ -14,7 +13,6 @@ type UserRow = {
 };
 
 export const AdminUsers = () => {
-  const [adminUsername, setAdminUsername] = useState("");
   const [rows, setRows] = useState<UserRow[]>([]);
   const [total, setTotal] = useState(0);
   const [limit, setLimit] = useState(20);
@@ -38,20 +36,9 @@ export const AdminUsers = () => {
   };
 
   useEffect(() => {
-    api.currentUser().then(
-      (u) => {
-        setAdminUsername(u.username);
-        fetchUsers(limit, 0, "");
-      },
-      () => {},
-    );
+    fetchUsers(limit, 0, "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const handleLogout = () => {
-    sessionStorage.removeItem("authToken");
-    location.hash = "#/login";
-  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,19 +55,7 @@ export const AdminUsers = () => {
   };
 
   return (
-    <div className="p-5">
-      <div className="flex justify-between items-center mb-4">
-        <p className="text-lg font-bold">用户管理</p>
-        <div className="flex items-center gap-2">
-          {adminUsername && <span className="text-sm text-gray-500">{adminUsername}</span>}
-          <button onClick={handleLogout} className="text-sm text-red-500 cursor-pointer">
-            退出登录
-          </button>
-        </div>
-      </div>
-
-      <AdminNav />
-
+    <>
       {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
 
       <form onSubmit={handleSearch} className="flex gap-2 mb-3">
@@ -158,6 +133,6 @@ export const AdminUsers = () => {
           下一页
         </button>
       </div>
-    </div>
+    </>
   );
 };

@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { api } from "./app.js";
-import { AdminNav } from "./AdminNav.js";
 
 type MarkLogEntry = {
   id: number;
@@ -33,7 +32,6 @@ const ImagePreview = ({ filename }: { filename: string }) => {
 };
 
 export const MarkLogs = () => {
-  const [adminUsername, setAdminUsername] = useState("");
   const [logs, setLogs] = useState<MarkLogEntry[]>([]);
   const [limit, setLimit] = useState(10);
   const [offset, setOffset] = useState(0);
@@ -52,19 +50,9 @@ export const MarkLogs = () => {
   };
 
   useEffect(() => {
-    api.currentUser().then(
-      (u) => {
-        setAdminUsername(u.username);
-        fetchLogs(limit, 0);
-      },
-      () => {},
-    );
+    fetchLogs(limit, 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const handleLogout = () => {
-    sessionStorage.removeItem("authToken");
-    location.hash = "#/login";
-  };
 
   const handlePrev = () => fetchLogs(limit, Math.max(0, offset - limit));
   const handleNext = () => fetchLogs(limit, offset + limit);
@@ -88,19 +76,7 @@ export const MarkLogs = () => {
   };
 
   return (
-    <div style={{ padding: "20px", fontFamily: "system-ui, sans-serif" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-        <h2 style={{ margin: 0, fontSize: "18px", fontWeight: "bold" }}>AI 评分日志</h2>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          {adminUsername && <span style={{ fontSize: "13px", color: "#666" }}>{adminUsername}</span>}
-          <button onClick={handleLogout} style={{ fontSize: "13px", color: "red", cursor: "pointer", border: "none", background: "none" }}>
-            退出登录
-          </button>
-        </div>
-      </div>
-
-      <AdminNav />
-
+    <>
       {error && <div style={{ color: "red", marginBottom: "12px", fontSize: "14px" }}>{error}</div>}
 
       <div style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
@@ -156,7 +132,7 @@ export const MarkLogs = () => {
           </tbody>
         </table>
       </div>
-    </div>
+    </>
   );
 };
 
