@@ -125,10 +125,12 @@ VALUES (@markRecordId, @userId, @model, @criteriaConfig, @imageFilename, @result
 }
 
 export function getMarkLogs(limit = 50, offset = 0) {
+  // JOIN 必须和 FROM 写在同一行：typed-sql 按 " INNER JOIN " 切 FROM 子句，换行会解析不到表
+  // ORDER BY 必须限定 markLog.：user 表也有 createdAt，不限定会 ambiguous
   const stmt = td().prepare(`
-SELECT ALL * FROM markLog
+SELECT ALL markLog.id AS id, markLog.markRecordId AS markRecordId, markLog.userId AS userId, user.username AS username, user.nickname AS nickname, user.avatar AS avatar, markLog.model AS model, markLog.criteriaConfig AS criteriaConfig, markLog.imageFilename AS imageFilename, markLog.result AS result, markLog.createdAt AS createdAt FROM markLog INNER JOIN user ON user.externalUserId = markLog.userId
 WHERE 1=1
-ORDER BY createdAt DESC, id DESC
+ORDER BY markLog.createdAt DESC, markLog.id DESC
 LIMIT @limit
 OFFSET @offset
 `);
@@ -204,7 +206,7 @@ OFFSET 0
 export function listCreditTransactions(limit = 50, offset = 0, start = "0000", end = "9999") {
   // JOIN 必须和 FROM 写在同一行：typed-sql 按 " INNER JOIN " 切 FROM 子句，换行会解析不到表
   const stmt = td().prepare(`
-SELECT ALL creditTransaction.id AS id, user.username AS username, creditTransaction.amountMoney AS amountMoney, creditTransaction.amountCredits AS amountCredits, creditTransaction.description AS description, creditTransaction.payMethod AS payMethod, creditTransaction.createdAt AS createdAt FROM creditTransaction INNER JOIN user ON user.externalUserId = creditTransaction.userId
+SELECT ALL creditTransaction.id AS id, user.username AS username, user.nickname AS nickname, user.avatar AS avatar, creditTransaction.amountMoney AS amountMoney, creditTransaction.amountCredits AS amountCredits, creditTransaction.description AS description, creditTransaction.payMethod AS payMethod, creditTransaction.createdAt AS createdAt FROM creditTransaction INNER JOIN user ON user.externalUserId = creditTransaction.userId
 WHERE creditTransaction.createdAt >= @start AND creditTransaction.createdAt < @end
 ORDER BY creditTransaction.createdAt DESC, creditTransaction.id DESC
 LIMIT @limit

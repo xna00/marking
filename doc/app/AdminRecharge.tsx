@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
 import { api } from "./app.js";
 import { Modal } from "./Modal.js";
+import { UserInfo } from "./UserInfo.js";
 import { formatTime } from "./utils.js";
 
 type RechargeRow = {
   id: number;
   username: string;
+  nickname: string | null;
+  avatar: string | null;
   amountMoney: number;
   amountCredits: number;
   description: string | null;
@@ -163,7 +166,9 @@ export const AdminRecharge = () => {
             {rows.map((r) => (
               <tr key={r.id} className="border-b">
                 <td className="px-3 py-2 whitespace-nowrap">{formatTime(r.createdAt)}</td>
-                <td className="px-3 py-2">{r.username}</td>
+                <td className="px-3 py-2">
+                  <UserInfo username={r.username} nickname={r.nickname} avatar={r.avatar} />
+                </td>
                 <td className="px-3 py-2 text-right">{r.amountCredits}</td>
                 <td className="px-3 py-2 text-right">{formatMoney(r.amountMoney)}</td>
                 <td className="px-3 py-2">{r.description ?? "-"}</td>

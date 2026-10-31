@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "./app.js";
+import { UserInfo } from "./UserInfo.js";
 import { formatTime } from "./utils.js";
 
 type UserRow = {
@@ -69,9 +70,7 @@ export const AdminUsers = () => {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-50">
-              <th className="text-left px-3 py-2 border-b">头像</th>
-              <th className="text-left px-3 py-2 border-b">昵称</th>
-              <th className="text-left px-3 py-2 border-b">用户名</th>
+              <th className="text-left px-3 py-2 border-b">用户</th>
               <th className="text-right px-3 py-2 border-b">充值总量</th>
               <th className="text-right px-3 py-2 border-b">已用</th>
               <th className="text-right px-3 py-2 border-b">剩余</th>
@@ -83,14 +82,8 @@ export const AdminUsers = () => {
             {rows.map((r) => (
               <tr key={r.username} className="border-b">
                 <td className="px-3 py-2">
-                  {r.avatar ? (
-                    <img src={r.avatar} alt="" className="w-8 h-8 rounded-full object-cover" />
-                  ) : (
-                    <span className="inline-block w-8 h-8 rounded-full bg-gray-200" />
-                  )}
+                  <UserInfo username={r.username} nickname={r.nickname} avatar={r.avatar} size={32} />
                 </td>
-                <td className="px-3 py-2">{r.nickname || "—"}</td>
-                <td className="px-3 py-2">{r.username}</td>
                 <td className="px-3 py-2 text-right">{r.totalCredits}</td>
                 <td className="px-3 py-2 text-right">{r.consumedCredits}</td>
                 <td className="px-3 py-2 text-right">{r.remainingCredits}</td>
@@ -100,7 +93,7 @@ export const AdminUsers = () => {
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-3 py-4 text-center text-gray-400">
+                <td colSpan={6} className="px-3 py-4 text-center text-gray-400">
                   无用户
                 </td>
               </tr>

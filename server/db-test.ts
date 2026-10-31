@@ -209,6 +209,8 @@ describe('db', () => {
       const all = listCreditTransactions();
       assert.equal(all.length, 2);
       assert.equal(all[0].username, 'ctuser');
+      assert.equal(all[0].nickname, null);
+      assert.equal(all[0].avatar, null);
       assert.equal(all[0].amountCredits, 150);
       assert.equal(all[0].payMethod, 'alipay');
       assert.equal(all[1].amountMoney, 100);
@@ -248,6 +250,9 @@ describe('db', () => {
       insertMarkLog(uid, 'gpt-4', '{"c":"v"}', 'img2.png', '{"score":0.8}', 1);
       const logs = getMarkLogs();
       assert.equal(logs.length, 2);
+      assert.equal(logs[0].username, 'mluser');
+      assert.equal(logs[0].nickname, null);
+      assert.equal(logs[0].avatar, null);
       assert.equal(logs[0].imageFilename, 'img2.png');
       assert.equal(logs[0].result, '{"score":0.8}');
       assert.equal(logs[0].model, 'gpt-4');

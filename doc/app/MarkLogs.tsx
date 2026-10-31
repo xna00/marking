@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
 import { api } from "./app.js";
+import { UserInfo } from "./UserInfo.js";
 import { formatTime } from "./utils.js";
 
 type MarkLogEntry = {
   id: number;
   markRecordId: number;
   userId: string;
+  username: string;
+  nickname: string | null;
+  avatar: string | null;
   model: string;
   criteriaConfig: string;
   imageFilename: string;
@@ -42,7 +46,7 @@ export const MarkLogs = () => {
     setError("");
     try {
       const data = await api.logs.markLogs({ limit: newLimit, offset: newOffset });
-      setLogs(data as MarkLogEntry[]);
+      setLogs(data);
       setLimit(newLimit);
       setOffset(newOffset);
     } catch (err: unknown) {
@@ -116,7 +120,9 @@ export const MarkLogs = () => {
               <tr key={log.id} style={{ borderBottom: "1px solid #eee" }}>
                 <td style={tdStyle}>{log.id}</td>
                 <td style={tdStyle}>{log.markRecordId}</td>
-                <td style={tdStyle}>{log.userId}</td>
+                <td style={tdStyle}>
+                  <UserInfo username={log.username} nickname={log.nickname} avatar={log.avatar} title={log.userId} />
+                </td>
                 <td style={tdStyle} title={log.model}>{log.model.length > 20 ? log.model.slice(0, 20) + "..." : log.model}</td>
                 <td style={tdStyle}>
                   <div style={{ maxWidth: "300px", overflowX: "auto" }}>{formatCriteriaConfig(log.criteriaConfig)}</div>
