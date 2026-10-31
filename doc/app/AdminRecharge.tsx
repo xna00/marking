@@ -12,6 +12,8 @@ type RechargeRow = {
   createdAt: string;
 };
 
+type DateRange = { start?: string; end?: string };
+
 const formatTime = (iso: string) => {
   const d = new Date(iso);
   const p = (n: number) => String(n).padStart(2, "0");
@@ -21,12 +23,19 @@ const formatTime = (iso: string) => {
 // amountMoney 统一存分
 const formatMoney = (cents: number) => `¥${(cents / 100).toFixed(2)}`;
 
-const formatType = (row: RechargeRow) => {
-  if (row.payMethod === "wechatPay") return "微信支付";
-  if (row.payMethod === "alipay") return "支付宝";
-  if (row.payMethod) return row.payMethod;
-  if (row.description === "新用户赠送") return "赠送";
-  return "手工充值";
+// <input type="date"> 用本地日期；createdAt 存的是 UTC ISO，这里换算成本地日界
+const toInputDate = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+const toIsoRange = (from: string, to: string): DateRange => {
+  const range: DateRange = {};
+  if (from) range.start = new Date(`${from}T00:00:00`).toISOString();
+  if (to) {
+    const nextDay = new Date(`${to}T00:00:00`);
+    nextDay.setDate(nextDay.getDate() + 1);
+    range.end = nextDay.toISOString();
+  }
+  return range;
 };
 
 export const AdminRecharge = () => {
@@ -34,14 +43,17 @@ export const AdminRecharge = () => {
   const [total, setTotal] = useState(0);
   const [limit, setLimit] = useState(20);
   const [offset, setOffset] = useState(0);
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [range, setRange] = useState<DateRange>({});
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [formOpen, setFormOpen] = useState(false);
 
-  const fetchRecharges = async (l: number, o: number) => {
+  const fetchRecharges = async (l: number, o: number, r: DateRange) => {
     setError("");
     try {
-      const data = await api.admin.listRecharges({ limit: l, offset: o });
+      const data = await api.admin.listRecharges({ limit: l, offset: o, ...r });
       setRows(data.rows);
       setTotal(data.total);
       setLimit(l);
@@ -52,14 +64,77 @@ export const AdminRecharge = () => {
   };
 
   useEffect(() => {
-    fetchRecharges(limit, 0);
+    fetchRecharges(limit, 0, {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const applyRange = (nextFrom: string, nextTo: string) => {
+    if (nextFrom && nextTo && nextFrom > nextTo) {
+      setError("开始日期不能晚于结束日期");
+      return;
+    }
+    setFrom(nextFrom);
+    setTo(nextTo);
+    const nextRange = toIsoRange(nextFrom, nextTo);
+    setRange(nextRange);
+    fetchRecharges(limit, 0, nextRange);
+  };
+
+  const today = new Date();
+  const weekAgo = new Date();
+  weekAgo.setDate(today.getDate() - 6);
+  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+
   return (
     <>
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-sm text-gray-500">共 {total} 条记录</span>
+      <div className="flex flex-wrap items-center gap-2 mb-3">
+        <input
+          type="date"
+          value={from}
+          onChange={(e) => setFrom(e.target.value)}
+          className="border rounded px-2 py-1 text-sm"
+        />
+        <span className="text-sm text-gray-500">~</span>
+        <input
+          type="date"
+          value={to}
+          onChange={(e) => setTo(e.target.value)}
+          className="border rounded px-2 py-1 text-sm"
+        />
+        <button
+          onClick={() => applyRange(from, to)}
+          className="px-3 py-1 bg-blue-600 text-white rounded text-sm cursor-pointer"
+        >
+          查询
+        </button>
+        <button
+          onClick={() => applyRange("", "")}
+          className="px-3 py-1 border rounded text-sm cursor-pointer"
+        >
+          清空
+        </button>
+        <span className="flex gap-1 ml-1">
+          <button
+            onClick={() => applyRange(toInputDate(today), toInputDate(today))}
+            className="px-2 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded cursor-pointer"
+          >
+            今天
+          </button>
+          <button
+            onClick={() => applyRange(toInputDate(weekAgo), toInputDate(today))}
+            className="px-2 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded cursor-pointer"
+          >
+            近 7 天
+          </button>
+          <button
+            onClick={() => applyRange(toInputDate(monthStart), toInputDate(today))}
+            className="px-2 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded cursor-pointer"
+          >
+            本月
+          </button>
+        </span>
+
+        <span className="ml-auto text-sm text-gray-500">共 {total} 条记录</span>
         <button
           onClick={() => {
             setNotice("");
@@ -82,7 +157,6 @@ export const AdminRecharge = () => {
               <th className="text-left px-3 py-2 border-b">用户</th>
               <th className="text-right px-3 py-2 border-b">份数</th>
               <th className="text-right px-3 py-2 border-b">金额</th>
-              <th className="text-left px-3 py-2 border-b">类型</th>
               <th className="text-left px-3 py-2 border-b">备注</th>
             </tr>
           </thead>
@@ -92,14 +166,13 @@ export const AdminRecharge = () => {
                 <td className="px-3 py-2 whitespace-nowrap">{formatTime(r.createdAt)}</td>
                 <td className="px-3 py-2">{r.username}</td>
                 <td className="px-3 py-2 text-right">{r.amountCredits}</td>
-                <td className="px-3 py-2 text-right">{r.amountMoney ? formatMoney(r.amountMoney) : "—"}</td>
-                <td className="px-3 py-2">{formatType(r)}</td>
-                <td className="px-3 py-2">{r.description ?? ""}</td>
+                <td className="px-3 py-2 text-right">{formatMoney(r.amountMoney)}</td>
+                <td className="px-3 py-2">{r.description ?? "-"}</td>
               </tr>
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-3 py-4 text-center text-gray-400">
+                <td colSpan={5} className="px-3 py-4 text-center text-gray-400">
                   暂无充值记录
                 </td>
               </tr>
@@ -110,7 +183,7 @@ export const AdminRecharge = () => {
 
       <div className="flex items-center gap-2 mt-3 text-sm">
         <button
-          onClick={() => fetchRecharges(limit, Math.max(0, offset - limit))}
+          onClick={() => fetchRecharges(limit, Math.max(0, offset - limit), range)}
           disabled={offset === 0}
           className="px-3 py-1 border rounded cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
         >
@@ -120,7 +193,7 @@ export const AdminRecharge = () => {
           第 {offset / limit + 1} 页 / 共 {Math.max(1, Math.ceil(total / limit))} 页
         </span>
         <button
-          onClick={() => fetchRecharges(limit, offset + limit)}
+          onClick={() => fetchRecharges(limit, offset + limit, range)}
           disabled={offset + limit >= total}
           className="px-3 py-1 border rounded cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
         >
@@ -133,7 +206,7 @@ export const AdminRecharge = () => {
           onSuccess={(message) => {
             setFormOpen(false);
             setNotice(message);
-            fetchRecharges(limit, 0);
+            fetchRecharges(limit, 0, range);
           }}
         />
       </Modal>

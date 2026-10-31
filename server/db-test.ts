@@ -219,6 +219,17 @@ describe('db', () => {
       assert.equal(page.length, 1);
       assert.equal(page[0].amountCredits, 50);
     });
+
+    it('listCreditTransactions filters by createdAt range', () => {
+      const newest = listCreditTransactions(1, 0)[0];
+      const fromNewest = listCreditTransactions(10, 0, newest.createdAt, '9999');
+      assert.ok(fromNewest.length >= 1);
+      assert.ok(fromNewest.every((r) => r.createdAt >= newest.createdAt));
+
+      assert.deepEqual(listCreditTransactions(10, 0, '0000', '0001'), []);
+      assert.equal(countCreditTransactions('0000', '0001'), 0);
+      assert.equal(countCreditTransactions(newest.createdAt, '9999'), fromNewest.length);
+    });
   });
 
   describe('markLog', () => {

@@ -39,12 +39,14 @@ export async function recharge(body: { targetUsername: string; credits: number; 
   };
 }
 
-export async function listRecharges(body: { limit?: number; offset?: number } = {}) {
+export async function listRecharges(body: { limit?: number; offset?: number; start?: string; end?: string } = {}) {
   await requireAdmin();
 
   const limit = Math.min(Math.max(body.limit ?? 20, 1), 100);
   const offset = Math.max(body.offset ?? 0, 0);
-  return { rows: listCreditTransactions(limit, offset), total: countCreditTransactions() };
+  const start = body.start || "0000";
+  const end = body.end || "9999";
+  return { rows: listCreditTransactions(limit, offset, start, end), total: countCreditTransactions(start, end) };
 }
 
 export async function listUsers(body: { query?: string; limit?: number; offset?: number } = {}) {
