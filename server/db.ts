@@ -108,72 +108,128 @@ export function initDb(): void {
 }
 
 export function insertMarkRecord(userId: string, costCredits: number): number {
-  const stmt = td().prepare("INSERT OR ABORT INTO markRecord (userId, createdAt, costCredits) VALUES (@userId, @createdAt, @costCredits)");
+  const stmt = td().prepare(`
+INSERT OR ABORT INTO markRecord (userId, createdAt, costCredits)
+VALUES (@userId, @createdAt, @costCredits)
+`);
   const result = stmt.run({ userId, createdAt: new Date().toISOString(), costCredits });
   return Number(result.lastInsertRowid);
 }
 
 export function insertMarkLog(userId: string, model: string, criteriaConfig: string, imageFilename: string, result: string, markRecordId: number): void {
-  const stmt = td().prepare("INSERT OR ABORT INTO markLog (markRecordId, userId, model, criteriaConfig, imageFilename, result, createdAt) VALUES (@markRecordId, @userId, @model, @criteriaConfig, @imageFilename, @result, @createdAt)");
+  const stmt = td().prepare(`
+INSERT OR ABORT INTO markLog (markRecordId, userId, model, criteriaConfig, imageFilename, result, createdAt)
+VALUES (@markRecordId, @userId, @model, @criteriaConfig, @imageFilename, @result, @createdAt)
+`);
   stmt.run({ markRecordId, userId, model, criteriaConfig, imageFilename, result, createdAt: new Date().toISOString() });
 }
 
 export function getMarkLogs(limit = 50, offset = 0) {
-  const stmt = td().prepare("SELECT ALL * FROM markLog WHERE 1=1 ORDER BY createdAt DESC, id DESC LIMIT @limit OFFSET @offset");
+  const stmt = td().prepare(`
+SELECT ALL * FROM markLog
+WHERE 1=1
+ORDER BY createdAt DESC, id DESC
+LIMIT @limit
+OFFSET @offset
+`);
   return stmt.all({ limit, offset });
 }
 
 export function countConfirmedRecords(userId: string): number {
-  const stmt = td().prepare("SELECT ALL COUNT(*) AS count FROM markRecord WHERE markRecord.userId = @userId AND markRecord.confirmedAt IS NOT NULL ORDER BY 1 LIMIT -1 OFFSET 0");
+  const stmt = td().prepare(`
+SELECT ALL COUNT(*) AS count FROM markRecord
+WHERE markRecord.userId = @userId AND markRecord.confirmedAt IS NOT NULL
+ORDER BY 1
+LIMIT -1
+OFFSET 0
+`);
   return stmt.get({ userId })?.count ?? 0;
 }
 
 export function sumConsumedCredits(userId: string): number {
-  const stmt = td().prepare(
-    "SELECT ALL SUM(markRecord.costCredits) AS total FROM markRecord WHERE markRecord.userId = @userId AND markRecord.confirmedAt IS NOT NULL ORDER BY 1 LIMIT -1 OFFSET 0"
-  );
+  const stmt = td().prepare(`
+SELECT ALL SUM(markRecord.costCredits) AS total FROM markRecord
+WHERE markRecord.userId = @userId AND markRecord.confirmedAt IS NOT NULL
+ORDER BY 1
+LIMIT -1
+OFFSET 0
+`);
   return stmt.get({ userId })?.total ?? 0;
 }
 
 export function sumCredits(userId: string): number {
-  const stmt = td().prepare(
-    "SELECT ALL SUM(creditTransaction.amountCredits) AS total FROM creditTransaction WHERE creditTransaction.userId = @userId ORDER BY 1 LIMIT -1 OFFSET 0"
-  );
+  const stmt = td().prepare(`
+SELECT ALL SUM(creditTransaction.amountCredits) AS total FROM creditTransaction
+WHERE creditTransaction.userId = @userId
+ORDER BY 1
+LIMIT -1
+OFFSET 0
+`);
   return stmt.get({ userId })?.total ?? 0;
 }
 
 export function getTransactions(userId: string, limit = 50, offset = 0): { id: number; amountMoney: number; amountCredits: number; description: string | null; createdAt: string }[] {
-  const stmt = td().prepare(
-    "SELECT ALL creditTransaction.id AS id, creditTransaction.amountMoney AS amountMoney, creditTransaction.amountCredits AS amountCredits, creditTransaction.description AS description, creditTransaction.createdAt AS createdAt FROM creditTransaction WHERE creditTransaction.userId = @userId ORDER BY createdAt DESC, id DESC LIMIT @limit OFFSET @offset"
-  );
+  const stmt = td().prepare(`
+SELECT ALL creditTransaction.id AS id, creditTransaction.amountMoney AS amountMoney, creditTransaction.amountCredits AS amountCredits, creditTransaction.description AS description, creditTransaction.createdAt AS createdAt FROM creditTransaction
+WHERE creditTransaction.userId = @userId
+ORDER BY createdAt DESC, id DESC
+LIMIT @limit
+OFFSET @offset
+`);
   return stmt.all({ userId, limit, offset });
 }
 
 export function getUsageHistory(userId: string, limit = 50, offset = 0): { id: number; createdAt: string; confirmedAt: string; costCredits: number }[] {
-  const stmt = td().prepare(
-    "SELECT ALL markRecord.id AS id, markRecord.createdAt AS createdAt, markRecord.confirmedAt AS confirmedAt, markRecord.costCredits AS costCredits FROM markRecord WHERE markRecord.userId = @userId AND markRecord.confirmedAt IS NOT NULL ORDER BY createdAt DESC, id DESC LIMIT @limit OFFSET @offset"
-  );
+  const stmt = td().prepare(`
+SELECT ALL markRecord.id AS id, markRecord.createdAt AS createdAt, markRecord.confirmedAt AS confirmedAt, markRecord.costCredits AS costCredits FROM markRecord
+WHERE markRecord.userId = @userId AND markRecord.confirmedAt IS NOT NULL
+ORDER BY createdAt DESC, id DESC
+LIMIT @limit
+OFFSET @offset
+`);
   return stmt.all({ userId, limit, offset });
 }
 
 export function countTransactions(userId: string): number {
-  const stmt = td().prepare("SELECT ALL COUNT(*) AS count FROM creditTransaction WHERE creditTransaction.userId = @userId ORDER BY 1 LIMIT -1 OFFSET 0");
+  const stmt = td().prepare(`
+SELECT ALL COUNT(*) AS count FROM creditTransaction
+WHERE creditTransaction.userId = @userId
+ORDER BY 1
+LIMIT -1
+OFFSET 0
+`);
   return stmt.get({ userId })?.count ?? 0;
 }
 
 export function countUsageHistory(userId: string): number {
-  const stmt = td().prepare("SELECT ALL COUNT(*) AS count FROM markRecord WHERE markRecord.userId = @userId AND markRecord.confirmedAt IS NOT NULL ORDER BY 1 LIMIT -1 OFFSET 0");
+  const stmt = td().prepare(`
+SELECT ALL COUNT(*) AS count FROM markRecord
+WHERE markRecord.userId = @userId AND markRecord.confirmedAt IS NOT NULL
+ORDER BY 1
+LIMIT -1
+OFFSET 0
+`);
   return stmt.get({ userId })?.count ?? 0;
 }
 
 export function confirmMarkRecord(id: number, userId: string): boolean {
-  const stmt = td().prepare("UPDATE OR ABORT markRecord SET confirmedAt = @confirmedAt WHERE markRecord.id = @id AND markRecord.userId = @userId");
+  const stmt = td().prepare(`
+UPDATE OR ABORT markRecord
+SET confirmedAt = @confirmedAt
+WHERE markRecord.id = @id AND markRecord.userId = @userId
+`);
   const result = stmt.run({ confirmedAt: new Date().toISOString(), id, userId });
   return result.changes > 0;
 }
 
 export function loadCursor(openKfId: string): string | null {
-  const stmt = td().prepare("SELECT ALL kfCursor.cursor AS cursor FROM kfCursor WHERE kfCursor.openKfId = @openKfId ORDER BY 1 LIMIT -1 OFFSET 0");
+  const stmt = td().prepare(`
+SELECT ALL kfCursor.cursor AS cursor FROM kfCursor
+WHERE kfCursor.openKfId = @openKfId
+ORDER BY 1
+LIMIT -1
+OFFSET 0
+`);
   const row = stmt.get({ openKfId });
   return row?.cursor ?? null;
 }
@@ -198,26 +254,41 @@ export type ModelRow = {
 };
 
 export function listModelRows(): ModelRow[] {
-  const stmt = td().prepare("SELECT ALL * FROM model WHERE 1=1 ORDER BY label LIMIT -1 OFFSET 0");
+  const stmt = td().prepare(`
+SELECT ALL * FROM model
+WHERE 1=1
+ORDER BY label
+LIMIT -1
+OFFSET 0
+`);
   return stmt.all({});
 }
 
 export function countModelRows(): number {
-  const stmt = td().prepare("SELECT ALL COUNT(*) AS count FROM model WHERE 1=1 ORDER BY 1 LIMIT -1 OFFSET 0");
+  const stmt = td().prepare(`
+SELECT ALL COUNT(*) AS count FROM model
+WHERE 1=1
+ORDER BY 1
+LIMIT -1
+OFFSET 0
+`);
   return stmt.get({})?.count ?? 0;
 }
 
 export function insertModelRow(row: ModelRow): void {
-  const stmt = td().prepare(
-    "INSERT OR ABORT INTO model (id, label, inputPrice, outputPrice, cacheHitPrice, detail, enabled, isDefault, updatedAt) VALUES (@id, @label, @inputPrice, @outputPrice, @cacheHitPrice, @detail, @enabled, @isDefault, @updatedAt)"
-  );
+  const stmt = td().prepare(`
+INSERT OR ABORT INTO model (id, label, inputPrice, outputPrice, cacheHitPrice, detail, enabled, isDefault, updatedAt)
+VALUES (@id, @label, @inputPrice, @outputPrice, @cacheHitPrice, @detail, @enabled, @isDefault, @updatedAt)
+`);
   stmt.run(row);
 }
 
 export function updateModelRow(row: ModelRow): void {
-  const stmt = td().prepare(
-    "UPDATE OR ABORT model SET label = @label, inputPrice = @inputPrice, outputPrice = @outputPrice, cacheHitPrice = @cacheHitPrice, detail = @detail, enabled = @enabled, isDefault = @isDefault, updatedAt = @updatedAt WHERE model.id = @id"
-  );
+  const stmt = td().prepare(`
+UPDATE OR ABORT model
+SET label = @label, inputPrice = @inputPrice, outputPrice = @outputPrice, cacheHitPrice = @cacheHitPrice, detail = @detail, enabled = @enabled, isDefault = @isDefault, updatedAt = @updatedAt
+WHERE model.id = @id
+`);
   stmt.run(row);
 }
 
@@ -271,9 +342,10 @@ export function createUser(
   const now = new Date().toISOString();
   const passwordHash = hashPassword(password);
   const token = randomBytes(32).toString("hex");
-  const stmt = td().prepare(
-    "INSERT OR ABORT INTO user (externalUserId, username, passwordHash, email, phone, token, createdAt, updatedAt) VALUES (@externalUserId, @username, @passwordHash, @email, @phone, @token, @createdAt, @updatedAt)"
-  );
+  const stmt = td().prepare(`
+INSERT OR ABORT INTO user (externalUserId, username, passwordHash, email, phone, token, createdAt, updatedAt)
+VALUES (@externalUserId, @username, @passwordHash, @email, @phone, @token, @createdAt, @updatedAt)
+`);
   stmt.run({
     externalUserId,
     username,
@@ -302,17 +374,35 @@ export function createUser(
 }
 
 export function findUserByExternalUserId(externalUserId: string): User | undefined {
-  const stmt = td().prepare("SELECT ALL * FROM user WHERE user.externalUserId = @externalUserId ORDER BY 1 LIMIT -1 OFFSET 0");
+  const stmt = td().prepare(`
+SELECT ALL * FROM user
+WHERE user.externalUserId = @externalUserId
+ORDER BY 1
+LIMIT -1
+OFFSET 0
+`);
   return stmt.get({ externalUserId });
 }
 
 export function findUserByUsername(username: string): User | undefined {
-  const stmt = td().prepare("SELECT ALL * FROM user WHERE user.username = @username ORDER BY 1 LIMIT -1 OFFSET 0");
+  const stmt = td().prepare(`
+SELECT ALL * FROM user
+WHERE user.username = @username
+ORDER BY 1
+LIMIT -1
+OFFSET 0
+`);
   return stmt.get({ username });
 }
 
 export function listAllUsers(): User[] {
-  const stmt = td().prepare("SELECT ALL * FROM user WHERE 1=1 ORDER BY createdAt DESC, username LIMIT -1 OFFSET 0");
+  const stmt = td().prepare(`
+SELECT ALL * FROM user
+WHERE 1=1
+ORDER BY createdAt DESC, username
+LIMIT -1
+OFFSET 0
+`);
   return stmt.all({});
 }
 
@@ -324,19 +414,28 @@ export function insertCreditTransaction(
   orderNo?: string,
   payMethod?: string,
 ): void {
-  const stmt = td().prepare(
-    "INSERT OR ABORT INTO creditTransaction (userId, amountMoney, amountCredits, description, orderNo, payMethod, createdAt) VALUES (@userId, @amountMoney, @amountCredits, @description, @orderNo, @payMethod, @createdAt)"
-  );
+  const stmt = td().prepare(`
+INSERT OR ABORT INTO creditTransaction (userId, amountMoney, amountCredits, description, orderNo, payMethod, createdAt)
+VALUES (@userId, @amountMoney, @amountCredits, @description, @orderNo, @payMethod, @createdAt)
+`);
   stmt.run({ userId, amountMoney, amountCredits, description: description ?? null, orderNo: orderNo ?? null, payMethod: payMethod ?? null, createdAt: new Date().toISOString() });
 }
 
 export function updateUserToken(externalUserId: string, token: string | null): void {
-  const stmt = td().prepare("UPDATE OR ABORT user SET token = @token, updatedAt = @updatedAt WHERE user.externalUserId = @externalUserId");
+  const stmt = td().prepare(`
+UPDATE OR ABORT user
+SET token = @token, updatedAt = @updatedAt
+WHERE user.externalUserId = @externalUserId
+`);
   stmt.run({ token, updatedAt: new Date().toISOString(), externalUserId });
 }
 
 export function updateUserLastActive(externalUserId: string, lastActiveAt: string): void {
-  const stmt = td().prepare("UPDATE OR ABORT user SET lastActiveAt = @lastActiveAt WHERE user.externalUserId = @externalUserId");
+  const stmt = td().prepare(`
+UPDATE OR ABORT user
+SET lastActiveAt = @lastActiveAt
+WHERE user.externalUserId = @externalUserId
+`);
   stmt.run({ lastActiveAt, externalUserId });
 }
 
@@ -347,15 +446,23 @@ export function updateUserWxProfile(
   gender: number | null,
   unionid: string | null,
 ): boolean {
-  const stmt = td().prepare(
-    "UPDATE OR ABORT user SET nickname = @nickname, avatar = @avatar, gender = @gender, unionid = @unionid, updatedAt = @updatedAt WHERE user.externalUserId = @externalUserId"
-  );
+  const stmt = td().prepare(`
+UPDATE OR ABORT user
+SET nickname = @nickname, avatar = @avatar, gender = @gender, unionid = @unionid, updatedAt = @updatedAt
+WHERE user.externalUserId = @externalUserId
+`);
   const result = stmt.run({ externalUserId, nickname, avatar, gender, unionid, updatedAt: new Date().toISOString() });
   return result.changes > 0;
 }
 
 export function findUserByToken(token: string): User | undefined {
-  const stmt = td().prepare("SELECT ALL * FROM user WHERE user.token = @token ORDER BY 1 LIMIT -1 OFFSET 0");
+  const stmt = td().prepare(`
+SELECT ALL * FROM user
+WHERE user.token = @token
+ORDER BY 1
+LIMIT -1
+OFFSET 0
+`);
   return stmt.get({ token });
 }
 
@@ -366,14 +473,21 @@ export type UserSetting = {
 };
 
 export function getUserSetting(userId: string): UserSetting | undefined {
-  const stmt = td().prepare("SELECT ALL * FROM userSetting WHERE userSetting.userId = @userId ORDER BY 1 LIMIT -1 OFFSET 0");
+  const stmt = td().prepare(`
+SELECT ALL * FROM userSetting
+WHERE userSetting.userId = @userId
+ORDER BY 1
+LIMIT -1
+OFFSET 0
+`);
   return stmt.get({ userId });
 }
 
 export function upsertUserSetting(userId: string, data: string, updatedAt: string): void {
   // TypedDb 的 _MatchInsert 只识别 INSERT OR REPLACE（见 typed-sql.ts），不支持 ON CONFLICT DO UPDATE
-  const stmt = td().prepare(
-    "INSERT OR REPLACE INTO userSetting (userId, data, updatedAt) VALUES (@userId, @data, @updatedAt)"
-  );
+  const stmt = td().prepare(`
+INSERT OR REPLACE INTO userSetting (userId, data, updatedAt)
+VALUES (@userId, @data, @updatedAt)
+`);
   stmt.run({ userId, data, updatedAt });
 }
