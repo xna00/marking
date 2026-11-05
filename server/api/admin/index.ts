@@ -1,6 +1,13 @@
 import { getCurrentUser } from "../auth.ts";
 import { findUserByUsername, insertCreditTransaction, sumCredits, sumConsumedCredits, listAllUsers, listCreditTransactions, summarizeCreditTransactions } from "../../db.ts";
 import { getAllModels, saveModel, setDefaultModel as storeSetDefaultModel, type ModelPatch } from "./model-store.ts";
+import {
+  getAllPrompts,
+  createPrompt as storeCreatePrompt,
+  deletePrompt as storeDeletePrompt,
+  setDefaultPrompt as storeSetDefaultPrompt,
+  PROMPT_PLACEHOLDER,
+} from "./prompt-store.ts";
 import { ADMIN_USERNAME } from "../constants.ts";
 import { ApiError } from "../utils.ts";
 
@@ -135,5 +142,55 @@ export async function setDefaultModel(body: { id: string }) {
     return storeSetDefaultModel(body.id);
   } catch (e) {
     throw new ApiError(404, e instanceof Error ? e.message : String(e), {}, "API_NOT_FOUND", { url: "" });
+  }
+}
+
+const MAX_PROMPT_CONTENT_LENGTH = 8000;
+
+function validatePromptContent(content: unknown): string {
+  if (typeof content !== "string" || !content.trim()) {
+    throw new ApiError(400, "提示词内容不能为空", {}, "API_BAD_REQUEST", {});
+  }
+  // 占位符缺失会让评分标准无处可插，保存时就拦下来，避免运行时才发现
+  if (!content.includes(PROMPT_PLACEHOLDER)) {
+    throw new ApiError(400, `提示词必须包含占位符 ${PROMPT_PLACEHOLDER}`, {}, "API_BAD_REQUEST", {});
+  }
+  if (content.length > MAX_PROMPT_CONTENT_LENGTH) {
+    throw new ApiError(400, `提示词内容不能超过 ${MAX_PROMPT_CONTENT_LENGTH} 字符`, {}, "API_BAD_REQUEST", {});
+  }
+  return content;
+}
+
+export async function listPrompts() {
+  await requireAdmin();
+  return getAllPrompts();
+}
+
+export async function createPrompt(body: { content: string }) {
+  await requireAdmin();
+  const content = validatePromptContent(body?.content);
+  return storeCreatePrompt(content);
+}
+
+export async function deletePrompt(body: { id: string }) {
+  await requireAdmin();
+  if (!body?.id) throw new ApiError(400, "参数错误", {}, "API_BAD_REQUEST", {});
+
+  try {
+    storeDeletePrompt(body.id);
+    return { success: true };
+  } catch (e) {
+    throw new ApiError(400, e instanceof Error ? e.message : String(e), {}, "API_BAD_REQUEST", {});
+  }
+}
+
+export async function setDefaultPrompt(body: { id: string }) {
+  await requireAdmin();
+  if (!body?.id) throw new ApiError(400, "参数错误", {}, "API_BAD_REQUEST", {});
+
+  try {
+    return storeSetDefaultPrompt(body.id);
+  } catch (e) {
+    throw new ApiError(400, e instanceof Error ? e.message : String(e), {}, "API_BAD_REQUEST", {});
   }
 }

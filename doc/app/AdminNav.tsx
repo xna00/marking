@@ -6,6 +6,7 @@ export const ADMIN_TABS = [
   { to: "/mark-logs", label: "评分日志" },
   { to: "/users", label: "用户管理" },
   { to: "/models", label: "模型管理" },
+  { to: "/prompts", label: "提示词管理" },
 ] as const;
 
 export const AdminNav = () => {

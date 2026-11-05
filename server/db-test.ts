@@ -11,6 +11,7 @@ import {
   listCreditTransactions, summarizeCreditTransactions,
   verifyPassword,
   listModelRows, countModelRows, insertModelRow, updateModelRow, setAllModelNotDefault, setModelDefault,
+  listPromptRows, countPromptRows, insertPromptRow, deletePromptRow, setAllPromptNotDefault, setPromptDefault,
 } from './db.ts';
 import { DatabaseSync } from 'node:sqlite';
 import { describe, it, before } from 'node:test';
@@ -310,6 +311,48 @@ describe('db', () => {
       const rows = listModelRows();
       assert.equal(rows.find((r) => r.id === 'm2')?.isDefault, 1);
       assert.equal(rows.find((r) => r.id === 'm1')?.isDefault, 0);
+    });
+  });
+
+  describe('prompt', () => {
+    const row1: Parameters<typeof insertPromptRow>[0] = {
+      id: 'p1', content: '标准：{{评分标准}}', isDefault: 0,
+      createdAt: '2026-01-01T00:00:00.000Z',
+    };
+
+    it('is empty initially', () => {
+      assert.equal(countPromptRows(), 0);
+      assert.deepEqual(listPromptRows(), []);
+    });
+
+    it('insertPromptRow and countPromptRows', () => {
+      insertPromptRow(row1);
+      assert.equal(countPromptRows(), 1);
+      const rows = listPromptRows();
+      assert.equal(rows.length, 1);
+      assert.equal(rows[0].id, 'p1');
+      assert.equal(rows[0].content, '标准：{{评分标准}}');
+      assert.equal(rows[0].isDefault, 0);
+    });
+
+    it('listPromptRows orders by createdAt', () => {
+      insertPromptRow({ ...row1, id: 'p2', createdAt: '2026-01-02T00:00:00.000Z' });
+      const rows = listPromptRows();
+      assert.deepEqual(rows.map((r) => r.id), ['p1', 'p2']);
+    });
+
+    it('setAllPromptNotDefault and setPromptDefault', () => {
+      setAllPromptNotDefault();
+      setPromptDefault('p2');
+      const rows = listPromptRows();
+      assert.equal(rows.find((r) => r.id === 'p2')?.isDefault, 1);
+      assert.equal(rows.find((r) => r.id === 'p1')?.isDefault, 0);
+    });
+
+    it('deletePromptRow removes the row', () => {
+      deletePromptRow('p1');
+      assert.equal(countPromptRows(), 1);
+      assert.deepEqual(listPromptRows().map((r) => r.id), ['p2']);
     });
   });
 });

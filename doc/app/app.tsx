@@ -10,6 +10,7 @@ import { AdminRecharge } from "./AdminRecharge.js";
 import { MarkLogs } from "./MarkLogs.js";
 import { AdminUsers } from "./AdminUsers.js";
 import { AdminModels } from "./AdminModels.js";
+import { AdminPrompts } from "./AdminPrompts.js";
 import "./index.css";
 
 // token 由 content script 写进同源 cookie，后续请求浏览器自动携带；
@@ -55,6 +56,7 @@ const App = () => (
                 <Route path="/mark-logs"><MarkLogs /></Route>
                 <Route path="/users"><AdminUsers /></Route>
                 <Route path="/models"><AdminModels /></Route>
+                <Route path="/prompts"><AdminPrompts /></Route>
                 <Route><Redirect to="~/admin" /></Route>
               </Switch>
             </AdminLayout>

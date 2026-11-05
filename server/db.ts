@@ -63,13 +63,20 @@ isDefault      INTEGER NOT NULL DEFAULT 0,
 updatedAt      TEXT NOT NULL
 )`;
 
+const PROMPT_SQL = `CREATE TABLE IF NOT EXISTS prompt (
+id         TEXT PRIMARY KEY,
+content    TEXT NOT NULL,
+isDefault  INTEGER NOT NULL DEFAULT 0,
+createdAt  TEXT NOT NULL
+)`;
+
 const USER_SETTING_SQL = `CREATE TABLE IF NOT EXISTS userSetting (
 userId    TEXT PRIMARY KEY REFERENCES user(externalUserId),
 data      TEXT NOT NULL,
 updatedAt TEXT NOT NULL
 )`;
 
-type MarkingDb = ResolveFks<SchemaFks<typeof KF_CURSOR_SQL> & SchemaFks<typeof USER_SQL> & SchemaFks<typeof MARK_RECORD_SQL> & SchemaFks<typeof CREDIT_TX_SQL> & SchemaFks<typeof MARK_LOG_SQL> & SchemaFks<typeof MODEL_SQL> & SchemaFks<typeof USER_SETTING_SQL>>;
+type MarkingDb = ResolveFks<SchemaFks<typeof KF_CURSOR_SQL> & SchemaFks<typeof USER_SQL> & SchemaFks<typeof MARK_RECORD_SQL> & SchemaFks<typeof CREDIT_TX_SQL> & SchemaFks<typeof MARK_LOG_SQL> & SchemaFks<typeof MODEL_SQL> & SchemaFks<typeof PROMPT_SQL> & SchemaFks<typeof USER_SETTING_SQL>>;
 
 const DB_PATH = join(process.cwd(), "data", "marking.db");
 
@@ -104,6 +111,7 @@ export function initDb(): void {
   d.exec(CREDIT_TX_SQL);
   d.exec(MARK_LOG_SQL);
   d.exec(MODEL_SQL);
+  d.exec(PROMPT_SQL);
   d.exec(USER_SETTING_SQL);
 }
 
@@ -329,6 +337,60 @@ export function setAllModelNotDefault(): void {
 
 export function setModelDefault(id: string): void {
   const stmt = td().prepare("UPDATE OR ABORT model SET isDefault = 1 WHERE model.id = @id");
+  stmt.run({ id });
+}
+
+// ── prompt ──
+
+export type PromptRow = {
+  id: string;
+  content: string;
+  isDefault: number;
+  createdAt: string;
+};
+
+export function listPromptRows(): PromptRow[] {
+  const stmt = td().prepare(`
+SELECT ALL * FROM prompt
+WHERE 1=1
+ORDER BY prompt.createdAt
+LIMIT -1
+OFFSET 0
+`);
+  return stmt.all({});
+}
+
+export function countPromptRows(): number {
+  const stmt = td().prepare(`
+SELECT ALL COUNT(*) AS count FROM prompt
+WHERE 1=1
+ORDER BY 1
+LIMIT -1
+OFFSET 0
+`);
+  return stmt.get({})?.count ?? 0;
+}
+
+export function insertPromptRow(row: PromptRow): void {
+  const stmt = td().prepare(`
+INSERT OR ABORT INTO prompt (id, content, isDefault, createdAt)
+VALUES (@id, @content, @isDefault, @createdAt)
+`);
+  stmt.run(row);
+}
+
+export function deletePromptRow(id: string): void {
+  const stmt = td().prepare("DELETE FROM prompt WHERE prompt.id = @id");
+  stmt.run({ id });
+}
+
+export function setAllPromptNotDefault(): void {
+  const stmt = td().prepare("UPDATE OR ABORT prompt SET isDefault = 0 WHERE 1=1");
+  stmt.run({});
+}
+
+export function setPromptDefault(id: string): void {
+  const stmt = td().prepare("UPDATE OR ABORT prompt SET isDefault = 1 WHERE prompt.id = @id");
   stmt.run({ id });
 }
 

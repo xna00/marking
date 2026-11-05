@@ -6,6 +6,7 @@ import { insertMarkRecord, confirmMarkRecord, countConfirmedRecords, sumCredits,
 import { logger } from "../logger.ts";
 import { CONFIRM_MARK_MARKER_BASE64, type confirmMarkData } from "@marking/shared";
 import { getModelDef, resolveModel, resolveDetail, getModels as getModelsFromStore } from "./admin/model-store.ts";
+import { getActivePromptContent, PROMPT_PLACEHOLDER } from "./admin/prompt-store.ts";
 import { createHash } from "node:crypto";
 import { brotliCompress } from "node:zlib";
 import { mkdir, writeFile, unlink } from "node:fs/promises";
@@ -27,20 +28,13 @@ type RawAIResultItem = [string, number, string];
 
 export type AIResultItem = { text: string; score: number; reason: string };
 
-const SYSTEM_PROMPT = `你是一名老师，正在批改试卷，你要批改的题有多个空。这是评分标准：
-{{评分标准}}
-
-给你发答题卡的图片，你需要做：
-1.识别出图片中每个空填写的内容(排除被划掉的内容，不要公式标记，禁止超过30字符，过长用省略号)
-2.根据评分标准，判断每个空的得分
-3.以[["1中识别出的内容",0(得分),"原因"],...]格式(根据评分标准中序号顺序)返回结果，其中原因不超过15字;识别出的内容完整返回`;
-
+// 提示词模板存在 prompt 表里，由后台「提示词管理」维护（首次访问自动写入内置默认）
 function constructPrompt(config: ConfigItem[]): string {
   const header = "序号|位置|分值|评分标准";
   const separator = "-|-|-|-";
   const rows = config.map((item, i) => `${i + 1}|${item.position}|${item.points}|${item.markingCriteria}`).join("\n");
   const mdTable = [header, separator, rows].join("\n");
-  return SYSTEM_PROMPT.replace("{{评分标准}}", mdTable);
+  return getActivePromptContent().replace(PROMPT_PLACEHOLDER, mdTable);
 }
 
 // 模型定义 / 价格 / 默认 / 启用状态统一由 model-store 管理（DB 表 + 内存缓存），
