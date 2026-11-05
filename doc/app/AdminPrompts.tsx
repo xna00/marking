@@ -141,8 +141,8 @@ export const AdminPrompts = () => {
           <tbody>
             {prompts.map((p) => (
               <tr key={p.id} className="border-b align-top">
-                <td className="px-2 py-2 text-gray-700">
-                  <span title={p.content}>{excerpt(p.content)}</span>
+                <td className="px-2 py-2">
+                  <div className="whitespace-pre-wrap break-words text-xs font-mono text-gray-700">{p.content}</div>
                 </td>
                 <td className="px-2 py-2">
                   {p.isDefault ? (
