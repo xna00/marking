@@ -6,11 +6,29 @@ import { ApiError } from "./utils.ts";
 // 节流窗口：避免每个认证请求都写一次 lastActiveAt
 const LAST_ACTIVE_THROTTLE_MS = 5 * 60 * 1000;
 
+const AUTH_COOKIE = "authToken";
+
+// token 由前端写在 authToken cookie 里（同源请求浏览器自动携带），扩展那边仍用 Authorization 头
+function readCookie(req: Request, name: string): string | null {
+  const raw = req.headers.get("cookie");
+  if (!raw) return null;
+  for (const part of raw.split(";")) {
+    const [key, ...rest] = part.split("=");
+    if (key.trim() === name) return rest.join("=").trim() || null;
+  }
+  return null;
+}
+
+function readAuthToken(req: Request): string | null {
+  const auth = req.headers.get("Authorization");
+  if (auth?.startsWith("Bearer ")) return auth.slice(7);
+  return readCookie(req, AUTH_COOKIE);
+}
+
 export async function getUserIfLoggedIn(): Promise<User | null> {
   const info = getInfo();
-  const auth = info.request.headers.get("Authorization");
-  if (!auth?.startsWith("Bearer ")) return null;
-  const token = auth.slice(7);
+  const token = readAuthToken(info.request);
+  if (!token) return null;
   const user = findUserByToken(token) ?? null;
   if (user) updateLastActiveIfStale(user);
   return user;

@@ -12,9 +12,8 @@ import { AdminUsers } from "./AdminUsers.js";
 import { AdminModels } from "./AdminModels.js";
 import "./index.css";
 
-const KEY = "authToken";
-
-// token 由 content script 写入 sessionStorage，这里用模块级 deferred 等它就绪
+// token 由 content script 写进同源 cookie，后续请求浏览器自动携带；
+// 这里只等它就绪，避免页面第一个请求漏带 cookie
 let resolveToken: (() => void) | undefined;
 const tokenReady = new Promise<void>((r) => {
   resolveToken = r;
@@ -33,8 +32,6 @@ setTimeout(() => resolveToken?.(), 1000);
 export const api = createHandler("/api", {
   fetcher: async (req, init) => {
     await tokenReady;
-    const t = sessionStorage.getItem(KEY);
-    if (t) req.headers.set("Authorization", `Bearer ${t}`);
     return fetch(req, init);
   },
 });

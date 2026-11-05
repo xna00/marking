@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api } from "./app.js";
+import { setAuthCookie } from "./authCookie.js";
 
 export const Login = () => {
   const [username, setUsername] = useState("");
@@ -13,7 +14,7 @@ export const Login = () => {
     setError("");
     try {
       const res = await api.login({ username, password });
-      sessionStorage.setItem("authToken", res.token);
+      setAuthCookie(res.token);
       setUsername("");
       setPassword("");
       location.hash = "#/admin";

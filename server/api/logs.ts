@@ -28,7 +28,7 @@ export async function getMarkImage(body: { filename: string }) {
       headers: {
         "content-type": "image/webp",
         "content-encoding": "br",
-        "cache-control": "public, max-age=31536000, immutable",
+        "cache-control": "private, max-age=31536000, immutable",
       },
     });
   }
@@ -36,7 +36,7 @@ export async function getMarkImage(body: { filename: string }) {
   return new Response(buffer, {
     headers: {
       "content-type": "image/webp",
-      "cache-control": "public, max-age=31536000, immutable",
+      "cache-control": "private, max-age=31536000, immutable",
     },
   });
 }

@@ -17,23 +17,34 @@ type MarkLogEntry = {
   createdAt: string;
 };
 
+const imageBoxStyle: React.CSSProperties = {
+  width: "240px",
+  height: "160px",
+  borderRadius: "4px",
+  background: "#f3f4f6",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  color: "#9ca3af",
+  fontSize: "12px",
+};
+
 const ImagePreview = ({ filename }: { filename: string }) => {
-  const [src, setSrc] = useState("");
-  useEffect(() => {
-    let cancelled = false;
-    api.logs.getMarkImage({ filename }).then(
-      (res) => {
-        if (cancelled) return;
-        (res as unknown as Response).blob().then((blob) => {
-          if (!cancelled) setSrc(URL.createObjectURL(blob));
-        });
-      },
-      () => {},
-    );
-    return () => { cancelled = true; };
-  }, [filename]);
-  if (!src) return <span style={{ fontSize: "11px", color: "#999" }}>加载中...</span>;
-  return <img src={src} alt="" style={{ maxWidth: "240px", maxHeight: "160px", display: "block", borderRadius: "4px" }} />;
+  const [failed, setFailed] = useState(false);
+  // makeRequest 同步返回 Request，.url 已把 ?data= 编码好；认证靠浏览器自动带 cookie
+  const src = api.logs.getMarkImage.makeRequest({ filename }).url;
+
+  if (failed) return <div style={imageBoxStyle}>加载失败</div>;
+  return (
+    <img
+      src={src}
+      alt=""
+      loading="lazy"
+      decoding="async"
+      onError={() => setFailed(true)}
+      style={{ ...imageBoxStyle, objectFit: "contain" }}
+    />
+  );
 };
 
 export const MarkLogs = () => {

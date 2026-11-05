@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useLocation } from "wouter";
 import { api } from "./app.js";
+import { clearAuthCookie } from "./authCookie.js";
 import { ADMIN_TABS, AdminNav } from "./AdminNav.js";
 
 // admin 各页共用的外壳：标题 + 当前管理员 + 退出登录 + 导航
@@ -19,7 +20,7 @@ export const AdminLayout = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const handleLogout = () => {
-    sessionStorage.removeItem("authToken");
+    clearAuthCookie();
     window.location.hash = "#/admin/login";
   };
 
