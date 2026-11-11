@@ -43,12 +43,28 @@ export async function getModels() {
   return getModelsFromStore();
 }
 
+// 隐式缓存的「缓存路由标识」（方舟 Prompt Cache Key）：按 Endpoint + 模型 + 该取值
+// 做路由映射，取值相同的请求优先落到缓存过该前缀的服务上，提升命中概率。
+// 只有模型和提示词（含评分标准表）都相同时才共享，所以两者都进 hash；
+// 用摘要而不是原文，符合文档「不要用 Prompt 原文」的要求。
+function promptCacheKey(resolvedModel: string, prompt: string): string {
+  return createHash("sha256")
+    .update(resolvedModel)
+    .update("\n")
+    .update(prompt)
+    .digest("hex")
+    .slice(0, 32);
+}
+
 async function doChat(body: ChatBody): Promise<AIResultItem[]> {
   const prompt = constructPrompt(body.config);
   const resolvedModel = resolveModel(body.model);
+  const cacheKey = promptCacheKey(resolvedModel, prompt);
 
   const fetchBody = {
     model: resolvedModel,
+    // 隐式缓存自动开启、不可关闭，这里只做路由亲和；不保证命中，也不额外计费
+    prompt_cache_key: cacheKey,
     messages: [
       {
         role: "system",
@@ -74,7 +90,7 @@ async function doChat(body: ChatBody): Promise<AIResultItem[]> {
 
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      logger.logWithId(`=> model=${resolvedModel}, image=${body.imageUrl.slice(0, 60)}...${body.imageUrl.length}chars`);
+      logger.logWithId(`=> model=${resolvedModel}, cacheKey=${cacheKey.slice(0, 8)}, image=${body.imageUrl.slice(0, 60)}...${body.imageUrl.length}chars`);
       for (const cfg of body.config) logger.logWithId(`  ${cfg.position} ${cfg.points}分 ${cfg.markingCriteria}`);
       const start = Date.now();
       const res = await fetch(DOUBAO_URL, {
