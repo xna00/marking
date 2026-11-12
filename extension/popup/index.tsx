@@ -375,7 +375,7 @@ const Main = () => {
             重置
           </button>
         </div>
-        <div className="flex items-center gap-1.5 mt-1">
+        <div className="flex items-center gap-1.5 mt-1 mb-2">
           <label className="!mb-0 text-xs text-gray-600 whitespace-nowrap">题型</label>
           <select
             id="questionTypeSelect"
@@ -422,7 +422,7 @@ const Main = () => {
               <option key={t.value} value={t.value}>{t.label}</option>
             ))}
           </select>
-          <span className="text-xs text-gray-400 truncate min-w-0">正确题型能提高 AI 评分准确率</span>
+          <span className="text-xs text-gray-400 truncate min-w-0">正确设置题型能提高 AI 评分准确率</span>
         </div>
         <CriteriaTable
           config={settings[storageKeys.CRITERIA_CONFIG]}
