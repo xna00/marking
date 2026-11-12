@@ -6,23 +6,23 @@ import { getGroupKey, getImagePromise } from "./logRequest.js";
 
 let urlResultMap = new Map<string, Promise<{ result: AIResultItem[]; markRecordId: number }>>();
 
-export function aiHook(url: string, dataUrlPromise: Promise<string>) {
+export function aiHook(url: string, dataUrlPromise: Promise<string>, rawUrls?: string[]) {
   if (urlResultMap.has(url)) {
     return;
   }
-  const promise = runAiRecognition(dataUrlPromise);
+  const promise = runAiRecognition(dataUrlPromise, rawUrls);
   urlResultMap.set(url, promise);
   urlResultMap = new Map([...urlResultMap.entries()].slice(-20));
 }
 
-async function runAiRecognition(dataUrlPromise: Promise<string>) {
+async function runAiRecognition(dataUrlPromise: Promise<string>, rawUrls?: string[]) {
   const dataUrl = await dataUrlPromise;
   const scaledDataUrl = await scaleImage(dataUrl);
   const bitmap = await getImageBitmap(scaledDataUrl);
   console.log("[aiHook] AI hook for URL:", scaledDataUrl, scaledDataUrl.length, "bitmap size:", bitmap.width, bitmap.height);
   printImageInConsole(scaledDataUrl, bitmap.width, bitmap.height);
   bitmap.close();
-  return recognizeImage(scaledDataUrl);
+  return recognizeImage(scaledDataUrl, rawUrls);
 }
 
 

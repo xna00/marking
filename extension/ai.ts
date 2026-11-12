@@ -19,7 +19,7 @@ export async function addMarkRecordId(data: { markRecordId: number }) {
   })
 }
 
-export async function recognizeImage(imageUrl: string): Promise<{ result: AIResultItem[]; markRecordId: number }> {
+export async function recognizeImage(imageUrl: string, rawUrls?: string[]): Promise<{ result: AIResultItem[]; markRecordId: number }> {
   const storage = await chromeStorageLocalGet([storageKeys.AI_MODEL, storageKeys.CRITERIA_CONFIG]);
   const model = storage[storageKeys.AI_MODEL] || defaultModel;
   const config = storage[storageKeys.CRITERIA_CONFIG] || [];
@@ -27,7 +27,12 @@ export async function recognizeImage(imageUrl: string): Promise<{ result: AIResu
     recordIds
   } satisfies confirmMarkData))}${CONFIRM_MARK_MARKER_BASE64}`
   recordIds = []
-  const data = await api.ai.markImage({ model, config, imageUrl: imageUrl + suffix });
+  const data = await api.ai.markImage({
+    model,
+    config,
+    imageUrl: imageUrl + suffix,
+    diag: { rawUrls },
+  });
   console.log("[ai] AI识别结果:", data.result);
   sendMessage({
     action: "usageUpdated", 

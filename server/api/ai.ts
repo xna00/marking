@@ -24,6 +24,12 @@ type ChatBody = {
   model: string;
   config: ConfigItem[];
   imageUrl: string;
+  // 诊断字段集中一处：服务端只读、只打日志，不参与评分与缓存 key。
+  // 当前用于定位语文作文图片拼接颠倒的根因（URL 命名是否与上下位置一致）。
+  diag?: {
+    // 参与上下拼接的每张切片原始 URL（扩展已按字母序排好）
+    rawUrls?: string[];
+  };
 };
 
 type RawAIResultItem = [string, number, string];
@@ -263,6 +269,13 @@ async function doChat(body: ChatBody): Promise<AIResultItem[]> {
   const prompt = constructPrompt(body.config);
   const resolvedModel = resolveModel(body.model);
   const cacheKey = promptCacheKey(resolvedModel, prompt);
+
+  // 诊断日志：拼接顺序由扩展按 URL 路径名字母序排好后整图发来，
+  // 这里记录参与拼接的每张切片原始 URL，供比对真实命名与上下位置是否一致。
+  const diagUrls = body.diag?.rawUrls;
+  if (diagUrls?.length) {
+    logger.logWithId(`sliceUrls[${diagUrls.length}]: ${diagUrls.join(" | ")}`);
+  }
 
   // 不预估前缀长度：够不够 256 token 交给服务端判定（400 不计费），
   // 失败的细则由 prompt-cache-store 按 key 记住，本进程不再重试。

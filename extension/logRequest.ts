@@ -176,7 +176,9 @@ chrome.debugger.onEvent.addListener(async (source, method, rawParams) => {
         const dataUrls = await Promise.all(matched.map(([_, d]) => d.promise));
         const merged = await mergeImagesVertically(dataUrls);
         entry.deferred.resolve(merged);
-        aiHook(groupKey, entry.deferred.promise);
+        // 诊断：把参与拼接的每张切片原始 URL 一并传给评分，服务端只打日志。
+        // matched 已按 pathname 字母序排好，日志里能直接看出上下顺序与命名的对应关系。
+        aiHook(groupKey, entry.deferred.promise, matched.map(([k]) => k));
         matched.forEach(([k]) => urlResponseMap.delete(k));
         imageMap = new Map([...imageMap.entries()].slice(-20));
         sendTabMessage(tabId, {
