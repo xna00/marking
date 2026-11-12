@@ -316,7 +316,7 @@ describe('db', () => {
 
   describe('prompt', () => {
     const row1: Parameters<typeof insertPromptRow>[0] = {
-      id: 'p1', content: '标准：{{评分标准}}', isDefault: 0,
+      id: 'p1', content: '标准：{{评分标准}}', isDefault: 0, questionType: 'default',
       createdAt: '2026-01-01T00:00:00.000Z',
     };
 
@@ -342,7 +342,7 @@ describe('db', () => {
     });
 
     it('setAllPromptNotDefault and setPromptDefault', () => {
-      setAllPromptNotDefault();
+      setAllPromptNotDefault('default');
       setPromptDefault('p2');
       const rows = listPromptRows();
       assert.equal(rows.find((r) => r.id === 'p2')?.isDefault, 1);

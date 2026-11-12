@@ -8,6 +8,7 @@ import {
   setDefaultPrompt as storeSetDefaultPrompt,
   PROMPT_PLACEHOLDER,
 } from "./prompt-store.ts";
+import { QUESTION_TYPES, type QuestionType } from "../question-types.ts";
 import { ADMIN_USERNAME } from "../constants.ts";
 import { ApiError } from "../utils.ts";
 
@@ -161,15 +162,22 @@ function validatePromptContent(content: unknown): string {
   return content;
 }
 
+// 题型白名单校验：管理页新建必须指定合法题型，缺省/非法值兜底 default。
+// 与 markImage 的白名单兜底一致，保证 prompt 表只存合法题型。
+function validateQuestionType(qt: unknown): QuestionType {
+  return QUESTION_TYPES.find((t) => t === qt) ?? "default";
+}
+
 export async function listPrompts() {
   await requireAdmin();
   return getAllPrompts();
 }
 
-export async function createPrompt(body: { content: string }) {
+export async function createPrompt(body: { content: string; questionType?: string }) {
   await requireAdmin();
   const content = validatePromptContent(body?.content);
-  return storeCreatePrompt(content);
+  const questionType = validateQuestionType(body?.questionType);
+  return storeCreatePrompt(content, questionType);
 }
 
 export async function deletePrompt(body: { id: string }) {

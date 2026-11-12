@@ -7,6 +7,9 @@ import { logger } from "../logger.ts";
 import { CONFIRM_MARK_MARKER_BASE64, type confirmMarkData } from "@marking/shared";
 import { getModelDef, resolveModel, resolveDetail, getModels as getModelsFromStore } from "./admin/model-store.ts";
 import { getActivePromptContent, PROMPT_PLACEHOLDER } from "./admin/prompt-store.ts";
+// 题型定义集中到 question-types.ts（prompt-store 也要用，避免循环依赖）；
+// ai.ts 作为入口 re-export，保持 server/api/index.ts 的 `export type { QuestionType } from "./ai.ts"` 不变。
+import { QUESTION_TYPES, QUESTION_TYPE_LABELS, type QuestionType } from "./question-types.ts";
 import { ensureEntry } from "./prompt-cache-store.ts";
 import { buildGradingBody, parseGradingResponse } from "./responses.ts";
 import { createHash } from "node:crypto";
@@ -14,23 +17,17 @@ import { brotliCompress } from "node:zlib";
 import { mkdir, writeFile, unlink } from "node:fs/promises";
 import { join } from "node:path";
 
+export { QUESTION_TYPES, QUESTION_TYPE_LABELS } from "./question-types.ts";
+export type { QuestionType } from "./question-types.ts";
+
 type ConfigItem = {
   position: string;
   points: number;
   markingCriteria: string;
 };
 
-// 题型：决定评分提示词模板（第 2 步起按题型取模板；default 用现有默认提示词）。
-// 列表值由服务器定义并通过 getQuestionTypes() 下发给扩展下拉，加/减题型只改这里，
-// 扩展不用重新发版。服务器是唯一事实源。
-export const QUESTION_TYPES = ["default", "short", "chineseEssay", "englishEssay"] as const;
-export type QuestionType = (typeof QUESTION_TYPES)[number];
-export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
-  default: "默认",
-  short: "简答",
-  chineseEssay: "语文作文",
-  englishEssay: "英语作文",
-};
+// 题型列表值/标签由 question-types.ts 统一定义并导出（getQuestionTypes 下发），
+// 这里只保留 re-export 兼容既有导入。
 
 type ChatBody = {
   model: string;
@@ -50,13 +47,33 @@ type RawAIResultItem = [string, number, string];
 
 export type AIResultItem = { text: string; score: number; reason: string };
 
-// 提示词模板存在 prompt 表里，由后台「提示词管理」维护（首次访问自动写入内置默认）
-function constructPrompt(config: ConfigItem[]): string {
+// 白名单校验：不信任扩展传入的题型，非法值兜底 default（第 2 步起参与选模板）。
+// find 收窄避免 as 断言。
+function normalizeQuestionType(qt: unknown): QuestionType {
+  return QUESTION_TYPES.find((t) => t === qt) ?? "default";
+}
+
+// 多行（default）评分标准：渲染成 md 表格（序号|位置|分值|评分标准）。
+function renderMarkdownTable(config: ConfigItem[]): string {
   const header = "序号|位置|分值|评分标准";
   const separator = "-|-|-|-";
   const rows = config.map((item, i) => `${i + 1}|${item.position}|${item.points}|${item.markingCriteria}`).join("\n");
-  const mdTable = [header, separator, rows].join("\n");
-  return getActivePromptContent().replace(PROMPT_PLACEHOLDER, mdTable);
+  return [header, separator, rows].join("\n");
+}
+
+// 单行题型（作文/简答）评分标准：只有一项且细则可能较长，不用 md 表格——
+// 细则含竖线/特殊字符会破坏表格结构，直接渲染成「位置:/分值:/细则:」三行。
+function renderSingleRow(item: ConfigItem): string {
+  return `位置: ${item.position}\n分值: ${item.points}\n细则: ${item.markingCriteria}`;
+}
+
+// 提示词模板存在 prompt 表里，由后台「提示词管理」维护（首次访问自动写入内置默认）。
+// 按题型取对应模板（default=多空填空，其余=单道整体给分），并渲染占位符替换内容。
+function constructPrompt(config: ConfigItem[], questionType: QuestionType): string {
+  const filled = questionType === "default"
+    ? renderMarkdownTable(config)
+    : renderSingleRow(config[0] ?? { position: "", points: 1, markingCriteria: "" });
+  return getActivePromptContent(questionType).replace(PROMPT_PLACEHOLDER, filled);
 }
 
 // 模型定义 / 价格 / 默认 / 启用状态统一由 model-store 管理（DB 表 + 内存缓存），
@@ -285,7 +302,7 @@ async function doChatChat(
 
 // 编排：能用显式缓存就走 Responses（第一份也吃命中价），任何异常都回退到 Chat。
 async function doChat(body: ChatBody): Promise<AIResultItem[]> {
-  const prompt = constructPrompt(body.config);
+  const prompt = constructPrompt(body.config, normalizeQuestionType(body.questionType));
   const resolvedModel = resolveModel(body.model);
   const cacheKey = promptCacheKey(resolvedModel, prompt);
 

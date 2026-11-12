@@ -64,10 +64,11 @@ updatedAt      TEXT NOT NULL
 )`;
 
 const PROMPT_SQL = `CREATE TABLE IF NOT EXISTS prompt (
-id         TEXT PRIMARY KEY,
-content    TEXT NOT NULL,
-isDefault  INTEGER NOT NULL DEFAULT 0,
-createdAt  TEXT NOT NULL
+id            TEXT PRIMARY KEY,
+content       TEXT NOT NULL,
+isDefault     INTEGER NOT NULL DEFAULT 0,
+questionType  TEXT NOT NULL DEFAULT 'default',
+createdAt     TEXT NOT NULL
 )`;
 
 // 显式上下文缓存（Prefix 缓存）的 responseId 映射。Ark 的响应 ID 由服务端生成、
@@ -360,6 +361,7 @@ export type PromptRow = {
   id: string;
   content: string;
   isDefault: number;
+  questionType: string;
   createdAt: string;
 };
 
@@ -387,8 +389,8 @@ OFFSET 0
 
 export function insertPromptRow(row: PromptRow): void {
   const stmt = td().prepare(`
-INSERT OR ABORT INTO prompt (id, content, isDefault, createdAt)
-VALUES (@id, @content, @isDefault, @createdAt)
+INSERT OR ABORT INTO prompt (id, content, isDefault, questionType, createdAt)
+VALUES (@id, @content, @isDefault, @questionType, @createdAt)
 `);
   stmt.run(row);
 }
@@ -398,9 +400,10 @@ export function deletePromptRow(id: string): void {
   stmt.run({ id });
 }
 
-export function setAllPromptNotDefault(): void {
-  const stmt = td().prepare("UPDATE OR ABORT prompt SET isDefault = 0 WHERE 1=1");
-  stmt.run({});
+export function setAllPromptNotDefault(questionType: string): void {
+  // 按题型清默认：每种题型各自维护一条默认提示词，互不影响
+  const stmt = td().prepare("UPDATE OR ABORT prompt SET isDefault = 0 WHERE prompt.questionType = @questionType");
+  stmt.run({ questionType });
 }
 
 export function setPromptDefault(id: string): void {

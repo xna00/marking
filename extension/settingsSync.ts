@@ -23,7 +23,7 @@ type SyncPayload = {
 
 // pull 写本地期间置位，避免 onChanged 把刚拉下来的数据当成本地改动再推回去。
 let applying = false;
-let pushTimer: number | undefined;
+let pushTimer: ReturnType<typeof setTimeout> | undefined;
 
 export async function pullSettings(): Promise<void> {
   try {

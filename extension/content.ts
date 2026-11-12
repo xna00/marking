@@ -256,7 +256,7 @@ const startPolling = () => {
   poll();
 };
 
-let showErrorTimer: number | undefined = undefined
+let showErrorTimer: ReturnType<typeof setTimeout> | undefined = undefined
 
 const handleImageSrcChange = async (currentSrc: string) => {
   if (lastResult && "markRecordId" in lastResult) {
