@@ -371,7 +371,7 @@ const Main = () => {
           <label className="!mb-0 text-xs text-gray-600 whitespace-nowrap">题型</label>
           <select
             id="questionTypeSelect"
-            className="!py-0.5 !text-xs"
+            className="!w-auto !py-0.5 !text-xs"
             value={settings[storageKeys.QUESTION_TYPE]}
             onChange={(e) => {
               // 选项来自服务端下发列表，value 必然命中；find 收窄避免 as 断言
@@ -383,7 +383,7 @@ const Main = () => {
               <option key={t.value} value={t.value}>{t.label}</option>
             ))}
           </select>
-          <span className="text-xs text-gray-400 truncate">正确题型能提高 AI 评分准确率</span>
+          <span className="text-xs text-gray-400 truncate min-w-0">正确题型能提高 AI 评分准确率</span>
         </div>
         <CriteriaTable
           config={settings[storageKeys.CRITERIA_CONFIG]}
