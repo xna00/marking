@@ -8,6 +8,7 @@ function CriteriaRow({
   onDelete,
   onInsertAbove,
   onInsertBelow,
+  singleRow,
   setInputRef,
 }: {
   item: ConfigItem;
@@ -16,6 +17,7 @@ function CriteriaRow({
   onDelete: () => void;
   onInsertAbove: () => void;
   onInsertBelow: () => void;
+  singleRow: boolean;
   setInputRef: (ref: InputRef) => void;
 }) {
   return (
@@ -35,6 +37,7 @@ function CriteriaRow({
           type="number"
           step="any"
           min={0}
+          style={{ padding: "8px 0" }}
           value={item.points}
           onChange={e => onUpdate("points", Math.max(0, Number(e.target.value)))}
           onFocus={e => setInputRef({ e: e.target, setValue: v => onUpdate("points", Number(v)) })}
@@ -48,19 +51,21 @@ function CriteriaRow({
           onFocus={e => setInputRef({ e: e.target, setValue: v => onUpdate("markingCriteria", v) })}
         />
       </td>
-      <td className="align-middle text-center whitespace-nowrap" style={{ overflow: 'visible' }}>
-        <span className="add-btn">
-          <span className="border rounded-full w-4 h-4 inline-flex items-center justify-center cursor-pointer text-sm leading-none">+</span>
-          <span className="add-dropdown">
-            <span className="add-dropdown-item" onClick={onInsertAbove}>在上方插入1行</span>
-            <span className="add-dropdown-item" onClick={onInsertBelow}>在下方插入1行</span>
+      {!singleRow && (
+        <td className="align-middle text-center whitespace-nowrap" style={{ overflow: 'visible' }}>
+          <span className="add-btn">
+            <span className="border rounded-full w-4 h-4 inline-flex items-center justify-center cursor-pointer text-sm leading-none">+</span>
+            <span className="add-dropdown">
+              <span className="add-dropdown-item" onClick={onInsertAbove}>在上方插入1行</span>
+              <span className="add-dropdown-item" onClick={onInsertBelow}>在下方插入1行</span>
+            </span>
           </span>
-        </span>
-        <span
-          className="border rounded-full w-4 h-4 inline-flex items-center justify-center cursor-pointer ml-1 text-red-500 leading-none text-sm"
-          onClick={onDelete}
-        >×</span>
-      </td>
+          <span
+            className="border rounded-full w-4 h-4 inline-flex items-center justify-center cursor-pointer ml-1 text-red-500 leading-none text-sm"
+            onClick={onDelete}
+          >×</span>
+        </td>
+      )}
     </tr>
   );
 }
@@ -69,10 +74,12 @@ export const CriteriaTable = ({
   config,
   onChange,
   setInputRef,
+  singleRow = false,
 }: {
   config: ConfigItem[];
   onChange: (config: ConfigItem[]) => void;
   setInputRef: (ref: InputRef) => void;
+  singleRow?: boolean;
 }) => {
   return (
     <div>
@@ -81,9 +88,9 @@ export const CriteriaTable = ({
           <tr id="tableHeadRow">
             <th style={{ width: 36, height: 40 }}>序号</th>
             <th style={{ width: 80 }}>位置</th>
-            <th style={{ width: 60 }}>分值</th>
+            <th style={{ width: 50 }}>分值</th>
             <th style={{ width: "auto" }}>评分标准</th>
-            <th style={{ width: 50, height: 40 }}>操作</th>
+            {!singleRow && <th style={{ width: 50, height: 40 }}>操作</th>}
           </tr>
         </thead>
         <tbody id="tableBody">
@@ -92,6 +99,7 @@ export const CriteriaTable = ({
               key={i}
               index={i}
               item={item}
+              singleRow={singleRow}
               setInputRef={setInputRef}
               onUpdate={(field, value) => {
                 const next = [...config];

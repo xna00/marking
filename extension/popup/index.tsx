@@ -135,6 +135,10 @@ const defaultSettings: Settings = {
   [storageKeys.QUESTION_TYPE]: "default",
 };
 
+// 单行题型（整体给分）：默认是多行兜底（多空/分小问），其余题型都是单道整体给分 → 锁 1 行。
+// 服务端以后加的新题型（非 default）自动视为单行，符合「多行都走默认」的设计。
+const isSingleRow = (t: string) => t !== "default";
+
 const Main = () => {
   const [settings, setSettings] = useState(defaultSettings);
   const [models, setModels] = useState<{ id: string; label: string }[]>([]);
@@ -358,11 +362,15 @@ const Main = () => {
           <label className="!inline !mb-0">评分标准</label>
           <button
             className="small-btn"
-            onClick={() => updateSettings(s => ({
-              ...s,
-              [storageKeys.CRITERIA_CONFIG]: defaultSettings[storageKeys.CRITERIA_CONFIG],
-              [storageKeys.QUESTION_TYPE]: defaultSettings[storageKeys.QUESTION_TYPE],
-            }))}
+            onClick={async () => {
+              // 重置 = 回到出厂：清题型+评分标准到默认，并清掉单行暂存，避免残留
+              await chromeStorageLocalRemove(storageKeys.CRITERIA_SINGLE_ROW_BACKUP);
+              updateSettings(s => ({
+                ...s,
+                [storageKeys.CRITERIA_CONFIG]: defaultSettings[storageKeys.CRITERIA_CONFIG],
+                [storageKeys.QUESTION_TYPE]: defaultSettings[storageKeys.QUESTION_TYPE],
+              }));
+            }}
           >
             重置
           </button>
@@ -373,10 +381,41 @@ const Main = () => {
             id="questionTypeSelect"
             className="!w-auto !py-0.5 !text-xs"
             value={settings[storageKeys.QUESTION_TYPE]}
-            onChange={(e) => {
+            onChange={async (e) => {
               // 选项来自服务端下发列表，value 必然命中；find 收窄避免 as 断言
               const next = questionTypes.find((t) => t.value === e.target.value);
-              if (next) updateSettings(s => ({ ...s, [storageKeys.QUESTION_TYPE]: next.value }));
+              if (!next) return;
+              const prev = settings[storageKeys.QUESTION_TYPE];
+              const prevSingle = isSingleRow(prev);
+              const nextSingle = isSingleRow(next.value);
+              if (nextSingle && !prevSingle) {
+                // 多行 → 单行（默认→作文/简答）：暂存多行，收起为 1 行，保留原第一行内容
+                const config = settings[storageKeys.CRITERIA_CONFIG];
+                if (config.length > 1) {
+                  await chromeStorageLocalSet({ [storageKeys.CRITERIA_SINGLE_ROW_BACKUP]: config });
+                } else {
+                  await chromeStorageLocalRemove(storageKeys.CRITERIA_SINGLE_ROW_BACKUP);
+                }
+                const single = config.length
+                  ? [{ ...config[0] }]
+                  : [{ position: "", points: 1, markingCriteria: "" }];
+                updateSettings(s => ({ ...s, [storageKeys.QUESTION_TYPE]: next.value, [storageKeys.CRITERIA_CONFIG]: single }));
+              } else if (!nextSingle && prevSingle) {
+                // 单行 → 多行（作文/简答→默认）：恢复暂存的多行
+                const backup = await chromeStorageLocalGet(storageKeys.CRITERIA_SINGLE_ROW_BACKUP);
+                const restored = backup[storageKeys.CRITERIA_SINGLE_ROW_BACKUP];
+                if (restored?.length) {
+                  updateSettings(s => ({ ...s, [storageKeys.QUESTION_TYPE]: next.value, [storageKeys.CRITERIA_CONFIG]: restored }));
+                  chromeStorageLocalRemove(storageKeys.CRITERIA_SINGLE_ROW_BACKUP);
+                } else {
+                  updateSettings(s => ({ ...s, [storageKeys.QUESTION_TYPE]: next.value }));
+                }
+              } else if (nextSingle && prevSingle) {
+                // 单行 → 单行（作文⇄简答）：只改题型，保留当前单行内容不动
+                updateSettings(s => ({ ...s, [storageKeys.QUESTION_TYPE]: next.value }));
+              } else {
+                updateSettings(s => ({ ...s, [storageKeys.QUESTION_TYPE]: next.value }));
+              }
             }}
           >
             {questionTypes.map((t) => (
@@ -389,6 +428,7 @@ const Main = () => {
           config={settings[storageKeys.CRITERIA_CONFIG]}
           onChange={(v) => updateSettings(s => ({ ...s, [storageKeys.CRITERIA_CONFIG]: v }))}
           setInputRef={setInputRef}
+          singleRow={isSingleRow(settings[storageKeys.QUESTION_TYPE])}
         />
         <div className="fixed right-0 top-2/3">
           <button

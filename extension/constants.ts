@@ -19,6 +19,8 @@ export enum storageKeys {
   ROWS_HEIGHT = "rowsHeight",
   // 题型：选项由服务器下发，本地只存当前选中值（缺省 default）
   QUESTION_TYPE = "questionType",
+  // 切换到单行题型（作文/简答）时暂存原多行评分标准，切回恢复；不云同步
+  CRITERIA_SINGLE_ROW_BACKUP = "criteriaSingleRowBackup",
 
   // 标记数据
   PAGE_MARKS = "pageMarks",
@@ -87,4 +89,5 @@ export type StorageSchema = {
   [storageKeys.AUTH_TOKEN]?: string;
   [storageKeys.IMAGE_SRC]?: string;
   [storageKeys.QUESTION_TYPE]?: QuestionType;
+  [storageKeys.CRITERIA_SINGLE_ROW_BACKUP]?: ConfigItem[];
 };

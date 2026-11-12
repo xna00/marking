@@ -23,12 +23,13 @@ type ConfigItem = {
 // 题型：决定评分提示词模板（第 2 步起按题型取模板；default 用现有默认提示词）。
 // 列表值由服务器定义并通过 getQuestionTypes() 下发给扩展下拉，加/减题型只改这里，
 // 扩展不用重新发版。服务器是唯一事实源。
-export const QUESTION_TYPES = ["default", "chineseEssay", "short"] as const;
+export const QUESTION_TYPES = ["default", "short", "chineseEssay", "englishEssay"] as const;
 export type QuestionType = (typeof QUESTION_TYPES)[number];
 export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   default: "默认",
-  chineseEssay: "语文作文",
   short: "简答",
+  chineseEssay: "语文作文",
+  englishEssay: "英语作文",
 };
 
 type ChatBody = {
