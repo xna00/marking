@@ -12,13 +12,17 @@ import {
 // getModelDef / getModels / resolveModel / resolveDetail 全部保持同步调用，
 // 不把 ai.ts 的调用方改成 async。
 
+// 图片精度档位。带图片的请求体（Chat 的 image_url、Responses 的 input_image）
+// 都引用这一个类型，避免两处各写一遍后悄悄漂移。
+export type ImageDetail = "low" | "high";
+
 export type ModelDef = {
   id: string;
   label: string;
   inputPrice: number;
   outputPrice: number;
   cacheHitPrice: number;
-  detail: "low" | "high";
+  detail: ImageDetail;
   enabled: boolean;
   isDefault: boolean;
 };
@@ -28,7 +32,7 @@ export type ModelPatch = {
   inputPrice?: number;
   outputPrice?: number;
   cacheHitPrice?: number;
-  detail?: "low" | "high";
+  detail?: ImageDetail;
   enabled?: boolean;
 };
 
@@ -94,7 +98,7 @@ export function resolveModel(model: string): string {
   return def?.id ?? FALLBACK_DEFAULT_ID;
 }
 
-export function resolveDetail(model: string): "low" | "high" {
+export function resolveDetail(model: string): ImageDetail {
   return getModelDef(resolveModel(model))?.detail ?? "high";
 }
 

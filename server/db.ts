@@ -70,13 +70,26 @@ isDefault  INTEGER NOT NULL DEFAULT 0,
 createdAt  TEXT NOT NULL
 )`;
 
+// 显式上下文缓存（Prefix 缓存）的 responseId 映射。Ark 的响应 ID 由服务端生成、
+// 不可自定义，只能自己存；重启后要能继续命中，所以落库而不只放内存。
+// 命中统计不落库：日志里的「tokens: ... 缓存命中N」已经够用，这样写库频率只剩
+// 每条细则每个 TTL 周期一次。
+const PROMPT_CACHE_SQL = `CREATE TABLE IF NOT EXISTS promptCache (
+key          TEXT PRIMARY KEY,
+model        TEXT NOT NULL,
+responseId   TEXT NOT NULL,
+prefixTokens INTEGER NOT NULL DEFAULT 0,
+expireAt     INTEGER NOT NULL,
+createdAt    TEXT NOT NULL
+)`;
+
 const USER_SETTING_SQL = `CREATE TABLE IF NOT EXISTS userSetting (
 userId    TEXT PRIMARY KEY REFERENCES user(externalUserId),
 data      TEXT NOT NULL,
 updatedAt TEXT NOT NULL
 )`;
 
-type MarkingDb = ResolveFks<SchemaFks<typeof KF_CURSOR_SQL> & SchemaFks<typeof USER_SQL> & SchemaFks<typeof MARK_RECORD_SQL> & SchemaFks<typeof CREDIT_TX_SQL> & SchemaFks<typeof MARK_LOG_SQL> & SchemaFks<typeof MODEL_SQL> & SchemaFks<typeof PROMPT_SQL> & SchemaFks<typeof USER_SETTING_SQL>>;
+type MarkingDb = ResolveFks<SchemaFks<typeof KF_CURSOR_SQL> & SchemaFks<typeof USER_SQL> & SchemaFks<typeof MARK_RECORD_SQL> & SchemaFks<typeof CREDIT_TX_SQL> & SchemaFks<typeof MARK_LOG_SQL> & SchemaFks<typeof MODEL_SQL> & SchemaFks<typeof PROMPT_SQL> & SchemaFks<typeof PROMPT_CACHE_SQL> & SchemaFks<typeof USER_SETTING_SQL>>;
 
 const DB_PATH = join(process.cwd(), "data", "marking.db");
 
@@ -112,6 +125,7 @@ export function initDb(): void {
   d.exec(MARK_LOG_SQL);
   d.exec(MODEL_SQL);
   d.exec(PROMPT_SQL);
+  d.exec(PROMPT_CACHE_SQL);
   d.exec(USER_SETTING_SQL);
 }
 
@@ -392,6 +406,46 @@ export function setAllPromptNotDefault(): void {
 export function setPromptDefault(id: string): void {
   const stmt = td().prepare("UPDATE OR ABORT prompt SET isDefault = 1 WHERE prompt.id = @id");
   stmt.run({ id });
+}
+
+// ── promptCache ──
+
+export type PromptCacheRow = {
+  key: string;
+  model: string;
+  responseId: string;
+  prefixTokens: number;
+  expireAt: number;
+  createdAt: string;
+};
+
+export function listPromptCacheRows(): PromptCacheRow[] {
+  const stmt = td().prepare(`
+SELECT ALL * FROM promptCache
+WHERE 1=1
+ORDER BY promptCache.expireAt
+LIMIT -1
+OFFSET 0
+`);
+  return stmt.all({});
+}
+
+export function insertPromptCacheRow(row: PromptCacheRow): void {
+  const stmt = td().prepare(`
+INSERT OR ABORT INTO promptCache (key, model, responseId, prefixTokens, expireAt, createdAt)
+VALUES (@key, @model, @responseId, @prefixTokens, @expireAt, @createdAt)
+`);
+  stmt.run(row);
+}
+
+export function deletePromptCacheRow(key: string): void {
+  const stmt = td().prepare("DELETE FROM promptCache WHERE promptCache.key = @key");
+  stmt.run({ key });
+}
+
+export function prunePromptCacheRows(now: number): void {
+  const stmt = td().prepare("DELETE FROM promptCache WHERE promptCache.expireAt < @now");
+  stmt.run({ now });
 }
 
 // ── user ──
