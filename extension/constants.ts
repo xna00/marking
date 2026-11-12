@@ -1,4 +1,4 @@
-import type { ModelName, ConfigItem } from "./models";
+import type { ModelName, ConfigItem, QuestionType } from "./models";
 
 export enum storageKeys {
   // 用户设置和偏好
@@ -17,6 +17,8 @@ export enum storageKeys {
   CRITERIA_TABLE_CELL_SIZE = "criteriaTableCellSize",
   COLS_WIDTH = "colsWidth",
   ROWS_HEIGHT = "rowsHeight",
+  // 题型：选项由服务器下发，本地只存当前选中值（缺省 default）
+  QUESTION_TYPE = "questionType",
 
   // 标记数据
   PAGE_MARKS = "pageMarks",
@@ -84,4 +86,5 @@ export type StorageSchema = {
   [storageKeys.AI_RESULT_FONT_SIZE]?: number;
   [storageKeys.AUTH_TOKEN]?: string;
   [storageKeys.IMAGE_SRC]?: string;
+  [storageKeys.QUESTION_TYPE]?: QuestionType;
 };

@@ -2,7 +2,7 @@ import { sendMessage, addEventListener } from "../message.js";
 import {
   defaultModel,
 } from "../ai.js";
-import type { ConfigItem, ModelName } from "../models.js";
+import type { ConfigItem, ModelName, QuestionType } from "../models.js";
 import { blobToDataUrl, scaleImage } from "../image.js";
 import { storageKeys, shouldReloadOnMismatch, EXTENSION_VERSION, HOST, MARKING_PAGE_URLS } from "../constants.js";
 import { createRoot } from "react-dom/client";
@@ -118,6 +118,7 @@ type Settings = {
   [storageKeys.CRITERIA_CONFIG]: ConfigItem[];
   [storageKeys.IMAGE_SRC]: string;
   [storageKeys.AI_DELAY]: [number, number];
+  [storageKeys.QUESTION_TYPE]: QuestionType;
 };
 
 const defaultSettings: Settings = {
@@ -131,17 +132,20 @@ const defaultSettings: Settings = {
   ],
   [storageKeys.IMAGE_SRC]: defaultImageUrl,
   [storageKeys.AI_DELAY]: [0, 0],
+  [storageKeys.QUESTION_TYPE]: "default",
 };
 
 const Main = () => {
   const [settings, setSettings] = useState(defaultSettings);
   const [models, setModels] = useState<{ id: string; label: string }[]>([]);
+  const [questionTypes, setQuestionTypes] = useState<{ value: QuestionType; label: string }[]>([]);
   const [imageSize, setImageSize] = useState<{
     width: number;
     height: number;
   } | null>(null);
 
   useEffect(() => { api.ai.getModels().then(setModels).catch(() => {}); }, []);
+  useEffect(() => { api.ai.getQuestionTypes().then(setQuestionTypes).catch(() => {}); }, []);
 
   useEffect(() => {
     chromeStorageLocalGet(null).then(r => {
@@ -164,6 +168,7 @@ const Main = () => {
             [storageKeys.CRITERIA_CONFIG]: r[storageKeys.CRITERIA_CONFIG] ?? defaultSettings[storageKeys.CRITERIA_CONFIG],
             [storageKeys.IMAGE_SRC]: r[storageKeys.IMAGE_SRC] ?? defaultSettings[storageKeys.IMAGE_SRC],
             [storageKeys.AI_DELAY]: r[storageKeys.AI_DELAY] ?? defaultSettings[storageKeys.AI_DELAY],
+            [storageKeys.QUESTION_TYPE]: r[storageKeys.QUESTION_TYPE] ?? defaultSettings[storageKeys.QUESTION_TYPE],
           };
           return JSON.stringify(next) === JSON.stringify(prev) ? prev : next;
         });
@@ -181,6 +186,16 @@ const Main = () => {
       return next;
     });
   };
+  // 题型列表从服务端拉回后，校验本地存储的选中值：若已被服务端移除（本地读回、
+  // 云同步拉回、列表变化三种情况都覆盖），回退 default，避免下拉显示空值或发出
+  // 陈旧题型。服务器第 2 步还会按 QUESTION_TYPES 白名单校验兜底。
+  useEffect(() => {
+    if (questionTypes.length === 0) return;
+    const cur = settings[storageKeys.QUESTION_TYPE];
+    if (!questionTypes.some((t) => t.value === cur)) {
+      updateSettings(s => ({ ...s, [storageKeys.QUESTION_TYPE]: "default" }));
+    }
+  }, [questionTypes, settings[storageKeys.QUESTION_TYPE]]);
   const [result, setResult] = useState<{
     tag: "succeed" | "error";
     msg: string;
@@ -343,10 +358,32 @@ const Main = () => {
           <label className="!inline !mb-0">评分标准</label>
           <button
             className="small-btn"
-            onClick={() => updateSettings(s => ({ ...s, [storageKeys.CRITERIA_CONFIG]: defaultSettings[storageKeys.CRITERIA_CONFIG] }))}
+            onClick={() => updateSettings(s => ({
+              ...s,
+              [storageKeys.CRITERIA_CONFIG]: defaultSettings[storageKeys.CRITERIA_CONFIG],
+              [storageKeys.QUESTION_TYPE]: defaultSettings[storageKeys.QUESTION_TYPE],
+            }))}
           >
             重置
           </button>
+        </div>
+        <div className="flex items-center gap-1.5 mt-1">
+          <label className="!mb-0 text-xs text-gray-600 whitespace-nowrap">题型</label>
+          <select
+            id="questionTypeSelect"
+            className="!py-0.5 !text-xs"
+            value={settings[storageKeys.QUESTION_TYPE]}
+            onChange={(e) => {
+              // 选项来自服务端下发列表，value 必然命中；find 收窄避免 as 断言
+              const next = questionTypes.find((t) => t.value === e.target.value);
+              if (next) updateSettings(s => ({ ...s, [storageKeys.QUESTION_TYPE]: next.value }));
+            }}
+          >
+            {questionTypes.map((t) => (
+              <option key={t.value} value={t.value}>{t.label}</option>
+            ))}
+          </select>
+          <span className="text-xs text-gray-400 truncate">正确题型能提高 AI 评分准确率</span>
         </div>
         <CriteriaTable
           config={settings[storageKeys.CRITERIA_CONFIG]}
@@ -478,6 +515,7 @@ const Main = () => {
               model: settings[storageKeys.AI_MODEL],
               config: settings[storageKeys.CRITERIA_CONFIG],
               imageUrl: settings[storageKeys.IMAGE_SRC],
+              questionType: settings[storageKeys.QUESTION_TYPE],
             }).then(
               (res) => {
                 setResult({

@@ -1,15 +1,16 @@
 import { api } from "./api.js";
 import { storageKeys } from "./constants.js";
 import { chromeStorageLocalGet, chromeStorageLocalSet } from "./storage.js";
-import type { ConfigItem, ModelName } from "./models.js";
+import type { ConfigItem, ModelName, QuestionType } from "./models.js";
 
 // 云同步的键：用户设置（跨设备/跨启动）。AUTH_TOKEN（身份）与 IMAGE_SRC（瞬时）
-// 不同步；改卷细则/模型/延迟/结果字号是核心偏好。
+// 不同步；改卷细则/模型/延迟/结果字号/题型是核心偏好。
 export const SYNC_KEYS = [
   storageKeys.AI_MODEL,
   storageKeys.CRITERIA_CONFIG,
   storageKeys.AI_DELAY,
   storageKeys.AI_RESULT_FONT_SIZE,
+  storageKeys.QUESTION_TYPE,
 ] as const;
 
 type SyncPayload = {
@@ -17,6 +18,7 @@ type SyncPayload = {
   [storageKeys.CRITERIA_CONFIG]: ConfigItem[];
   [storageKeys.AI_DELAY]: [number, number];
   [storageKeys.AI_RESULT_FONT_SIZE]: number;
+  [storageKeys.QUESTION_TYPE]: QuestionType;
 };
 
 // pull 写本地期间置位，避免 onChanged 把刚拉下来的数据当成本地改动再推回去。
@@ -40,6 +42,7 @@ export async function pullSettings(): Promise<void> {
         [storageKeys.CRITERIA_CONFIG]: synced[storageKeys.CRITERIA_CONFIG],
         [storageKeys.AI_DELAY]: synced[storageKeys.AI_DELAY],
         [storageKeys.AI_RESULT_FONT_SIZE]: synced[storageKeys.AI_RESULT_FONT_SIZE],
+        [storageKeys.QUESTION_TYPE]: synced[storageKeys.QUESTION_TYPE],
       });
     } finally {
       applying = false;
@@ -57,6 +60,7 @@ async function pushSettingsNow(): Promise<void> {
     [storageKeys.CRITERIA_CONFIG]: local[storageKeys.CRITERIA_CONFIG],
     [storageKeys.AI_DELAY]: local[storageKeys.AI_DELAY],
     [storageKeys.AI_RESULT_FONT_SIZE]: local[storageKeys.AI_RESULT_FONT_SIZE],
+    [storageKeys.QUESTION_TYPE]: local[storageKeys.QUESTION_TYPE],
   };
   await api.userSettings.saveSettings({ data: payload });
 }

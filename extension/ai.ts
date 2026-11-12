@@ -20,9 +20,10 @@ export async function addMarkRecordId(data: { markRecordId: number }) {
 }
 
 export async function recognizeImage(imageUrl: string, rawUrls?: string[]): Promise<{ result: AIResultItem[]; markRecordId: number }> {
-  const storage = await chromeStorageLocalGet([storageKeys.AI_MODEL, storageKeys.CRITERIA_CONFIG]);
+  const storage = await chromeStorageLocalGet([storageKeys.AI_MODEL, storageKeys.CRITERIA_CONFIG, storageKeys.QUESTION_TYPE]);
   const model = storage[storageKeys.AI_MODEL] || defaultModel;
   const config = storage[storageKeys.CRITERIA_CONFIG] || [];
+  const questionType = storage[storageKeys.QUESTION_TYPE] ?? "default";
   const suffix = `${CONFIRM_MARK_MARKER_BASE64}${btoa(JSON.stringify({
     recordIds
   } satisfies confirmMarkData))}${CONFIRM_MARK_MARKER_BASE64}`
@@ -31,6 +32,7 @@ export async function recognizeImage(imageUrl: string, rawUrls?: string[]): Prom
     model,
     config,
     imageUrl: imageUrl + suffix,
+    questionType,
     diag: { rawUrls },
   });
   console.log("[ai] AI识别结果:", data.result);

@@ -20,10 +20,23 @@ type ConfigItem = {
   markingCriteria: string;
 };
 
+// 题型：决定评分提示词模板（第 2 步起按题型取模板；default 用现有默认提示词）。
+// 列表值由服务器定义并通过 getQuestionTypes() 下发给扩展下拉，加/减题型只改这里，
+// 扩展不用重新发版。服务器是唯一事实源。
+export const QUESTION_TYPES = ["default", "chineseEssay", "short"] as const;
+export type QuestionType = (typeof QUESTION_TYPES)[number];
+export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
+  default: "默认",
+  chineseEssay: "语文作文",
+  short: "简答",
+};
+
 type ChatBody = {
   model: string;
   config: ConfigItem[];
   imageUrl: string;
+  // 题型（第 1 步只声明并透传，第 2 步起参与选提示词模板；缺省走 default）
+  questionType?: QuestionType;
   // 诊断字段集中一处：服务端只读、只打日志，不参与评分与缓存 key。
   // 当前用于定位语文作文图片拼接颠倒的根因（URL 命名是否与上下位置一致）。
   diag?: {
@@ -49,6 +62,11 @@ function constructPrompt(config: ConfigItem[]): string {
 // 这里只保留给扩展用的 getModels 入口。
 export async function getModels() {
   return getModelsFromStore();
+}
+
+// 题型列表（值 + 显示名）下发给扩展下拉，与模型列表同模式。
+export async function getQuestionTypes(): Promise<{ value: QuestionType; label: string }[]> {
+  return QUESTION_TYPES.map((v) => ({ value: v, label: QUESTION_TYPE_LABELS[v] }));
 }
 
 // 隐式缓存的「缓存路由标识」（方舟 Prompt Cache Key）：按 Endpoint + 模型 + 该取值
