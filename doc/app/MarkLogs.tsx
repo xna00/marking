@@ -85,7 +85,10 @@ export const MarkLogs = () => {
   const formatResult = (json: string) => {
     try {
       const items: { text: string; score: number; reason: string }[] = JSON.parse(json);
-      return items.map((item, i) => <div key={i}>{item.text} {item.score}分 {item.reason}</div>);
+      return items.map((item, i) => (
+        // 简答题可能是分点作答（提示词要求每点一行），保留 \n 才会真的换行显示
+        <div key={i} style={{ whiteSpace: "pre-wrap" }}>{item.text} {item.score}分 {item.reason}</div>
+      ));
     } catch {
       return json;
     }

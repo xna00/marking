@@ -195,6 +195,8 @@ const showAiResult = (result: AIResultItem[]) => {
       div.style.border = "1px solid #ccc";
       div.style.borderRadius = "4px";
       div.style.fontSize = `${resultFontSize}px`;
+      // 简答题可能是分点作答（提示词要求每点一行），保留 \n 才会真的换行显示
+      div.style.whiteSpace = "pre-wrap";
       div.className = "ai-result-item";
       let color = "";
 
