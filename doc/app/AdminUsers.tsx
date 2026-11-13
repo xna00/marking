@@ -14,6 +14,38 @@ type UserRow = {
   remainingCredits: number;
 };
 
+// 与 server/api/admin/index.ts 的 USER_SORT_KEYS 保持一致（不支持按用户名排序）
+type SortKey = "totalCredits" | "consumedCredits" | "remainingCredits" | "createdAt" | "lastActiveAt";
+type SortDir = "asc" | "desc";
+
+const DEFAULT_SORT_BY: SortKey = "createdAt";
+const DEFAULT_SORT_DIR: SortDir = "desc";
+
+const SortableTh = ({ label, sortKey, align, sortBy, sortDir, onSort }: {
+  label: string;
+  sortKey: SortKey;
+  align: "left" | "right";
+  sortBy: SortKey;
+  sortDir: SortDir;
+  onSort: (key: SortKey) => void;
+}) => {
+  const active = sortBy === sortKey;
+  const arrow = active ? (sortDir === "asc" ? "↑" : "↓") : "↕";
+  return (
+    <th className={`px-3 py-2 border-b ${align === "right" ? "text-right" : "text-left"}`}>
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className={`inline-flex items-center gap-1 cursor-pointer select-none ${active ? "text-blue-600" : "hover:text-gray-600"}`}
+        title={active ? `当前${sortDir === "asc" ? "升序" : "降序"}，点击切换` : "点击排序"}
+      >
+        <span>{label}</span>
+        <span className={active ? "" : "text-gray-300"}>{arrow}</span>
+      </button>
+    </th>
+  );
+};
+
 export const AdminUsers = () => {
   const [rows, setRows] = useState<UserRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -21,34 +53,44 @@ export const AdminUsers = () => {
   const [offset, setOffset] = useState(0);
   const [query, setQuery] = useState("");
   const [activeQuery, setActiveQuery] = useState("");
+  const [sortBy, setSortBy] = useState<SortKey>(DEFAULT_SORT_BY);
+  const [sortDir, setSortDir] = useState<SortDir>(DEFAULT_SORT_DIR);
   const [error, setError] = useState("");
 
-  const fetchUsers = async (l: number, o: number, q: string) => {
+  const fetchUsers = async (l: number, o: number, q: string, by: SortKey, dir: SortDir) => {
     setError("");
     try {
-      const data = await api.admin.listUsers({ query: q || undefined, limit: l, offset: o });
+      const data = await api.admin.listUsers({ query: q || undefined, limit: l, offset: o, sortBy: by, sortDir: dir });
       setRows(data.rows);
       setTotal(data.total);
       setLimit(l);
       setOffset(o);
       setActiveQuery(q);
+      setSortBy(by);
+      setSortDir(dir);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "获取用户失败");
     }
   };
 
   useEffect(() => {
-    fetchUsers(limit, 0, "");
+    fetchUsers(limit, 0, "", DEFAULT_SORT_BY, DEFAULT_SORT_DIR);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchUsers(limit, 0, query);
+    fetchUsers(limit, 0, query, sortBy, sortDir);
   };
 
-  const handlePrev = () => fetchUsers(limit, Math.max(0, offset - limit), activeQuery);
-  const handleNext = () => fetchUsers(limit, offset + limit, activeQuery);
+  // 同列切换方向；换列默认降序（都是数值/时间列）
+  const handleSort = (key: SortKey) => {
+    const nextDir: SortDir = key === sortBy ? (sortDir === "asc" ? "desc" : "asc") : "desc";
+    fetchUsers(limit, 0, activeQuery, key, nextDir);
+  };
+
+  const handlePrev = () => fetchUsers(limit, Math.max(0, offset - limit), activeQuery, sortBy, sortDir);
+  const handleNext = () => fetchUsers(limit, offset + limit, activeQuery, sortBy, sortDir);
 
   return (
     <>
@@ -71,11 +113,11 @@ export const AdminUsers = () => {
           <thead>
             <tr className="bg-gray-50">
               <th className="text-left px-3 py-2 border-b">用户</th>
-              <th className="text-right px-3 py-2 border-b">充值总量</th>
-              <th className="text-right px-3 py-2 border-b">已用</th>
-              <th className="text-right px-3 py-2 border-b">剩余</th>
-              <th className="text-left px-3 py-2 border-b">注册时间</th>
-              <th className="text-left px-3 py-2 border-b">最后活跃</th>
+              <SortableTh label="充值总量" sortKey="totalCredits" align="right" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
+              <SortableTh label="已用" sortKey="consumedCredits" align="right" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
+              <SortableTh label="剩余" sortKey="remainingCredits" align="right" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
+              <SortableTh label="注册时间" sortKey="createdAt" align="left" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
+              <SortableTh label="最后活跃" sortKey="lastActiveAt" align="left" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
             </tr>
           </thead>
           <tbody>

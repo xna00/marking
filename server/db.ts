@@ -193,6 +193,34 @@ OFFSET 0
   return stmt.get({ userId })?.total ?? 0;
 }
 
+// 全量聚合：一次查询算完所有用户，供管理页用户列表排序/分页使用。
+// 逐用户调用 sumCredits/sumConsumedCredits 会退化成 2N 次查询（markRecord 每次全表扫）。
+export function listCreditSums(): { userId: string; total: number | null }[] {
+  const stmt = td().prepare(`
+SELECT ALL creditTransaction.userId AS userId, SUM(creditTransaction.amountCredits) AS total FROM creditTransaction
+WHERE 1=1
+GROUP BY creditTransaction.userId
+HAVING COUNT(*) > 0
+ORDER BY 1
+LIMIT -1
+OFFSET 0
+`);
+  return stmt.all({});
+}
+
+export function listConsumedSums(): { userId: string; total: number | null }[] {
+  const stmt = td().prepare(`
+SELECT ALL markRecord.userId AS userId, SUM(markRecord.costCredits) AS total FROM markRecord
+WHERE markRecord.confirmedAt IS NOT NULL
+GROUP BY markRecord.userId
+HAVING COUNT(*) > 0
+ORDER BY 1
+LIMIT -1
+OFFSET 0
+`);
+  return stmt.all({});
+}
+
 export function getTransactions(userId: string, limit = 50, offset = 0): { id: number; amountMoney: number; amountCredits: number; description: string | null; createdAt: string }[] {
   const stmt = td().prepare(`
 SELECT ALL creditTransaction.id AS id, creditTransaction.amountMoney AS amountMoney, creditTransaction.amountCredits AS amountCredits, creditTransaction.description AS description, creditTransaction.createdAt AS createdAt FROM creditTransaction

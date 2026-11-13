@@ -1,5 +1,5 @@
 import { getCurrentUser } from "../auth.ts";
-import { findUserByUsername, insertCreditTransaction, sumCredits, sumConsumedCredits, listAllUsers, listCreditTransactions, summarizeCreditTransactions } from "../../db.ts";
+import { findUserByUsername, insertCreditTransaction, sumCredits, sumConsumedCredits, listAllUsers, listCreditSums, listConsumedSums, listCreditTransactions, summarizeCreditTransactions } from "../../db.ts";
 import { getAllModels, saveModel, setDefaultModel as storeSetDefaultModel, type ModelPatch } from "./model-store.ts";
 import {
   getAllPrompts,
@@ -63,31 +63,85 @@ export async function listRecharges(body: { limit?: number; offset?: number; sta
   };
 }
 
-export async function listUsers(body: { query?: string; limit?: number; offset?: number } = {}) {
+// 用户列表可排序的列：不支持按用户名排序（搜索框已经能按用户名过滤）
+const USER_SORT_KEYS = ["totalCredits", "consumedCredits", "remainingCredits", "createdAt", "lastActiveAt"] as const;
+type UserSortKey = (typeof USER_SORT_KEYS)[number];
+type UserSortDir = "asc" | "desc";
+
+type UserListRow = {
+  username: string;
+  nickname: string | null;
+  avatar: string | null;
+  createdAt: string;
+  lastActiveAt: string | null;
+  totalCredits: number;
+  consumedCredits: number;
+  remainingCredits: number;
+};
+
+const normalizeUserSortKey = (v: unknown): UserSortKey | null =>
+  USER_SORT_KEYS.find((k) => k === v) ?? null;
+
+const normalizeUserSortDir = (v: unknown): UserSortDir => (v === "asc" ? "asc" : "desc");
+
+const compareUserRows = (a: UserListRow, b: UserListRow, sortBy: UserSortKey, sortDir: UserSortDir): number => {
+  const dir = sortDir === "asc" ? 1 : -1;
+  // 同值时用用户名兜底，保证分页顺序稳定（不会跨页重复/漏行）
+  const tieBreak = a.username.localeCompare(b.username);
+
+  if (sortBy === "lastActiveAt") {
+    // 从未活跃（null）始终沉底，不随排序方向反转
+    if (a.lastActiveAt === null || b.lastActiveAt === null) {
+      if (a.lastActiveAt === b.lastActiveAt) return tieBreak;
+      return a.lastActiveAt === null ? 1 : -1;
+    }
+    return a.lastActiveAt.localeCompare(b.lastActiveAt) * dir || tieBreak;
+  }
+
+  const va = a[sortBy];
+  const vb = b[sortBy];
+  if (va === vb) return tieBreak;
+  if (typeof va === "number" && typeof vb === "number") return (va - vb) * dir;
+  return String(va).localeCompare(String(vb)) * dir || tieBreak;
+};
+
+export async function listUsers(body: { query?: string; limit?: number; offset?: number; sortBy?: string; sortDir?: string } = {}) {
   await requireAdmin();
 
   const limit = body.limit ?? 50;
   const offset = body.offset ?? 0;
   const query = body.query?.trim().toLowerCase() ?? "";
+  // 非法 sortBy 整体回落 createdAt desc；sortDir 只认 asc，其余按 desc
+  const requestedSortBy = normalizeUserSortKey(body.sortBy);
+  const sortBy = requestedSortBy ?? "createdAt";
+  const sortDir = requestedSortBy ? normalizeUserSortDir(body.sortDir) : "desc";
 
-  // listAllUsers 已按注册时间从新到旧排好，filter 保持顺序
-  const users = listAllUsers().filter((u) => !query || u.username.toLowerCase().includes(query));
+  // 一次查完全部用户的聚合，再做过滤/排序/分页：
+  // 「充值/已用/剩余」不是 user 表字段，必须跨全量数据排序，否则跨页顺序是错的。
+  const creditSums = new Map(listCreditSums().map((r) => [r.userId, r.total ?? 0]));
+  const consumedSums = new Map(listConsumedSums().map((r) => [r.userId, r.total ?? 0]));
+
+  const users = listAllUsers()
+    .filter((u) => !query || u.username.toLowerCase().includes(query))
+    .map((u) => {
+      const totalCredits = creditSums.get(u.externalUserId) ?? 0;
+      const consumedCredits = consumedSums.get(u.externalUserId) ?? 0;
+      return {
+        username: u.username,
+        nickname: u.nickname,
+        avatar: u.avatar,
+        createdAt: u.createdAt,
+        lastActiveAt: u.lastActiveAt,
+        totalCredits,
+        consumedCredits,
+        remainingCredits: totalCredits - consumedCredits,
+      };
+    });
+
+  users.sort((a, b) => compareUserRows(a, b, sortBy, sortDir));
+
   const total = users.length;
-  const rows = users.slice(offset, offset + limit).map((u) => {
-    const totalCredits = sumCredits(u.externalUserId);
-    const consumedCredits = sumConsumedCredits(u.externalUserId);
-    return {
-      username: u.username,
-      nickname: u.nickname,
-      avatar: u.avatar,
-      createdAt: u.createdAt,
-      lastActiveAt: u.lastActiveAt,
-      totalCredits,
-      consumedCredits,
-      remainingCredits: totalCredits - consumedCredits,
-    };
-  });
-
+  const rows = users.slice(offset, offset + limit);
   return { rows, total };
 }
 
