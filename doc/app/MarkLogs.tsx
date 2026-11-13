@@ -18,11 +18,23 @@ type MarkLogEntry = {
   createdAt: string;
 };
 
+// 缩略图高度：表格行高主要由它决定，点开弹层看原图
+const THUMB_HEIGHT = 100;
+
 const imageBoxStyle: React.CSSProperties = {
-  width: "240px",
-  height: "160px",
+  height: `${THUMB_HEIGHT}px`,
+  width: "auto",
+  maxWidth: "240px",
   borderRadius: "4px",
   background: "#f3f4f6",
+  display: "block",
+  objectFit: "contain",
+};
+
+// 加载失败占位：固定宽度，避免宽度随空内容塌陷
+const imageFallbackStyle: React.CSSProperties = {
+  ...imageBoxStyle,
+  width: "160px",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -33,7 +45,7 @@ const imageBoxStyle: React.CSSProperties = {
 const ImagePreview = ({ src, onOpen }: { src: string; onOpen: () => void }) => {
   const [failed, setFailed] = useState(false);
 
-  if (failed) return <div style={imageBoxStyle}>加载失败</div>;
+  if (failed) return <div style={imageFallbackStyle}>加载失败</div>;
   return (
     <button
       type="button"
@@ -47,7 +59,7 @@ const ImagePreview = ({ src, onOpen }: { src: string; onOpen: () => void }) => {
         loading="lazy"
         decoding="async"
         onError={() => setFailed(true)}
-        style={{ ...imageBoxStyle, objectFit: "contain" }}
+        style={imageBoxStyle}
       />
     </button>
   );
