@@ -154,13 +154,14 @@ async function doChatResponses(
   resolvedModel: string,
   cacheKey: string,
   responseId: string,
+  questionType: QuestionType,
 ): Promise<AIResultItem[]> {
   const fetchBody = buildGradingBody(resolvedModel, responseId, body.imageUrl, resolveDetail(body.model));
   const errors: Error[] = [];
 
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      logger.logWithId(`=> responses model=${resolvedModel}, cacheKey=${cacheKey.slice(0, 8)}, cacheId=${responseId}, image=${body.imageUrl.slice(0, 60)}...${body.imageUrl.length}chars`);
+      logger.logWithId(`=> responses model=${resolvedModel}, questionType=${questionType}, cacheKey=${cacheKey.slice(0, 8)}, cacheId=${responseId}, image=${body.imageUrl.slice(0, 60)}...${body.imageUrl.length}chars`);
       for (const cfg of body.config) logger.logWithId(`  ${cfg.position} ${cfg.points}分 ${cfg.markingCriteria}`);
       const start = Date.now();
       const res = await fetch(DOUBAO_RESPONSES_URL, {
@@ -210,6 +211,7 @@ async function doChatChat(
   prompt: string,
   resolvedModel: string,
   cacheKey: string,
+  questionType: QuestionType,
 ): Promise<AIResultItem[]> {
   const fetchBody = {
     model: resolvedModel,
@@ -240,7 +242,7 @@ async function doChatChat(
 
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      logger.logWithId(`=> model=${resolvedModel}, cacheKey=${cacheKey.slice(0, 8)}, image=${body.imageUrl.slice(0, 60)}...${body.imageUrl.length}chars`);
+      logger.logWithId(`=> model=${resolvedModel}, questionType=${questionType}, cacheKey=${cacheKey.slice(0, 8)}, image=${body.imageUrl.slice(0, 60)}...${body.imageUrl.length}chars`);
       for (const cfg of body.config) logger.logWithId(`  ${cfg.position} ${cfg.points}分 ${cfg.markingCriteria}`);
       const start = Date.now();
       const res = await fetch(DOUBAO_URL, {
@@ -302,9 +304,15 @@ async function doChatChat(
 
 // 编排：能用显式缓存就走 Responses（第一份也吃命中价），任何异常都回退到 Chat。
 async function doChat(body: ChatBody): Promise<AIResultItem[]> {
-  const prompt = constructPrompt(body.config, normalizeQuestionType(body.questionType));
+  const questionType = normalizeQuestionType(body.questionType);
+  const prompt = constructPrompt(body.config, questionType);
   const resolvedModel = resolveModel(body.model);
   const cacheKey = promptCacheKey(resolvedModel, prompt);
+
+  // 题型 + 提示词长度：questionType 确认这次走的是哪套模板；promptChars 是 Ark
+  // 前缀缓存长度的参考（中文约 1 字≈1 token，前缀需 ≥256 token 才计入缓存），
+  // 配合下面的 cache=hit/miss 日志可判断各题型的前缀够不够长。
+  logger.logWithId(`questionType=${questionType} promptChars=${prompt.length} configRows=${body.config.length}`);
 
   // 诊断日志：拼接顺序由扩展按 URL 路径名字母序排好后整图发来，
   // 这里记录参与拼接的每张切片原始 URL，供比对真实命名与上下位置是否一致。
@@ -320,7 +328,7 @@ async function doChat(body: ChatBody): Promise<AIResultItem[]> {
     try {
       const responseId = await ensureEntry(cacheKey, resolvedModel, prompt);
       if (responseId) {
-        return await doChatResponses(body, resolvedModel, cacheKey, responseId);
+        return await doChatResponses(body, resolvedModel, cacheKey, responseId, questionType);
       }
     } catch (e) {
       logger.logWithId(`promptCache: 缓存路径失败，回退 Chat key=${cacheKey.slice(0, 8)}`, e);
@@ -330,7 +338,7 @@ async function doChat(body: ChatBody): Promise<AIResultItem[]> {
     }
   }
 
-  return doChatChat(body, prompt, resolvedModel, cacheKey);
+  return doChatChat(body, prompt, resolvedModel, cacheKey, questionType);
 }
 
 export async function getBalance() {
