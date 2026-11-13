@@ -16,7 +16,8 @@ import { QUESTION_TYPES, type QuestionType } from "../question-types.ts";
 // 提示词创建后不可修改：要改内容就新建一条再设为默认，旧的删不删都行，
 // 天然起到版本留档的作用。没有名称字段，列表里用内容摘要 + 创建时间区分。
 
-// 评分标准在这个位置被替换成 md 表格（见 ai.ts 的 constructPrompt）
+// 评分标准在这个位置被替换：default（其他）替换成 md 表格，单行题型替换成
+// 「位置:/分值:/细则:」三行（见 ai.ts 的 constructPrompt）
 export const PROMPT_PLACEHOLDER = "{{评分标准}}";
 
 export type PromptDef = {

@@ -135,8 +135,8 @@ const defaultSettings: Settings = {
   [storageKeys.QUESTION_TYPE]: "default",
 };
 
-// 单行题型（整体给分）：默认是多行兜底（多空/分小问），其余题型都是单道整体给分 → 锁 1 行。
-// 服务端以后加的新题型（非 default）自动视为单行，符合「多行都走默认」的设计。
+// 单行题型（整体给分）：「其他」（default）是多行兜底（多空/分小问），其余题型都是单道整体给分 → 锁 1 行。
+// 服务端以后加的新题型（非 default）自动视为单行，符合「多行都走其他」的设计。
 const isSingleRow = (t: string) => t !== "default";
 
 const Main = () => {

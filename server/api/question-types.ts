@@ -6,7 +6,9 @@
 export const QUESTION_TYPES = ["default", "short", "chineseEssay", "englishEssay"] as const;
 export type QuestionType = (typeof QUESTION_TYPES)[number];
 export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
-  default: "默认",
+  // default 实际覆盖除简答/作文外的所有常规题（选择/填空/计算/多空/分小问），
+  // 「默认」是技术词不是题型名，用「其他」表达兜底语义更直观。
+  default: "其他",
   short: "简答",
   chineseEssay: "语文作文",
   englishEssay: "英语作文",

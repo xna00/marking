@@ -141,8 +141,8 @@ export const AdminPrompts = () => {
 
       <div className="flex items-start justify-between gap-4 mb-3">
         <p className="text-sm text-gray-500">
-          评分时使用对应题型的「默认」提示词，{PLACEHOLDER} 会被替换成评分标准表格。提示词创建后不可修改，
-          需要调整就新建一条并设为默认。
+          评分时使用对应题型的默认提示词，{PLACEHOLDER} 会被替换成评分标准（「其他」为多行的 md 表格，
+          其余题型为「位置 / 分值 / 细则」三行）。提示词创建后不可修改，需要调整就新建一条并设为默认。
         </p>
         <button
           onClick={() => startCreate("default")}
@@ -219,7 +219,7 @@ export const AdminPrompts = () => {
             <label className="text-xs text-gray-600 whitespace-nowrap">题型</label>
             <select
               value={draft.questionType}
-              onChange={(e) => setDraft((d) => (d ? { ...d, questionType: e.target.value } : d))}
+              onChange={(e) => startCreate(e.target.value)}
               className="!w-auto border rounded px-2 py-1 text-xs"
             >
               {questionTypes.map((q) => (
