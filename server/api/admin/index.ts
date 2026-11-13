@@ -111,9 +111,9 @@ export async function listUsers(body: { query?: string; limit?: number; offset?:
   const limit = body.limit ?? 50;
   const offset = body.offset ?? 0;
   const query = body.query?.trim().toLowerCase() ?? "";
-  // 非法 sortBy 整体回落 createdAt desc；sortDir 只认 asc，其余按 desc
+  // 未指定或非法 sortBy 时默认按最后活跃倒序（从未活跃的始终沉底）
   const requestedSortBy = normalizeUserSortKey(body.sortBy);
-  const sortBy = requestedSortBy ?? "createdAt";
+  const sortBy = requestedSortBy ?? "lastActiveAt";
   const sortDir = requestedSortBy ? normalizeUserSortDir(body.sortDir) : "desc";
 
   // 一次查完全部用户的聚合，再做过滤/排序/分页：

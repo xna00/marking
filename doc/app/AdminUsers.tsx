@@ -18,7 +18,7 @@ type UserRow = {
 type SortKey = "totalCredits" | "consumedCredits" | "remainingCredits" | "createdAt" | "lastActiveAt";
 type SortDir = "asc" | "desc";
 
-const DEFAULT_SORT_BY: SortKey = "createdAt";
+const DEFAULT_SORT_BY: SortKey = "lastActiveAt";
 const DEFAULT_SORT_DIR: SortDir = "desc";
 
 const SortableTh = ({ label, sortKey, align, sortBy, sortDir, onSort }: {
