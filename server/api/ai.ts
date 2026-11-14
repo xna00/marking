@@ -423,12 +423,14 @@ export async function markImage(body: ChatBody): Promise<{
     );
   }
   const result = await doChat(body);
+  // doChat 内部也归一化过；这里再取一次写入日志，标记这条记录实际用的模板类型
+  const questionType = normalizeQuestionType(body.questionType);
   const markRecordId = insertMarkRecord(user.externalUserId, 1);
   logger.logWithId(`markImage: recordId=${markRecordId}, userName=${user.username}, userId=${user.externalUserId}`);
   try {
     const imageFilename = await saveImageFile(body.imageUrl);
-    insertMarkLog(user.externalUserId, body.model, JSON.stringify(body.config), imageFilename, JSON.stringify(result), markRecordId);
-    logger.logWithId(`markLog: image=${imageFilename}`);
+    insertMarkLog(user.externalUserId, body.model, questionType, JSON.stringify(body.config), imageFilename, JSON.stringify(result), markRecordId);
+    logger.logWithId(`markLog: image=${imageFilename}, questionType=${questionType}`);
   } catch (e) {
     logger.logWithId('markLog error:', e);
   }

@@ -46,6 +46,7 @@ id             INTEGER PRIMARY KEY AUTOINCREMENT,
 markRecordId   INTEGER NOT NULL,
 userId         TEXT NOT NULL,
 model          TEXT NOT NULL,
+questionType   TEXT,
 criteriaConfig TEXT NOT NULL,
 imageFilename  TEXT NOT NULL,
 result         TEXT NOT NULL,
@@ -139,19 +140,19 @@ VALUES (@userId, @createdAt, @costCredits)
   return Number(result.lastInsertRowid);
 }
 
-export function insertMarkLog(userId: string, model: string, criteriaConfig: string, imageFilename: string, result: string, markRecordId: number): void {
+export function insertMarkLog(userId: string, model: string, questionType: string, criteriaConfig: string, imageFilename: string, result: string, markRecordId: number): void {
   const stmt = td().prepare(`
-INSERT OR ABORT INTO markLog (markRecordId, userId, model, criteriaConfig, imageFilename, result, createdAt)
-VALUES (@markRecordId, @userId, @model, @criteriaConfig, @imageFilename, @result, @createdAt)
+INSERT OR ABORT INTO markLog (markRecordId, userId, model, questionType, criteriaConfig, imageFilename, result, createdAt)
+VALUES (@markRecordId, @userId, @model, @questionType, @criteriaConfig, @imageFilename, @result, @createdAt)
 `);
-  stmt.run({ markRecordId, userId, model, criteriaConfig, imageFilename, result, createdAt: new Date().toISOString() });
+  stmt.run({ markRecordId, userId, model, questionType, criteriaConfig, imageFilename, result, createdAt: new Date().toISOString() });
 }
 
 export function getMarkLogs(limit = 50, offset = 0) {
   // JOIN 必须和 FROM 写在同一行：typed-sql 按 " INNER JOIN " 切 FROM 子句，换行会解析不到表
   // ORDER BY 必须限定 markLog.：user 表也有 createdAt，不限定会 ambiguous
   const stmt = td().prepare(`
-SELECT ALL markLog.id AS id, markLog.markRecordId AS markRecordId, markLog.userId AS userId, user.username AS username, user.nickname AS nickname, user.avatar AS avatar, markLog.model AS model, markLog.criteriaConfig AS criteriaConfig, markLog.imageFilename AS imageFilename, markLog.result AS result, markLog.createdAt AS createdAt FROM markLog INNER JOIN user ON user.externalUserId = markLog.userId
+SELECT ALL markLog.id AS id, markLog.markRecordId AS markRecordId, markLog.userId AS userId, user.username AS username, user.nickname AS nickname, user.avatar AS avatar, markLog.model AS model, markLog.questionType AS questionType, markLog.criteriaConfig AS criteriaConfig, markLog.imageFilename AS imageFilename, markLog.result AS result, markLog.createdAt AS createdAt FROM markLog INNER JOIN user ON user.externalUserId = markLog.userId
 WHERE 1=1
 ORDER BY markLog.createdAt DESC, markLog.id DESC
 LIMIT @limit

@@ -247,8 +247,8 @@ describe('db', () => {
     });
 
     it('insertMarkLog and getMarkLogs', () => {
-      insertMarkLog(uid, 'gpt-4', '{"c":"v"}', 'img1.png', '{"score":0.9}', 1);
-      insertMarkLog(uid, 'gpt-4', '{"c":"v"}', 'img2.png', '{"score":0.8}', 1);
+      insertMarkLog(uid, 'gpt-4', 'chineseEssay', '{"c":"v"}', 'img1.png', '{"score":0.9}', 1);
+      insertMarkLog(uid, 'gpt-4', 'default', '{"c":"v"}', 'img2.png', '{"score":0.8}', 1);
       const logs = getMarkLogs();
       assert.equal(logs.length, 2);
       assert.equal(logs[0].username, 'mluser');
@@ -257,11 +257,13 @@ describe('db', () => {
       assert.equal(logs[0].imageFilename, 'img2.png');
       assert.equal(logs[0].result, '{"score":0.8}');
       assert.equal(logs[0].model, 'gpt-4');
+      assert.equal(logs[0].questionType, 'default');
       assert.equal(logs[0].criteriaConfig, '{"c":"v"}');
       assert.equal(logs[0].markRecordId, 1);
       assert.ok(logs[0].id > 0);
       assert.equal(typeof logs[0].createdAt, 'string');
       assert.equal(logs[1].imageFilename, 'img1.png');
+      assert.equal(logs[1].questionType, 'chineseEssay');
     });
 
     it('getMarkLogs respects limit and offset', () => {

@@ -12,6 +12,7 @@ type MarkLogEntry = {
   nickname: string | null;
   avatar: string | null;
   model: string;
+  questionType: string | null;
   criteriaConfig: string;
   imageFilename: string;
   result: string;
@@ -106,6 +107,8 @@ export const MarkLogs = () => {
   const [preview, setPreview] = useState<{ src: string; alt: string } | null>(null);
   // 已展开评分标准的日志 id
   const [expandedIds, setExpandedIds] = useState<Set<number>>(() => new Set());
+  // 题型显示名由服务器下发，前端不写死题型列表
+  const [questionTypeLabels, setQuestionTypeLabels] = useState<Record<string, string>>({});
 
   const toggleExpanded = (id: number) => {
     setExpandedIds((prev) => {
@@ -134,6 +137,18 @@ export const MarkLogs = () => {
     fetchLogs(limit, 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    api.ai.getQuestionTypes()
+      .then((types) => setQuestionTypeLabels(Object.fromEntries(types.map((t) => [t.value, t.label]))))
+      .catch(() => {
+        // 题型列表拉不到不影响日志展示：直接显示原始值
+      });
+  }, []);
+
+  // 历史日志没有题型（库里是 NULL），显示破折号而不是猜一个
+  const questionTypeLabel = (value: string | null) =>
+    value ? (questionTypeLabels[value] ?? value) : "—";
 
   const handlePrev = () => fetchLogs(limit, Math.max(0, offset - limit));
   const handleNext = () => fetchLogs(limit, offset + limit);
@@ -239,7 +254,12 @@ export const MarkLogs = () => {
                   title={log.userId}
                   size={28}
                 />
-                <span className="min-w-0 truncate text-xs text-gray-500" title={log.model}>{log.model}</span>
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <span className="min-w-0 truncate text-xs text-gray-500" title={log.model}>{log.model}</span>
+                  <span className="shrink-0 rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500">
+                    {questionTypeLabel(log.questionType)}
+                  </span>
+                </div>
               </div>
               <ImagePreview fill src={imgSrc} onOpen={() => openPreview(log, imgSrc)} />
               <div className="mt-2 text-[13px]">{formatResult(log.result)}</div>
@@ -259,6 +279,7 @@ export const MarkLogs = () => {
               <th className={thCls}>记录ID</th>
               <th className={thCls}>用户</th>
               <th className={thCls}>模型</th>
+              <th className={thCls}>题型</th>
               <th className={thCls}>评分标准</th>
               <th className={thCls}>图片</th>
               <th className={thCls}>AI 结果</th>
@@ -277,6 +298,7 @@ export const MarkLogs = () => {
                     <UserInfo username={log.username} nickname={log.nickname} avatar={log.avatar} title={log.userId} />
                   </td>
                   <td className={tdCls} title={log.model}>{log.model.length > 20 ? log.model.slice(0, 20) + "..." : log.model}</td>
+                  <td className={tdCls}>{questionTypeLabel(log.questionType)}</td>
                   <td className={tdCls}>
                     {formatCriteriaConfig(log.criteriaConfig, expandedIds.has(log.id), () => toggleExpanded(log.id))}
                   </td>
