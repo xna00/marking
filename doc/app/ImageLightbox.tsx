@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 
 // 图片放大弹层：用原生 <dialog> modal，自带焦点陷阱、Esc、::backdrop 和焦点回归；
-// 不做缩放平移，滚轮就是普通滚动，长答题卡按原尺寸渲染在弹层里滚动查看。
+// 图片按宽度等比缩放，最大 92vw，高度超出时在弹层内上下滚动。
+// 不做滚轮缩放/拖拽。
 // 仅管理页（doc/app）使用：目标浏览器为最新版 Chrome，不做跨浏览器兜底。
 // src 为 null 时不打开。
 export const ImageLightbox = ({ src, alt, onClose }: {
@@ -53,7 +54,7 @@ export const ImageLightbox = ({ src, alt, onClose }: {
             src={src}
             alt={alt ?? ""}
             onError={() => setFailedSrc(src)}
-            className="block max-w-none"
+            className="block h-auto max-w-full"
           />
         ))}
     </dialog>
