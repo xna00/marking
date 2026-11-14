@@ -45,13 +45,13 @@ const RowEditor = ({ model, saving, onSave, onSetDefault }: {
     onSave(model.id, { label: label.trim() || model.label, inputPrice: ip, outputPrice: op, cacheHitPrice: chp, detail, enabled });
   };
 
-  const inputCls = "w-24 border rounded px-2 py-1 text-sm";
+  const inputCls = "min-h-11 w-24 border rounded px-2 py-1 text-sm md:min-h-0";
 
   return (
     <tr className="border-b align-top">
       <td className="px-2 py-2 font-mono text-xs break-all">{model.id}</td>
       <td className="px-2 py-2">
-        <input value={label} onChange={(e) => setLabel(e.target.value)} className="w-44 border rounded px-2 py-1 text-sm" />
+        <input value={label} onChange={(e) => setLabel(e.target.value)} className="min-h-11 w-44 border rounded px-2 py-1 text-sm md:min-h-0" />
       </td>
       <td className="px-2 py-2">
         <input value={inputPrice} onChange={(e) => setInputPrice(e.target.value)} className={inputCls} />
@@ -66,7 +66,7 @@ const RowEditor = ({ model, saving, onSave, onSetDefault }: {
         <select
           value={detail}
           onChange={(e) => setDetail(e.target.value === "low" ? "low" : "high")}
-          className="border rounded px-2 py-1 text-sm"
+          className="min-h-11 border rounded px-2 py-1 text-sm md:min-h-0"
         >
           <option value="low">low</option>
           <option value="high">high</option>
@@ -79,13 +79,13 @@ const RowEditor = ({ model, saving, onSave, onSetDefault }: {
         {model.isDefault ? (
           <span className="text-green-600 text-xs font-bold">默认</span>
         ) : (
-          <button onClick={() => onSetDefault(model.id)} disabled={saving} className="text-xs text-blue-600 cursor-pointer disabled:opacity-40">
+          <button onClick={() => onSetDefault(model.id)} disabled={saving} className="inline-flex min-h-11 items-center text-xs text-blue-600 cursor-pointer disabled:opacity-40 md:min-h-0">
             设为默认
           </button>
         )}
       </td>
       <td className="px-2 py-2">
-        <button onClick={handleSave} disabled={saving} className="px-3 py-1 rounded bg-blue-600 text-white text-xs cursor-pointer disabled:opacity-40">
+        <button onClick={handleSave} disabled={saving} className="min-h-11 px-3 py-1 rounded bg-blue-600 text-white text-xs cursor-pointer disabled:opacity-40 md:min-h-0">
           保存
         </button>
         {localError && <p className="text-red-500 text-xs mt-1">{localError}</p>}
@@ -152,15 +152,15 @@ export const AdminModels = () => {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-50">
-              <th className="text-left px-2 py-2 border-b">模型</th>
-              <th className="text-left px-2 py-2 border-b">label</th>
-              <th className="text-left px-2 py-2 border-b">输入价</th>
-              <th className="text-left px-2 py-2 border-b">输出价</th>
-              <th className="text-left px-2 py-2 border-b">缓存命中价</th>
-              <th className="text-left px-2 py-2 border-b">图片细节</th>
-              <th className="text-left px-2 py-2 border-b">启用</th>
-              <th className="text-left px-2 py-2 border-b">默认</th>
-              <th className="text-left px-2 py-2 border-b"></th>
+              <th className="text-left px-2 py-2 border-b whitespace-nowrap">模型</th>
+              <th className="text-left px-2 py-2 border-b whitespace-nowrap">label</th>
+              <th className="text-left px-2 py-2 border-b whitespace-nowrap">输入价</th>
+              <th className="text-left px-2 py-2 border-b whitespace-nowrap">输出价</th>
+              <th className="text-left px-2 py-2 border-b whitespace-nowrap">缓存命中价</th>
+              <th className="text-left px-2 py-2 border-b whitespace-nowrap">图片细节</th>
+              <th className="text-left px-2 py-2 border-b whitespace-nowrap">启用</th>
+              <th className="text-left px-2 py-2 border-b whitespace-nowrap">默认</th>
+              <th className="text-left px-2 py-2 border-b whitespace-nowrap"></th>
             </tr>
           </thead>
           <tbody>

@@ -27,16 +27,16 @@ export const AdminLayout = ({ children }: { children: ReactNode }) => {
   const title = ADMIN_TABS.find((t) => t.to === path)?.label ?? "";
 
   return (
-    <div className="p-5">
-      <div className="flex justify-between items-center mb-4">
-        <p className="text-lg font-bold">{title}</p>
+    <div className="p-3 md:p-5">
+      <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
+        <p className="text-base md:text-lg font-bold">{title}</p>
         <div className="flex items-center gap-2">
           {adminUsername && (
-            <span className="text-sm text-gray-500">{adminUsername}</span>
+            <span className="max-w-[40vw] truncate text-sm text-gray-500">{adminUsername}</span>
           )}
           <button
             onClick={handleLogout}
-            className="text-sm text-red-500 cursor-pointer"
+            className="inline-flex min-h-11 items-center text-sm text-red-500 cursor-pointer md:min-h-0"
           >
             退出登录
           </button>

@@ -92,49 +92,49 @@ export const AdminRecharge = () => {
           type="date"
           value={from}
           onChange={(e) => setFrom(e.target.value)}
-          className="border rounded px-2 py-1 text-sm"
+          className="h-11 border rounded px-2 py-1 text-sm md:h-auto"
         />
         <span className="text-sm text-gray-500">~</span>
         <input
           type="date"
           value={to}
           onChange={(e) => setTo(e.target.value)}
-          className="border rounded px-2 py-1 text-sm"
+          className="h-11 border rounded px-2 py-1 text-sm md:h-auto"
         />
         <button
           onClick={() => applyRange(from, to)}
-          className="px-3 py-1 bg-blue-600 text-white rounded text-sm cursor-pointer"
+          className="min-h-11 px-3 py-1 bg-blue-600 text-white rounded text-sm cursor-pointer md:min-h-0"
         >
           查询
         </button>
         <button
           onClick={() => applyRange("", "")}
-          className="px-3 py-1 border rounded text-sm cursor-pointer"
+          className="min-h-11 px-3 py-1 border rounded text-sm cursor-pointer md:min-h-0"
         >
           清空
         </button>
         <span className="flex gap-1 ml-1">
           <button
             onClick={() => applyRange(toInputDate(today), toInputDate(today))}
-            className="px-2 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded cursor-pointer"
+            className="min-h-11 px-2 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded cursor-pointer md:min-h-0"
           >
             今天
           </button>
           <button
             onClick={() => applyRange(toInputDate(weekAgo), toInputDate(today))}
-            className="px-2 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded cursor-pointer"
+            className="min-h-11 px-2 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded cursor-pointer md:min-h-0"
           >
             近 7 天
           </button>
           <button
             onClick={() => applyRange(toInputDate(monthStart), toInputDate(today))}
-            className="px-2 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded cursor-pointer"
+            className="min-h-11 px-2 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded cursor-pointer md:min-h-0"
           >
             本月
           </button>
         </span>
 
-        <span className="ml-auto text-sm text-gray-500">
+        <span className="w-full text-sm text-gray-500 md:ml-auto md:w-auto">
           共 {total} 条记录 · 合计 {formatMoney(amountMoney)}
         </span>
         <button
@@ -142,7 +142,7 @@ export const AdminRecharge = () => {
             setNotice("");
             setFormOpen(true);
           }}
-          className="bg-blue-600 text-white rounded px-4 py-2 text-sm cursor-pointer"
+          className="min-h-11 w-full bg-blue-600 text-white rounded px-4 py-2 text-sm cursor-pointer md:min-h-0 md:w-auto"
         >
           + 新增充值
         </button>
@@ -185,11 +185,11 @@ export const AdminRecharge = () => {
         </table>
       </div>
 
-      <div className="flex items-center gap-2 mt-3 text-sm">
+      <div className="flex flex-wrap items-center gap-2 mt-3 text-sm">
         <button
           onClick={() => fetchRecharges(limit, Math.max(0, offset - limit), range)}
           disabled={offset === 0}
-          className="px-3 py-1 border rounded cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          className="min-h-9 px-3 py-1 border rounded cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed md:min-h-0"
         >
           上一页
         </button>
@@ -199,7 +199,7 @@ export const AdminRecharge = () => {
         <button
           onClick={() => fetchRecharges(limit, offset + limit, range)}
           disabled={offset + limit >= total}
-          className="px-3 py-1 border rounded cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          className="min-h-9 px-3 py-1 border rounded cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed md:min-h-0"
         >
           下一页
         </button>
@@ -251,7 +251,7 @@ const RechargeForm = ({ onSuccess }: { onSuccess: (message: string) => void }) =
         <input
           value={targetUsername}
           onChange={(e) => setTargetUsername(e.target.value)}
-          className="w-full border rounded px-3 py-2 text-sm"
+          className="min-h-11 w-full border rounded px-3 py-2 text-sm md:min-h-0"
           placeholder="如 0156"
         />
       </div>
@@ -261,7 +261,7 @@ const RechargeForm = ({ onSuccess }: { onSuccess: (message: string) => void }) =
           type="number"
           value={credits}
           onChange={(e) => setCredits(e.target.value)}
-          className="w-full border rounded px-3 py-2 text-sm"
+          className="min-h-11 w-full border rounded px-3 py-2 text-sm md:min-h-0"
           placeholder="如 300"
         />
       </div>
@@ -272,7 +272,7 @@ const RechargeForm = ({ onSuccess }: { onSuccess: (message: string) => void }) =
           step="0.01"
           value={amountMoney}
           onChange={(e) => setAmountMoney(e.target.value)}
-          className="w-full border rounded px-3 py-2 text-sm"
+          className="min-h-11 w-full border rounded px-3 py-2 text-sm md:min-h-0"
           placeholder="如 50"
         />
       </div>
@@ -281,7 +281,7 @@ const RechargeForm = ({ onSuccess }: { onSuccess: (message: string) => void }) =
         <input
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          className="w-full border rounded px-3 py-2 text-sm"
+          className="min-h-11 w-full border rounded px-3 py-2 text-sm md:min-h-0"
           placeholder="如：用户要求续费"
         />
       </div>
@@ -289,7 +289,7 @@ const RechargeForm = ({ onSuccess }: { onSuccess: (message: string) => void }) =
       <button
         type="submit"
         disabled={loading}
-        className="w-full bg-green-600 text-white rounded py-2 text-sm disabled:opacity-50 cursor-pointer"
+        className="min-h-11 w-full bg-green-600 text-white rounded py-2 text-sm disabled:opacity-50 cursor-pointer md:min-h-0"
       >
         {loading ? "提交中..." : "提交充值"}
       </button>

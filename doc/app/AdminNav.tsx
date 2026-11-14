@@ -12,18 +12,18 @@ export const ADMIN_TABS = [
 export const AdminNav = () => {
   const [path] = useLocation();
   return (
-    <nav className="flex gap-1 mb-4 border-b pb-2">
+    <nav className="flex gap-1 overflow-x-auto overscroll-x-contain [scrollbar-width:none] mb-4 border-b pb-2">
       {ADMIN_TABS.map((t) => {
         const active = path === t.to;
         return (
           <Link
             key={t.to}
             href={t.to}
-            className={
+            className={`inline-flex shrink-0 min-h-11 items-center whitespace-nowrap px-3 text-sm rounded md:min-h-0 md:py-1.5 ${
               active
-                ? "px-3 py-1.5 text-sm rounded bg-blue-600 text-white"
-                : "px-3 py-1.5 text-sm rounded text-gray-600 hover:bg-gray-100"
-            }
+                ? "bg-blue-600 text-white"
+                : "text-gray-600 hover:bg-gray-100"
+            }`}
           >
             {t.label}
           </Link>

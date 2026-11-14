@@ -32,7 +32,7 @@ const SortableTh = ({ label, sortKey, align, sortBy, sortDir, onSort }: {
   const active = sortBy === sortKey;
   const arrow = active ? (sortDir === "asc" ? "↑" : "↓") : "↕";
   return (
-    <th className={`px-3 py-2 border-b ${align === "right" ? "text-right" : "text-left"}`}>
+    <th className={`px-3 py-2 border-b whitespace-nowrap ${align === "right" ? "text-right" : "text-left"}`}>
       <button
         type="button"
         onClick={() => onSort(sortKey)}
@@ -96,14 +96,14 @@ export const AdminUsers = () => {
     <>
       {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
 
-      <form onSubmit={handleSearch} className="flex gap-2 mb-3">
+      <form onSubmit={handleSearch} className="flex flex-wrap gap-2 mb-3">
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="flex-1 border rounded px-3 py-2 text-sm"
+          className="min-h-11 min-w-0 flex-1 border rounded px-3 py-2 text-sm md:min-h-0"
           placeholder="按用户名搜索"
         />
-        <button type="submit" className="bg-blue-600 text-white rounded px-4 py-2 text-sm cursor-pointer">
+        <button type="submit" className="min-h-11 bg-blue-600 text-white rounded px-4 py-2 text-sm cursor-pointer md:min-h-0">
           搜索
         </button>
       </form>
@@ -112,7 +112,7 @@ export const AdminUsers = () => {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-50">
-              <th className="text-left px-3 py-2 border-b">用户</th>
+              <th className="text-left px-3 py-2 border-b whitespace-nowrap">用户</th>
               <SortableTh label="充值总量" sortKey="totalCredits" align="right" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
               <SortableTh label="已用" sortKey="consumedCredits" align="right" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
               <SortableTh label="剩余" sortKey="remainingCredits" align="right" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
@@ -129,8 +129,8 @@ export const AdminUsers = () => {
                 <td className="px-3 py-2 text-right">{r.totalCredits}</td>
                 <td className="px-3 py-2 text-right">{r.consumedCredits}</td>
                 <td className="px-3 py-2 text-right">{r.remainingCredits}</td>
-                <td className="px-3 py-2">{formatTime(r.createdAt)}</td>
-                <td className="px-3 py-2">{r.lastActiveAt ? formatTime(r.lastActiveAt) : "—"}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{formatTime(r.createdAt)}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{r.lastActiveAt ? formatTime(r.lastActiveAt) : "—"}</td>
               </tr>
             ))}
             {rows.length === 0 && (
@@ -144,11 +144,11 @@ export const AdminUsers = () => {
         </table>
       </div>
 
-      <div className="flex items-center gap-2 mt-3 text-sm">
+      <div className="flex flex-wrap items-center gap-2 mt-3 text-sm">
         <button
           onClick={handlePrev}
           disabled={offset === 0}
-          className="px-3 py-1 border rounded cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          className="min-h-9 px-3 py-1 border rounded cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed md:min-h-0"
         >
           上一页
         </button>
@@ -158,7 +158,7 @@ export const AdminUsers = () => {
         <button
           onClick={handleNext}
           disabled={offset + limit >= total}
-          className="px-3 py-1 border rounded cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          className="min-h-9 px-3 py-1 border rounded cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed md:min-h-0"
         >
           下一页
         </button>

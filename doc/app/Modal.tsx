@@ -20,18 +20,18 @@ export const Modal = ({ open, title, onClose, children }: {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 md:items-center md:p-4"
       onClick={onClose}
     >
       <div
-        className="w-[420px] max-w-full rounded bg-white p-5 shadow-lg"
+        className="max-h-[90dvh] w-full overflow-y-auto overscroll-contain rounded-t-xl bg-white p-4 shadow-lg md:w-[420px] md:max-w-full md:rounded md:p-5"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
           <p className="text-base font-bold">{title}</p>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 cursor-pointer text-lg leading-none"
+            className="inline-flex h-11 w-11 items-center justify-center text-gray-400 hover:text-gray-600 cursor-pointer text-lg leading-none md:h-auto md:w-auto"
             aria-label="关闭"
           >
             ×

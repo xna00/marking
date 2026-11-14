@@ -21,20 +21,31 @@ type MarkLogEntry = {
 // 缩略图高度：表格行高主要由它决定，点开弹层看原图
 const THUMB_HEIGHT = 100;
 
-const imageBoxStyle: React.CSSProperties = {
-  height: `${THUMB_HEIGHT}px`,
-  width: "auto",
-  maxWidth: "240px",
+const imageBaseStyle: React.CSSProperties = {
   borderRadius: "4px",
   background: "#f3f4f6",
   display: "block",
   objectFit: "contain",
 };
 
-// 加载失败占位：固定宽度，避免宽度随空内容塌陷
-const imageFallbackStyle: React.CSSProperties = {
-  ...imageBoxStyle,
-  width: "160px",
+const imageBoxStyle: React.CSSProperties = {
+  ...imageBaseStyle,
+  height: `${THUMB_HEIGHT}px`,
+  width: "auto",
+  maxWidth: "240px",
+};
+
+// 卡片里图片撑满整行宽度；高度按比例，过高的长图截到 200px，
+// 内容用 contain 完整缩放（不裁剪），点开灯箱看原图
+const cardImageStyle: React.CSSProperties = {
+  ...imageBaseStyle,
+  width: "100%",
+  height: "auto",
+  maxHeight: "200px",
+};
+
+const imageFallbackBaseStyle: React.CSSProperties = {
+  ...imageBaseStyle,
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -42,16 +53,34 @@ const imageFallbackStyle: React.CSSProperties = {
   fontSize: "12px",
 };
 
-const ImagePreview = ({ src, onOpen }: { src: string; onOpen: () => void }) => {
+// 加载失败占位：固定宽度，避免宽度随空内容塌陷
+const imageFallbackStyle: React.CSSProperties = {
+  ...imageFallbackBaseStyle,
+  height: `${THUMB_HEIGHT}px`,
+  width: "160px",
+};
+
+const cardFallbackStyle: React.CSSProperties = {
+  ...imageFallbackBaseStyle,
+  width: "100%",
+  height: "160px",
+};
+
+const ImagePreview = ({ src, onOpen, fill = false }: {
+  src: string;
+  onOpen: () => void;
+  fill?: boolean;
+}) => {
   const [failed, setFailed] = useState(false);
 
-  if (failed) return <div style={imageFallbackStyle}>加载失败</div>;
+  if (failed) return <div style={fill ? cardFallbackStyle : imageFallbackStyle}>加载失败</div>;
   return (
     <button
       type="button"
       onClick={onOpen}
       title="点击放大"
-      style={{ padding: 0, border: "none", background: "none", cursor: "zoom-in", display: "block" }}
+      aria-label="查看原图"
+      className={`block cursor-zoom-in border-0 bg-transparent p-0 ${fill ? "w-full" : "min-w-11"}`}
     >
       <img
         src={src}
@@ -59,7 +88,7 @@ const ImagePreview = ({ src, onOpen }: { src: string; onOpen: () => void }) => {
         loading="lazy"
         decoding="async"
         onError={() => setFailed(true)}
-        style={imageBoxStyle}
+        style={fill ? cardImageStyle : imageBoxStyle}
       />
     </button>
   );
@@ -117,7 +146,7 @@ export const MarkLogs = () => {
       if (!Array.isArray(items)) throw new Error("not array");
     } catch {
       // 解析失败就把原文铺开，避免后台看不到任何信息
-      return <div style={{ maxWidth: "300px", whiteSpace: "pre-wrap" }}>{json}</div>;
+      return <div className="max-w-[300px] whitespace-pre-wrap">{json}</div>;
     }
 
     const summary = items.map((item) => `${item.position} ${item.points}分: ${item.markingCriteria}`).join("  |  ");
@@ -126,18 +155,19 @@ export const MarkLogs = () => {
     return (
       <div>
         {needToggle && !expanded
-          ? (
-            <div style={{ maxWidth: "300px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={summary}>
-              {summary}
-            </div>
-          )
+          ? <div className="max-w-[300px] truncate" title={summary}>{summary}</div>
           : (
-            <div style={{ maxWidth: "300px", overflowX: "auto" }}>
+            <div className="max-w-[300px] overflow-x-auto">
               {items.map((item, i) => <div key={i}>{item.position} {item.points}分: {item.markingCriteria}</div>)}
             </div>
           )}
         {needToggle && (
-          <button onClick={onToggle} style={toggleBtnStyle}>{expanded ? "收起" : "展开"}</button>
+          <button
+            onClick={onToggle}
+            className="mt-0.5 cursor-pointer border-0 bg-transparent p-0 text-xs text-blue-600"
+          >
+            {expanded ? "收起" : "展开"}
+          </button>
         )}
       </div>
     );
@@ -148,46 +178,91 @@ export const MarkLogs = () => {
       const items: { text: string; score: number; reason: string }[] = JSON.parse(json);
       return items.map((item, i) => (
         // 简答题可能是分点作答（提示词要求每点一行），保留 \n 才会真的换行显示
-        <div key={i} style={{ whiteSpace: "pre-wrap" }}>{item.text} {item.score}分 {item.reason}</div>
+        <div key={i} className="whitespace-pre-wrap">{item.text} {item.score}分 {item.reason}</div>
       ));
     } catch {
       return json;
     }
   };
 
+  const openPreview = (log: MarkLogEntry, imgSrc: string) =>
+    setPreview({ src: imgSrc, alt: log.imageFilename });
+
   return (
     <>
-      {error && <div style={{ color: "red", marginBottom: "12px", fontSize: "14px" }}>{error}</div>}
+      {error && <div className="mb-3 text-sm text-red-500">{error}</div>}
 
-      <div style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
-        <label style={{ fontSize: "13px" }}>每页条数:</label>
-        <select value={limit} onChange={(e) => fetchLogs(Number(e.target.value), 0)} style={{ fontSize: "13px", padding: "2px 4px" }}>
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <label className="text-[13px]">每页条数:</label>
+        <select
+          value={limit}
+          onChange={(e) => fetchLogs(Number(e.target.value), 0)}
+          className="min-h-9 rounded border px-1 text-[13px] md:min-h-0 md:py-0.5"
+        >
           <option value={10}>10</option>
           <option value={20}>20</option>
           <option value={50}>50</option>
           <option value={100}>100</option>
         </select>
-        <button onClick={handlePrev} disabled={offset === 0} style={{ fontSize: "13px", padding: "2px 8px", cursor: offset === 0 ? "not-allowed" : "pointer" }}>
+        <button
+          onClick={handlePrev}
+          disabled={offset === 0}
+          className="min-h-9 cursor-pointer rounded border px-2 text-[13px] disabled:cursor-not-allowed md:min-h-0 md:py-0.5"
+        >
           上一页
         </button>
-        <span style={{ fontSize: "13px" }}>第 {offset / limit + 1} 页</span>
-        <button onClick={handleNext} disabled={logs.length < limit} style={{ fontSize: "13px", padding: "2px 8px", cursor: logs.length < limit ? "not-allowed" : "pointer" }}>
+        <span className="text-[13px]">第 {offset / limit + 1} 页</span>
+        <button
+          onClick={handleNext}
+          disabled={logs.length < limit}
+          className="min-h-9 cursor-pointer rounded border px-2 text-[13px] disabled:cursor-not-allowed md:min-h-0 md:py-0.5"
+        >
           下一页
         </button>
       </div>
 
-      <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+      {/* 手机端：每条日志一张卡片，避免 8 列表格左右拖 */}
+      <ul className="space-y-3 md:hidden">
+        {logs.map((log) => {
+          const imgSrc = api.logs.getMarkImage.makeRequest({ filename: log.imageFilename }).url;
+          return (
+            <li key={log.id} className="rounded-lg border border-gray-200 bg-white p-3">
+              <div className="mb-2 flex items-center justify-between gap-2 text-xs text-gray-500">
+                <span>#{log.id} · 记录 {log.markRecordId}</span>
+                <span className="shrink-0">{formatTime(log.createdAt, { seconds: true })}</span>
+              </div>
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <UserInfo
+                  username={log.username}
+                  nickname={log.nickname}
+                  avatar={log.avatar}
+                  title={log.userId}
+                  size={28}
+                />
+                <span className="min-w-0 truncate text-xs text-gray-500" title={log.model}>{log.model}</span>
+              </div>
+              <ImagePreview fill src={imgSrc} onOpen={() => openPreview(log, imgSrc)} />
+              <div className="mt-2 text-[13px]">{formatResult(log.result)}</div>
+              <div className="mt-2 text-[13px]">
+                {formatCriteriaConfig(log.criteriaConfig, expandedIds.has(log.id), () => toggleExpanded(log.id))}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+
+      <div className="hidden overflow-x-auto md:block">
+        <table className="w-full border-collapse text-[13px]">
           <thead>
-            <tr style={{ background: "#f5f5f5" }}>
-              <th style={thStyle}>ID</th>
-              <th style={thStyle}>记录ID</th>
-              <th style={thStyle}>用户</th>
-              <th style={thStyle}>模型</th>
-              <th style={thStyle}>评分标准</th>
-              <th style={thStyle}>图片</th>
-              <th style={thStyle}>AI 结果</th>
-              <th style={thStyle}>时间</th>
+            <tr className="bg-gray-50">
+              <th className={thCls}>ID</th>
+              <th className={thCls}>记录ID</th>
+              <th className={thCls}>用户</th>
+              <th className={thCls}>模型</th>
+              <th className={thCls}>评分标准</th>
+              <th className={thCls}>图片</th>
+              <th className={thCls}>AI 结果</th>
+              <th className={thCls}>时间</th>
             </tr>
           </thead>
           <tbody>
@@ -195,23 +270,23 @@ export const MarkLogs = () => {
               // makeRequest 同步返回 Request，.url 已把 ?data= 编码好；认证靠浏览器自动带 cookie
               const imgSrc = api.logs.getMarkImage.makeRequest({ filename: log.imageFilename }).url;
               return (
-                <tr key={log.id} style={{ borderBottom: "1px solid #eee" }}>
-                  <td style={tdStyle}>{log.id}</td>
-                  <td style={tdStyle}>{log.markRecordId}</td>
-                  <td style={tdStyle}>
+                <tr key={log.id} className="border-b border-gray-100">
+                  <td className={tdCls}>{log.id}</td>
+                  <td className={tdCls}>{log.markRecordId}</td>
+                  <td className={tdCls}>
                     <UserInfo username={log.username} nickname={log.nickname} avatar={log.avatar} title={log.userId} />
                   </td>
-                  <td style={tdStyle} title={log.model}>{log.model.length > 20 ? log.model.slice(0, 20) + "..." : log.model}</td>
-                  <td style={tdStyle}>
+                  <td className={tdCls} title={log.model}>{log.model.length > 20 ? log.model.slice(0, 20) + "..." : log.model}</td>
+                  <td className={tdCls}>
                     {formatCriteriaConfig(log.criteriaConfig, expandedIds.has(log.id), () => toggleExpanded(log.id))}
                   </td>
-                  <td style={tdStyle}>
-                    <ImagePreview src={imgSrc} onOpen={() => setPreview({ src: imgSrc, alt: log.imageFilename })} />
+                  <td className={tdCls}>
+                    <ImagePreview src={imgSrc} onOpen={() => openPreview(log, imgSrc)} />
                   </td>
-                  <td style={tdStyle}>
-                    <div style={{ maxWidth: "300px", overflowX: "auto" }}>{formatResult(log.result)}</div>
+                  <td className={tdCls}>
+                    <div className="max-w-[300px] overflow-x-auto">{formatResult(log.result)}</div>
                   </td>
-                  <td style={tdStyle}>{formatTime(log.createdAt, { seconds: true })}</td>
+                  <td className={tdCls}>{formatTime(log.createdAt, { seconds: true })}</td>
                 </tr>
               );
             })}
@@ -228,14 +303,5 @@ export const MarkLogs = () => {
   );
 };
 
-const thStyle: React.CSSProperties = { textAlign: "left", padding: "8px 6px", borderBottom: "2px solid #ddd", whiteSpace: "nowrap" };
-const tdStyle: React.CSSProperties = { padding: "8px 6px", verticalAlign: "top" };
-const toggleBtnStyle: React.CSSProperties = {
-  marginTop: "2px",
-  padding: 0,
-  border: "none",
-  background: "none",
-  color: "#2563eb",
-  fontSize: "12px",
-  cursor: "pointer",
-};
+const thCls = "whitespace-nowrap border-b-2 border-gray-300 px-1.5 py-2 text-left";
+const tdCls = "px-1.5 py-2 align-top";

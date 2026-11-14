@@ -139,7 +139,7 @@ export const AdminPrompts = () => {
       {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
       {notice && <p className="text-green-600 text-sm mb-3">{notice}</p>}
 
-      <div className="flex items-start justify-between gap-4 mb-3">
+      <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between md:gap-4 mb-3">
         <p className="text-sm text-gray-500">
           评分时使用对应题型的默认提示词，{PLACEHOLDER} 会被替换成评分标准（「其他」为多行的 md 表格，
           其余题型为「位置 / 分值 / 细则」三行）。提示词创建后不可修改，需要调整就新建一条并设为默认。
@@ -147,7 +147,7 @@ export const AdminPrompts = () => {
         <button
           onClick={() => startCreate("default")}
           disabled={saving}
-          className="shrink-0 px-3 py-1 rounded bg-blue-600 text-white text-xs cursor-pointer disabled:opacity-40"
+          className="shrink-0 self-start min-h-11 px-3 py-1 rounded bg-blue-600 text-white text-xs cursor-pointer disabled:opacity-40 md:min-h-0"
         >
           新建提示词
         </button>
@@ -157,12 +157,12 @@ export const AdminPrompts = () => {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-50">
-              <th className="text-left px-2 py-2 border-b">题型</th>
-              <th className="text-left px-2 py-2 border-b">内容</th>
-              <th className="text-left px-2 py-2 border-b">默认</th>
-              <th className="text-left px-2 py-2 border-b">字数</th>
-              <th className="text-left px-2 py-2 border-b">创建时间</th>
-              <th className="text-left px-2 py-2 border-b"></th>
+              <th className="text-left px-2 py-2 border-b whitespace-nowrap">题型</th>
+              <th className="text-left px-2 py-2 border-b whitespace-nowrap">内容</th>
+              <th className="text-left px-2 py-2 border-b whitespace-nowrap">默认</th>
+              <th className="text-left px-2 py-2 border-b whitespace-nowrap">字数</th>
+              <th className="text-left px-2 py-2 border-b whitespace-nowrap">创建时间</th>
+              <th className="text-left px-2 py-2 border-b whitespace-nowrap"></th>
             </tr>
           </thead>
           <tbody>
@@ -220,7 +220,7 @@ export const AdminPrompts = () => {
             <select
               value={draft.questionType}
               onChange={(e) => startCreate(e.target.value)}
-              className="!w-auto border rounded px-2 py-1 text-xs"
+              className="min-h-11 !w-auto border rounded px-2 py-1 text-xs md:min-h-0"
             >
               {questionTypes.map((q) => (
                 <option key={q.value} value={q.value}>{q.label}</option>
@@ -233,15 +233,15 @@ export const AdminPrompts = () => {
             spellCheck={false}
             className="w-full h-64 border rounded px-2 py-1 font-mono text-xs"
           />
-          <div className="flex items-center gap-3 mt-2">
+          <div className="flex flex-wrap items-center gap-3 mt-2">
             <button
               onClick={handleCreate}
               disabled={saving}
-              className="px-3 py-1 rounded bg-blue-600 text-white text-xs cursor-pointer disabled:opacity-40"
+              className="min-h-11 px-3 py-1 rounded bg-blue-600 text-white text-xs cursor-pointer disabled:opacity-40 md:min-h-0"
             >
               创建
             </button>
-            <button onClick={() => setDraft(null)} disabled={saving} className="px-3 py-1 rounded border text-xs cursor-pointer disabled:opacity-40">
+            <button onClick={() => setDraft(null)} disabled={saving} className="min-h-11 px-3 py-1 rounded border text-xs cursor-pointer disabled:opacity-40 md:min-h-0">
               取消
             </button>
             <span className={draft.content.length > MAX_CONTENT_LENGTH ? "text-xs text-red-500" : "text-xs text-gray-400"}>
