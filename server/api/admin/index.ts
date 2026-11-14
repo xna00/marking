@@ -4,6 +4,7 @@ import { getAllModels, saveModel, setDefaultModel as storeSetDefaultModel, type 
 import {
   getAllPrompts,
   createPrompt as storeCreatePrompt,
+  updatePrompt as storeUpdatePrompt,
   deletePrompt as storeDeletePrompt,
   setDefaultPrompt as storeSetDefaultPrompt,
   PROMPT_PLACEHOLDER,
@@ -232,6 +233,17 @@ export async function createPrompt(body: { content: string; questionType?: strin
   const content = validatePromptContent(body?.content);
   const questionType = validateQuestionType(body?.questionType);
   return storeCreatePrompt(content, questionType);
+}
+
+export async function updatePrompt(body: { id: string; content: string }) {
+  await requireAdmin();
+  if (!body?.id) throw new ApiError(400, "参数错误", {}, "API_BAD_REQUEST", {});
+  const content = validatePromptContent(body?.content);
+  try {
+    return storeUpdatePrompt(body.id, content);
+  } catch (e) {
+    throw new ApiError(400, e instanceof Error ? e.message : String(e), {}, "API_BAD_REQUEST", {});
+  }
 }
 
 export async function deletePrompt(body: { id: string }) {

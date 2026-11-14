@@ -11,7 +11,7 @@ import {
   listCreditTransactions, summarizeCreditTransactions,
   verifyPassword,
   listModelRows, countModelRows, insertModelRow, updateModelRow, setAllModelNotDefault, setModelDefault,
-  listPromptRows, countPromptRows, insertPromptRow, deletePromptRow, setAllPromptNotDefault, setPromptDefault,
+  listPromptRows, countPromptRows, insertPromptRow, updatePromptRow, deletePromptRow, setAllPromptNotDefault, setPromptDefault,
 } from './db.ts';
 import { DatabaseSync } from 'node:sqlite';
 import { describe, it, before } from 'node:test';
@@ -319,7 +319,7 @@ describe('db', () => {
   describe('prompt', () => {
     const row1: Parameters<typeof insertPromptRow>[0] = {
       id: 'p1', content: '标准：{{评分标准}}', isDefault: 0, questionType: 'default',
-      createdAt: '2026-01-01T00:00:00.000Z',
+      createdAt: '2026-01-01T00:00:00.000Z', updatedAt: null,
     };
 
     it('is empty initially', () => {
@@ -349,6 +349,13 @@ describe('db', () => {
       const rows = listPromptRows();
       assert.equal(rows.find((r) => r.id === 'p2')?.isDefault, 1);
       assert.equal(rows.find((r) => r.id === 'p1')?.isDefault, 0);
+    });
+
+    it('updatePromptRow updates content and updatedAt', () => {
+      updatePromptRow('p2', '新标准：{{评分标准}}', '2026-01-03T00:00:00.000Z');
+      const row = listPromptRows().find((r) => r.id === 'p2');
+      assert.equal(row?.content, '新标准：{{评分标准}}');
+      assert.equal(row?.updatedAt, '2026-01-03T00:00:00.000Z');
     });
 
     it('deletePromptRow removes the row', () => {

@@ -69,7 +69,8 @@ id            TEXT PRIMARY KEY,
 content       TEXT NOT NULL,
 isDefault     INTEGER NOT NULL DEFAULT 0,
 questionType  TEXT NOT NULL DEFAULT 'default',
-createdAt     TEXT NOT NULL
+createdAt     TEXT NOT NULL,
+updatedAt     TEXT
 )`;
 
 // 显式上下文缓存（Prefix 缓存）的 responseId 映射。Ark 的响应 ID 由服务端生成、
@@ -392,6 +393,7 @@ export type PromptRow = {
   isDefault: number;
   questionType: string;
   createdAt: string;
+  updatedAt: string | null;
 };
 
 export function listPromptRows(): PromptRow[] {
@@ -418,10 +420,17 @@ OFFSET 0
 
 export function insertPromptRow(row: PromptRow): void {
   const stmt = td().prepare(`
-INSERT OR ABORT INTO prompt (id, content, isDefault, questionType, createdAt)
-VALUES (@id, @content, @isDefault, @questionType, @createdAt)
+INSERT OR ABORT INTO prompt (id, content, isDefault, questionType, createdAt, updatedAt)
+VALUES (@id, @content, @isDefault, @questionType, @createdAt, @updatedAt)
 `);
   stmt.run(row);
+}
+
+export function updatePromptRow(id: string, content: string, updatedAt: string): void {
+  const stmt = td().prepare(`
+UPDATE OR ABORT prompt SET content = @content, updatedAt = @updatedAt WHERE prompt.id = @id
+`);
+  stmt.run({ id, content, updatedAt });
 }
 
 export function deletePromptRow(id: string): void {

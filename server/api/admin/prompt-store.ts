@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import {
   listPromptRows,
   insertPromptRow,
+  updatePromptRow,
   deletePromptRow,
   setAllPromptNotDefault,
   setPromptDefault,
@@ -13,8 +14,9 @@ import { QUESTION_TYPES, type QuestionType } from "../question-types.ts";
 // initDb 的 CREATE TABLE IF NOT EXISTS 自动建），管理页改动写 DB 并同步缓存。
 // getActivePromptContent 保持同步调用，不把 ai.ts 的调用方改成 async。
 //
-// 提示词创建后不可修改：要改内容就新建一条再设为默认，旧的删不删都行，
-// 天然起到版本留档的作用。没有名称字段，列表里用内容摘要 + 创建时间区分。
+// 提示词可编辑：默认提示词编辑后立即生效；要保留旧版本就新建一条再设为
+// 默认。没有名称字段，列表里用内容摘要 + 创建时间区分。
+// 题型属于提示词自身属性，编辑不换题型（换题型等于另一套模板，应新建）。
 
 // 评分标准在这个位置被替换：default（其他）替换成 md 表格，单行题型替换成
 // 「位置:/分值:/细则:」三行（见 ai.ts 的 constructPrompt）
@@ -26,6 +28,7 @@ export type PromptDef = {
   isDefault: boolean;
   questionType: QuestionType;
   createdAt: string;
+  updatedAt: string | null;
 };
 
 // 内置提示词 = 改造前 ai.ts 里的 SYSTEM_PROMPT，保证初始化后的行为完全一致。
@@ -75,6 +78,7 @@ function toDef(r: PromptRow): PromptDef {
     // 白名单收窄：脏数据（非法值）兜底 default，避免污染 UI/构造
     questionType: QUESTION_TYPES.find((t) => t === r.questionType) ?? "default",
     createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
   };
 }
 
@@ -92,6 +96,7 @@ function ensureLoaded(): PromptDef[] {
           isDefault: 1,
           questionType: t,
           createdAt: now,
+          updatedAt: null,
         });
       }
     }
@@ -123,6 +128,7 @@ export function createPrompt(content: string, questionType: QuestionType): Promp
     isDefault: list.length === 0,
     questionType,
     createdAt: new Date().toISOString(),
+    updatedAt: null,
   };
   insertPromptRow({
     id: prompt.id,
@@ -130,9 +136,21 @@ export function createPrompt(content: string, questionType: QuestionType): Promp
     isDefault: prompt.isDefault ? 1 : 0,
     questionType: prompt.questionType,
     createdAt: prompt.createdAt,
+    updatedAt: null,
   });
   list.push(prompt);
   return prompt;
+}
+
+export function updatePrompt(id: string, content: string): PromptDef {
+  const list = ensureLoaded();
+  const target = list.find((p) => p.id === id);
+  if (!target) throw new Error(`提示词不存在: ${id}`);
+
+  target.content = content;
+  target.updatedAt = new Date().toISOString();
+  updatePromptRow(id, content, target.updatedAt);
+  return target;
 }
 
 export function deletePrompt(id: string): void {

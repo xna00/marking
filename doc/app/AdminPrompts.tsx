@@ -8,6 +8,7 @@ type PromptRow = {
   isDefault: boolean;
   questionType: string;
   createdAt: string;
+  updatedAt: string | null;
 };
 
 type QuestionTypeOption = { value: string; label: string };
@@ -43,8 +44,8 @@ export const AdminPrompts = () => {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
-  // 非 null 表示正在新建（提示词创建后不可改，要改就新建一条）
-  const [draft, setDraft] = useState<{ content: string; questionType: string } | null>(null);
+  // 非 null 表示正在新建或编辑；id 为 null 是新建，否则编辑该条提示词
+  const [draft, setDraft] = useState<{ id: string | null; content: string; questionType: string } | null>(null);
 
   const fetchPrompts = async () => {
     setError("");
@@ -84,25 +85,35 @@ export const AdminPrompts = () => {
       prompts.find((p) => p.questionType === questionType && p.isDefault) ??
       prompts.find((p) => p.questionType === questionType) ??
       prompts[0];
-    setDraft({ content: base?.content ?? "", questionType });
+    setDraft({ id: null, content: base?.content ?? "", questionType });
   };
 
-  const handleCreate = async () => {
+  const startEdit = (p: PromptRow) => {
+    resetMessages();
+    setDraft({ id: p.id, content: p.content, questionType: p.questionType });
+  };
+
+  const handleSave = async () => {
     if (!draft) return;
     if (!draft.content.includes(PLACEHOLDER)) {
       setError(`内容必须包含占位符 ${PLACEHOLDER}`);
       return;
     }
 
+    const editing = draft.id !== null;
     setSaving(true);
     resetMessages();
     try {
-      await api.admin.createPrompt({ content: draft.content, questionType: draft.questionType });
+      if (editing && draft.id !== null) {
+        await api.admin.updatePrompt({ id: draft.id, content: draft.content });
+      } else {
+        await api.admin.createPrompt({ content: draft.content, questionType: draft.questionType });
+      }
       setDraft(null);
-      setNotice("已创建，如需生效请设为默认");
+      setNotice(editing ? "已保存" : "已创建，如需生效请设为默认");
       await fetchPrompts();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "创建失败");
+      setError(err instanceof Error ? err.message : editing ? "保存失败" : "创建失败");
     }
     setSaving(false);
   };
@@ -142,7 +153,7 @@ export const AdminPrompts = () => {
       <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between md:gap-4 mb-3">
         <p className="text-sm text-gray-500">
           评分时使用对应题型的默认提示词，{PLACEHOLDER} 会被替换成评分标准（「其他」为多行的 md 表格，
-          其余题型为「位置 / 分值 / 细则」三行）。提示词创建后不可修改，需要调整就新建一条并设为默认。
+          其余题型为「位置 / 分值 / 细则」三行）。编辑默认提示词会立即生效；要留档就新建一条并设为默认。
         </p>
         <button
           onClick={() => startCreate("default")}
@@ -162,6 +173,7 @@ export const AdminPrompts = () => {
               <th className="text-left px-2 py-2 border-b whitespace-nowrap">默认</th>
               <th className="text-left px-2 py-2 border-b whitespace-nowrap">字数</th>
               <th className="text-left px-2 py-2 border-b whitespace-nowrap">创建时间</th>
+              <th className="text-left px-2 py-2 border-b whitespace-nowrap">更新时间</th>
               <th className="text-left px-2 py-2 border-b whitespace-nowrap"></th>
             </tr>
           </thead>
@@ -189,7 +201,15 @@ export const AdminPrompts = () => {
                 </td>
                 <td className="px-2 py-2 text-gray-500">{p.content.length}</td>
                 <td className="px-2 py-2 text-gray-500">{formatTime(p.createdAt)}</td>
+                <td className="px-2 py-2 text-gray-500">{p.updatedAt ? formatTime(p.updatedAt) : "—"}</td>
                 <td className="px-2 py-2 whitespace-nowrap">
+                  <button
+                    onClick={() => startEdit(p)}
+                    disabled={saving}
+                    className="mr-2 text-xs text-blue-600 cursor-pointer disabled:opacity-40"
+                  >
+                    编辑
+                  </button>
                   <button
                     onClick={() => handleDelete(p)}
                     disabled={saving || p.isDefault}
@@ -203,7 +223,7 @@ export const AdminPrompts = () => {
             ))}
             {prompts.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-2 py-6 text-center text-gray-400 text-sm">
+                <td colSpan={7} className="px-2 py-6 text-center text-gray-400 text-sm">
                   暂无提示词
                 </td>
               </tr>
@@ -214,18 +234,25 @@ export const AdminPrompts = () => {
 
       {draft && (
         <div className="mt-4 border rounded p-3">
-          <p className="text-sm font-bold mb-2">新建提示词</p>
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <p className="text-sm font-bold">{draft.id ? "编辑提示词" : "新建提示词"}</p>
+            {draft.id && prompts.find((p) => p.id === draft.id)?.isDefault && (
+              <span className="text-xs text-green-600">这是默认提示词，保存后立即生效</span>
+            )}
+          </div>
           <div className="flex items-center gap-2 mb-2">
             <label className="text-xs text-gray-600 whitespace-nowrap">题型</label>
             <select
               value={draft.questionType}
+              disabled={draft.id !== null}
               onChange={(e) => startCreate(e.target.value)}
-              className="min-h-11 !w-auto border rounded px-2 py-1 text-xs md:min-h-0"
+              className="min-h-11 !w-auto border rounded px-2 py-1 text-xs disabled:opacity-60 md:min-h-0"
             >
               {questionTypes.map((q) => (
                 <option key={q.value} value={q.value}>{q.label}</option>
               ))}
             </select>
+            {draft.id !== null && <span className="text-xs text-gray-400">题型不可修改，换题型请新建</span>}
           </div>
           <textarea
             value={draft.content}
@@ -235,11 +262,11 @@ export const AdminPrompts = () => {
           />
           <div className="flex flex-wrap items-center gap-3 mt-2">
             <button
-              onClick={handleCreate}
+              onClick={handleSave}
               disabled={saving}
               className="min-h-11 px-3 py-1 rounded bg-blue-600 text-white text-xs cursor-pointer disabled:opacity-40 md:min-h-0"
             >
-              创建
+              {draft.id ? "保存" : "创建"}
             </button>
             <button onClick={() => setDraft(null)} disabled={saving} className="min-h-11 px-3 py-1 rounded border text-xs cursor-pointer disabled:opacity-40 md:min-h-0">
               取消
