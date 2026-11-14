@@ -20,7 +20,7 @@ try {
 } catch (error) {
   const message = error instanceof Error ? error.message : String(error);
   if (message.includes("no such column")) {
-    console.error("user 表缺列，先跑: node migrations/migrate.ts 002_add_wx_profile.sql");
+    console.error("user 表缺列，先跑: cd server/migrations && node migrate.ts 002_add_wx_profile.sql");
   } else {
     console.error("回填失败:", message);
   }

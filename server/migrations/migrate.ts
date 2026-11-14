@@ -2,15 +2,16 @@
 
 import { DatabaseSync } from "node:sqlite";
 import { copyFileSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 const dbDir = join(import.meta.dirname, "..", "data");
 const dbPath = join(dbDir, "marking.db");
 
 const sqlFile = process.argv[2];
-if (!sqlFile) { console.error("Usage: ./migrate.ts <sql-file>"); process.exit(1); }
+if (!sqlFile) { console.error("Usage: node <path>/migrate.ts <sql-file>   # sql-file 相对当前目录"); process.exit(1); }
 
-const sqlPath = join(import.meta.dirname, sqlFile);
+// 路径参数按命令行惯例相对 cwd 解析；数据库路径仍锚定脚本位置，避免在别的目录运行时连错库
+const sqlPath = resolve(sqlFile);
 const sql = readFileSync(sqlPath, "utf-8");
 
 // Backup with timestamp
