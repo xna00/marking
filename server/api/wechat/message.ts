@@ -6,6 +6,9 @@ import type { KfEventMessage, KfTextMessage, KfMessage } from "./sync.ts";
 import { logger } from "../../logger.ts";
 import { SITE_HOST } from "../constants.ts";
 
+// 新用户首次进入会话赠送的免费份数。调额只改这里，历史赠送不追溯。
+const NEW_USER_GIFT_CREDITS = 100;
+
 function getExternalUserId(msg: KfMessage): string {
   if (msg.msgtype === "event") return msg.event.external_userid;
   return msg.external_userid;
@@ -37,9 +40,9 @@ async function handleEnterSession(msg: KfEventMessage) {
       password = String(Math.floor(Math.random() * 1000000)).padStart(6, "0");
     } while (password.includes("4"));
     createUser(external_userid, username, password);
-    insertCreditTransaction(external_userid, 0, 300, "新用户赠送");
+    insertCreditTransaction(external_userid, 0, NEW_USER_GIFT_CREDITS, "新用户赠送");
     reply = `欢迎使用改卷仙人！\n已为您注册账号\n\n用户名：${username}\n密码：${password}`;
-    logger.log(`新用户注册: ${username}`);
+    logger.log(`新用户注册: ${username}，赠送 ${NEW_USER_GIFT_CREDITS} 份`);
   }
 
   try {
