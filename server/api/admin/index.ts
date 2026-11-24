@@ -25,7 +25,8 @@ export async function recharge(body: { targetUsername: string; credits: number; 
   await requireAdmin();
 
   const { targetUsername, credits, amountMoney, description } = body;
-  if (!targetUsername || !credits || credits <= 0 || !amountMoney || amountMoney <= 0) {
+  // amountMoney 允许 0（赠送）和负数（退款），只要求是有限数字；credits 允许正负（负=退份），但不能为 0。
+  if (!targetUsername || !Number.isFinite(credits) || credits === 0 || !Number.isFinite(amountMoney)) {
     throw new ApiError(400, "参数错误", {}, "API_BAD_REQUEST", {});
   }
 
