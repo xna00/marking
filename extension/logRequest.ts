@@ -39,7 +39,12 @@ async function getImageCount(tabId: number): Promise<number> {
     const promise = new Promise<void>(r => setTimeout(r, 1000))
       .then(() => chrome.scripting.executeScript({
         target: { tabId },
-        func: () => document.querySelectorAll('.outBox:not(.hideBox) .imgSection>img').length,
+        func: () => {
+          if (location.hostname.endsWith("bsedu.com")) {
+            return Math.max(1, document.querySelectorAll(".divimage img").length);
+          }
+          return document.querySelectorAll('.outBox:not(.hideBox) .imgSection>img').length;
+        },
         world: "ISOLATED",
       }))
       .then(([{ result }]) => {
@@ -68,6 +73,7 @@ const debuggerEnabledUrls = [
   "https://marking.xna00.top/test/",
   "https://www.wylkyj.com/",
   "https://wylkyj.com/",
+  "https://ebs.bsedu.com/",
 ];
 const logUrls = [
   "http://127.0.0.1:8080/dist/doc/",
@@ -75,6 +81,7 @@ const logUrls = [
   "https://marking.xna00.top/image",
   "https://data.wylkyj.com/PaperScan/",
   "https://data.wylkyj.com/AnswerSheet/",
+  "https://bs-exam-bucket.oss-cn-beijing.aliyuncs.com/",
 ];
 
 const attachAndEnableNetwork = async (tabId: number, tab: chrome.tabs.Tab) => {

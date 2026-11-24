@@ -67,6 +67,7 @@ export const MARKING_PAGE_URLS = [
   "https://wylkyj.com/yuejuan/*",
   "http://127.0.0.1:8080/*/test/*",
   "https://marking.xna00.top/test/*",
+  "https://ebs.bsedu.com/*",
 ];
 
 export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";

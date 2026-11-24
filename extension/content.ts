@@ -46,9 +46,44 @@ const wyPageHandlers = {
   },
 };
 
+// 百师阅卷（ebs.bsedu.com）：整卷单图（.divimage img），打分框在自动提交关闭时才可编辑。
+// 提交按钮为 .submitbuttonWidth（有分时变蓝，无分时灰）。
+const bseduPageHandlers = {
+  submit: () => {
+    overlay.innerHTML = "";
+    (document.querySelector(".submitbuttonWidth") as HTMLElement | null)?.click();
+  },
+  getImageSrc: () => {
+    // 与 test/wy handlers 一致：cast 为非空 HTMLImageElement，保持返回类型为 string（不为 undefined 宽化合并类型）
+    const img = document.querySelector(".divimage img") as HTMLImageElement;
+    return img?.currentSrc || img?.src;
+  },
+  getImageCount: () => Math.max(1, document.querySelectorAll(".divimage img").length),
+  setTotalScore: (score: number) => {
+    const applyScore = () => {
+      const input = document.querySelector('input[placeholder="打分框"]') as HTMLInputElement | null;
+      if (input) {
+        input.value = score.toString();
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+    };
+    const input = document.querySelector('input[placeholder="打分框"]') as HTMLInputElement | null;
+    const sw = document.querySelector(".rightnavMenu .el-switch");
+    // 自动提交打开时打分框只读，先关闭自动提交开关（等待 Vue 重新渲染后再写入）
+    if (input?.disabled && sw?.classList.contains("is-checked")) {
+      (sw as HTMLElement).click();
+      setTimeout(applyScore, 200);
+    } else {
+      applyScore();
+    }
+  },
+};
+
 const { submit, getImageSrc, setTotalScore, getImageCount } = location.host.includes("wylkyj.com")
   ? wyPageHandlers
-  : testPageHandlers;
+  : location.host.includes("bsedu.com")
+    ? bseduPageHandlers
+    : testPageHandlers;
 
 let isDragging = false;
 let currentElement: HTMLElement | null = null;
