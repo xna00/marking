@@ -55,6 +55,11 @@ const readImgSrc = async (tabId: number): Promise<string | null> => {
     target: { tabId },
     world: "ISOLATED",
     func: () => {
+      // 百师阅卷整卷单图（.divimage img），其余平台走 .imgSection.clear>img
+      if (location.hostname.endsWith("bsedu.com")) {
+        const img = document.querySelector(".divimage img") as HTMLImageElement;
+        return img?.currentSrc || img?.src || null;
+      }
       const img = document.querySelector('.imgSection.clear>img') as HTMLImageElement;
       return img?.src ?? null;
     },
